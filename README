@@ -1,0 +1,21 @@
+
+'trm.ultracam' is a Python module to provide access to raw ULTRACAM data
+files.
+
+Look in 'scripts' for some example scripts. This is a beta version 
+and there may well be changes in the future, in particular to the 
+currently crude way the headers are handled.
+
+Installation:
+
+As well as standard Python, you need 'numpy' (http://numpy.scipy.org/),
+
+Install with the usual:
+
+python setup.py install --prefix=your_top_level_installation_directory
+
+
+Tom Marsh
+
+
+
