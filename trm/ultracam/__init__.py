@@ -1331,10 +1331,10 @@ class Rhead (object):
         node        = udom.getElementsByTagName('instrument_status')[0]
         self.instrument  = node.getElementsByTagName('name')[0].childNodes[0].data
         if self.instrument == 'Ultracam':
-            self.instrument = 'UCM'
+            self.instrument = 'ULTRACAM'
             self.nxmax, self.nymax = 1080, 1032
         elif self.instrument == 'Ultraspec':
-            self.instrument = 'USP'
+            self.instrument = 'ULTRASPEC'
             self.nxmax, self.nymax = 1056, 1072
         else:
             raise UltracamError('File = ' + self.fname + ', failed to identify instrument.')
@@ -1373,7 +1373,7 @@ class Rhead (object):
             self.mode    = '3-PAIR'
         elif app == 'ap3_250_fullframe' or app == 'ap3_fullframe' or app == 'appl3_fullframe_cfg':
             self.mode    = 'FFCLR'
-        elif app == 'appl4_frameover_cfg' or 'ap4_frameover':
+        elif app == 'appl4_frameover_cfg' or app == 'ap4_frameover':
             self.mode    = 'FFOVER'
         elif app == 'ap9_250_fullframe_mindead' or app == 'ap9_fullframe_mindead' or \
                 app == 'appl9_fullframe_mindead_cfg':
@@ -1392,7 +1392,7 @@ class Rhead (object):
 
         # Windows. For each one store: x & y coords of lower-left pixel, binned dimensions
         self.win = []
-        if self.instrument == 'UCM':
+        if self.instrument == 'ULTRACAM':
 
             self.speed   = hex(int(param['GAIN_SPEED']))[2:] if 'GAIN_SPEED' in param else None
 
@@ -1429,7 +1429,7 @@ class Rhead (object):
                 self.win.append((xleft,ystart,nx,ny))
                 self.win.append((xright,ystart,nx,ny))
 
-        elif self.instrument == 'USP':
+        elif self.instrument == 'ULTRASPEC':
 
             self.speed    = ('F' if param['SPEED'] == '0' else \
                                  ('M' if param['SPEED'] == '1' else 'S')) if 'SPEED' in param else None
@@ -1544,6 +1544,27 @@ class Rdata (Rhead):
                 self._fobj.seek(self.framesize*(nframe-1))
                 self._nf = nframe
 
+    def _timing(self, tbytes):
+        """
+        Interprets the ULTRACAM timing bytes. This is an involved process owing to the various
+        hardware changes and bugs that have cropped up over the years. The pipeline equivalent
+        routine is read_header.cc
+        """
+        if self.instrument == 'ULTRASPEC' and self.version == -1:
+            format = 2
+        elif self.version == -1 or self.version == 70514 or self.version == 80127:
+            format = 1
+        elif self.version == 100222 or self.version == 110921 or self.version == 111205 or \
+                self.version == 120716 or self.version == 120813:
+            format = 2
+        else:
+            raise Exception('Rdata._timing: version = ' + str(self.version) + ' unrecognised.')
+        
+        print 'timing format code = ', format
+        if format == 1:
+            nsec  = struct.unpack('u4', tbytes[9:13])
+            nnsec = struct.unpack('u4', tbytes[9:13])
+
     def __call__(self, nframe=None, flt=None):
         """
         Reads the data of frame nframe (starts from 1) and returns a
@@ -1598,7 +1619,7 @@ class Rdata (Rhead):
 
         # interpret data
         xbin, ybin = self.xbin, self.ybin
-        if self.instrument == 'UCM':
+        if self.instrument == 'ULTRACAM':
             # 3 CCDs. Windows come in pairs. Data from equivalent windows come out
             # on a pitch of 6. Some further jiggery-pokery is involved to get the
             # orientation of the frames correct.
