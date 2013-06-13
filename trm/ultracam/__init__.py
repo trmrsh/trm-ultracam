@@ -1337,7 +1337,7 @@ class Rhead (object):
             self.instrument = 'ULTRASPEC'
             self.nxmax, self.nymax = 1056, 1072
         else:
-            raise UltracamError('File = ' + self.fname + ', failed to identify instrument.')
+            raise UltracamError('Rhead.__init__: file = ' + self.fname + ', failed to identify instrument.')
 
         self.application = [nd for nd in node.getElementsByTagName('application_status') \
                                 if nd.getAttribute('id') == 'SDSU Exec'][0].getAttribute('name')
@@ -1384,7 +1384,7 @@ class Rhead (object):
             else:
                 self.mode    = '2-USPEC'
         else:
-            raise UltracamError('File = ' + self.fname + ' failed to identify application = ' + app)
+            raise UltracamError('Rhead.__init__: file = ' + self.fname + ' failed to identify application = ' + app)
 
         # binning factors
         self.xbin = int(param['X_BIN_FAC']) if 'X_BIN_FAC' in param else int(param['X_BIN'])
@@ -1392,6 +1392,7 @@ class Rhead (object):
 
         # Windows. For each one store: x & y coords of lower-left pixel, binned dimensions
         self.win = []
+        fsize = 2*self.headerwords
         if self.instrument == 'ULTRACAM':
 
             self.speed   = hex(int(param['GAIN_SPEED']))[2:] if 'GAIN_SPEED' in param else None
@@ -1410,6 +1411,8 @@ class Rhead (object):
                 ny     = int(param['Y1_SIZE']) // self.ybin
                 self.win.append((xleft, ystart, nx, ny))
                 self.win.append((xright, ystart, nx, ny))
+            
+            fsize += 12*self.win[-1][-2]*self.win[-1][-1]
 
             if self.mode == '2-PAIR' or self.mode == '3-PAIR':
                 ystart = int(param['Y2_START'])
@@ -1419,6 +1422,7 @@ class Rhead (object):
                 ny     = int(param['Y2_SIZE']) // self.ybin
                 self.win.append((xleft, ystart, nx, ny))
                 self.win.append((xright, ystart, nx, ny))
+                fsize += 12*self.win[-1][-2]*self.win[-1][-1]
 
             if self.mode == '3-PAIR':
                 ystart = int(param['Y3_START'])
@@ -1428,6 +1432,7 @@ class Rhead (object):
                 ny     = int(param['Y3_SIZE']) // self.ybin
                 self.win.append((xleft,ystart,nx,ny))
                 self.win.append((xright,ystart,nx,ny))
+                fsize += 12*self.win[-1][-2]*self.win[-1][-1]
 
         elif self.instrument == 'ULTRASPEC':
 
@@ -1442,13 +1447,19 @@ class Rhead (object):
             nx     = int(param['X1_SIZE']) // self.xbin
             ny     = int(param['Y1_SIZE']) // self.ybin
             self.win.append((xstart,ystart,nx,ny))
-            
+            fsize += 2*self.win[-1][-2]*self.win[-1][-1]
+
             if self.mode == '2-USPEC':
                 xstart = int(param['X2_START'])
                 ystart = int(param['Y2_START'])
                 nx     = int(param['X2_SIZE']) // self.xbin
                 ny     = int(param['Y2_SIZE']) // self.ybin
                 self.win.append((xstart,ystart,nx,ny))
+                fsize += 2*self.win[-1][-2]*self.win[-1][-1]
+
+        if fsize != self.framesize:
+            raise UltracamError('Rhead.__init__: file = ' + self.fname + '. Framesize = ' 
+                                + str(self.framesize) + ' clashes with calculated value = ' +  str(fsize))
 
 class Rdata (Rhead):
     """
