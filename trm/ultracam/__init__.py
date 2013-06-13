@@ -1397,17 +1397,17 @@ class Rhead (object):
             self.speed   = hex(int(param['GAIN_SPEED']))[2:] if 'GAIN_SPEED' in param else None
 
             if self.mode == 'FFCLR' or self.mode == 'FFNCLR':
-                self.win.append((  1, 1, 512//nx, 1024//ny))
-                self.win.append((513, 1, 512//nx, 1024//ny))
+                self.win.append((  1, 1, 512//self.xbin, 1024//self.ybin))
+                self.win.append((513, 1, 512//self.xbin, 1024//self.ybin))
             elif self.mode == 'FFOVER':
-                self.win.append((  1, 1, 540//nx, 1032//ny))
-                self.win.append((541, 1, 540//nx, 1032//ny))
+                self.win.append((  1, 1, 540//self.xbin, 1032//self.ybin))
+                self.win.append((541, 1, 540//self.xbin, 1032//self.ybin))
             else:
                 ystart = int(param['Y1_START'])
                 xleft  = int(param['X1L_START'])
                 xright = int(param['X1R_START'])
-                nx     = int(param['X1_SIZE'])
-                ny     = int(param['Y1_SIZE'])
+                nx     = int(param['X1_SIZE']) // self.xbin
+                ny     = int(param['Y1_SIZE']) // self.ybin
                 self.win.append((xleft, ystart, nx, ny))
                 self.win.append((xright, ystart, nx, ny))
 
@@ -1415,8 +1415,8 @@ class Rhead (object):
                 ystart = int(param['Y2_START'])
                 xleft  = int(param['X2L_START'])
                 xright = int(param['X2R_START'])
-                nx     = int(param['X2_SIZE'])
-                ny     = int(param['Y2_SIZE'])
+                nx     = int(param['X2_SIZE']) // self.xbin
+                ny     = int(param['Y2_SIZE']) // self.ybin
                 self.win.append((xleft, ystart, nx, ny))
                 self.win.append((xright, ystart, nx, ny))
 
@@ -1424,8 +1424,8 @@ class Rhead (object):
                 ystart = int(param['Y3_START'])
                 xleft  = int(param['X3L_START'])
                 xright = int(param['X3R_START'])
-                nx     = int(param['X3_SIZE'])
-                ny     = int(param['Y3_SIZE'])
+                nx     = int(param['X3_SIZE']) // self.xbin
+                ny     = int(param['Y3_SIZE']) // self.ybin
                 self.win.append((xleft,ystart,nx,ny))
                 self.win.append((xright,ystart,nx,ny))
 
@@ -1439,15 +1439,15 @@ class Rhead (object):
 
             xstart = int(param['X1_START'])
             ystart = int(param['Y1_START'])
-            nx     = int(param['X1_SIZE'])
-            ny     = int(param['Y1_SIZE'])
+            nx     = int(param['X1_SIZE']) // self.xbin
+            ny     = int(param['Y1_SIZE']) // self.ybin
             self.win.append((xstart,ystart,nx,ny))
             
             if self.mode == '2-USPEC':
                 xstart = int(param['X2_START'])
                 ystart = int(param['Y2_START'])
-                nx     = int(param['X2_SIZE'])
-                ny     = int(param['Y2_SIZE'])
+                nx     = int(param['X2_SIZE']) // self.xbin
+                ny     = int(param['Y2_SIZE']) // self.ybin
                 self.win.append((xstart,ystart,nx,ny))
 
 class Rdata (Rhead):
@@ -1576,7 +1576,7 @@ class Rdata (Rhead):
             raise UltracamError('Data.get: failed to read timing bytes')
 
         # read data
-        buff = np.fromfile(self._fobj,'<i2',self.framesize/2-self.headerwords)
+        buff = np.fromfile(self._fobj,'<u2',self.framesize/2-self.headerwords)
         if len(buff) != self.framesize/2-self.headerwords:
             self._fobj.seek(0)
             self._nf = 1
@@ -1662,7 +1662,6 @@ class Rdata (Rhead):
         sequentially (starts at 1)
         """
         return self._nf
-        
 
 # Exception class
 class UltracamError(Exception):
