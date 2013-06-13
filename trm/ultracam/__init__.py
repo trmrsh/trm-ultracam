@@ -26,7 +26,8 @@ import struct
 # less widely known extras
 import ppgplot as pg
 
-def write_string(fobj, strng):
+# kick off with some semi-hidden helper routines
+def _write_string(fobj, strng):
     """
     Writes a string in binary format for my C++ code which
     requires first writing the number of characters and then 
@@ -38,9 +39,44 @@ def write_string(fobj, strng):
     nchar = len(strng)
     fobj.write(struct.pack('i' + str(nchar) + 's',nchar, strng)) 
 
+def _read_string(fobj, endian=''):
+    """
+    Reads a string written in binary format by my C++ code
+
+    fobj   -- file object opened for binary input
+    endian -- '>' for big-endian, '' for little-endian.
+    """
+    nchar  = struct.unpack(endian + 'i', fobj.read(4))[0]
+    strng  = struct.unpack(endian + str(nchar) + 's', fobj.read(nchar))[0]
+    return strng
+
+def _check_ucm(fobj):
+    """
+    Check a file opened for reading in binary mode to see if it is a ucm.
+
+    Returns endian which is a string to be passed
+    to later routines indicating endian-ness. 
+    """
+
+    # read the format code
+    fbytes = fobj.read(4)
+    fcode  = struct.unpack('i',fbytes)[0]
+    if fcode != MAGIC:
+        fcode = struct.unpack('>i',fbytes)[0]
+        if fcode != MAGIC:
+            fobj.close()
+            raise UltracamError('ultracam._check_ucm: could not recognise first 4 bytes of ' + fname + ' as a ucm file')
+        endian = '>'
+    else:
+        endian = ''
+    return endian
+
+# OK now onto publicly exposed stuff
+
 class Odict(dict):
     """
-    A dictionary which stores a key order which it uses for printing
+    A dictionary which stores a key order which it uses for printing. This is a general
+    class used as the base for the more specialised Uhead class for storing headers.
     """
 
     ninset  = 0
@@ -362,28 +398,29 @@ class Uhead(Odict):
         elif len(args) == 4:
             key, value, itype, comment = args
         else:
-            raise UltracamError('Uhead.__setitem__ takes either 2 or 4 arguments')
+            raise UltracamError('Uhead.add_entry: takes either 2 or 4 arguments')
 
         if not isinstance(key, basestring):
-            raise UltracamError('Uhead.__setitem__: argument "key" must be a string.')
+            raise UltracamError('Uhead.add_entry: argument "key" must be a string.')
 
         if not isinstance(comment, basestring):
-            raise UltracamError('Uhead.__setitem__: key = ' + key + ': "comment" must be a string.')
+            raise UltracamError('Uhead.add_entry: key = ' + key + ': "comment" must be a string.')
 
         # now look at the key: must have no blanks
         if key.find(' ') > -1:
-            raise UltracamError('Uhead.__setitem__: key = "' + key + '" contains at least one blank.')
+            raise UltracamError('Uhead.add_entry: key = "' + key + '" contains at least one blank.')
 
         # if key has a '.' then the part before last dot must already exist
-        # and must be a directory.
+        # and must be a directory. Search in reverse order, as all being well, it
+        # should usually be fastest.
         ldot = key.rfind('.')
         if ldot > -1:
             dir = key[:ldot]
-            for kold in self.keys():
+            for kold in self.keys()[::-1]:
                 if dir == kold and self[kold][1] == ITYPE_DIR:
                     break
             else:
-                raise UltracamError('Uhead.__setitem__: key = ' + key + 
+                raise UltracamError('Uhead.add_entry: key = ' + key + 
                                     ': could not locate directory = ' + key[:ldot])
 
             # determine position of key within Odict. Must add onto 
@@ -406,27 +443,27 @@ class Uhead(Odict):
             pass
         elif itype == ITYPE_TIME:
             if len(value) != 2:
-                raise UltracamError('Uhead.__setitem__: key = ' + key + 
+                raise UltracamError('Uhead.add_entry: key = ' + key + 
                                 ': require a 2-element tuple or list (int,float) for ITYPE_TIME)')
             value[0] = int(value[0])
             value[1] = float(value[1])
         elif itype == ITYPE_DVECTOR:
             if not isinstance(value, np.ndarray) or len(value.shape) != 1:
-                raise UltracamError('Uhead.__setitem__: key = ' + key + 
+                raise UltracamError('Uhead.add_entry: key = ' + key + 
                                 ': require a 1D numpy.ndarray for ITYPE_DVECTOR)')
             value = value.astype(float64)
         elif itype == ITYPE_IVECTOR:
             if not isinstance(value, np.ndarray) or len(value.shape) != 1:
-                raise UltracamError('Uhead.__setitem__: key = ' + key + 
+                raise UltracamError('Uhead.add_entry: key = ' + key + 
                                 ': require a 1D numpy.ndarray for ITYPE_IVECTOR)')
             value = value.astype(int)
         elif itype == ITYPE_FVECTOR:
             if not isinstance(value, np.ndarray) or len(value.shape) != 1:
-                raise UltracamError('Uhead.__setitem__: key = ' + key + 
+                raise UltracamError('Uhead.add_entry: key = ' + key + 
                                 ': require a 1D numpy.ndarray for ITYPE_FVECTOR)')
             value = value.astype(float32)
         else:
-            raise UltracamError('Uhead.__setitem__: key = ' + key + 
+            raise UltracamError('Uhead.add_entry: key = ' + key + 
                             ': itype = ' + str(itype) + ' not recognised.')
 
         # checks passed, finally set item
@@ -538,7 +575,7 @@ class CCD(list):
         to evaluate the output type needed when writing to disk.
         """
         for win in self:
-            if issubclass(win.dtype.type,np.float):
+            if issubclass(win.dtype.type,np.floating):
                 return True
         return False
 
@@ -658,8 +695,11 @@ class CCD(list):
         for win in self:
             win.plot(vmin,vmax,mpl,cmap)
 
+    def append(self, item):
+        raise NotImplementedError
+
     # arithematic
-    def __add__(self, other):
+    def __iadd__(self, other):
         """
         Adds 'other' to the CCD in place (+=)
         """
@@ -667,7 +707,7 @@ class CCD(list):
             win += owin
         return self
 
-    def __sub__(self, other):
+    def __isub__(self, other):
         """
         Subtracts 'other' from the CCD in place (-=)
         """
@@ -675,7 +715,7 @@ class CCD(list):
             win -= owin
         return self
 
-    def __mul__(self, other):
+    def __imul__(self, other):
         """
         Multiplies the CCD by 'other' in place (*=)
         """
@@ -683,13 +723,49 @@ class CCD(list):
             win *= owin
         return self
 
-    def __div__(self, other):
+    def __idiv__(self, other):
         """
         Divides the CCD by 'other' in place (/=)
         """
         for win,owin in zip(self,other):
             win /= owin
         return self
+
+    def __add__(self, other):
+        """
+        Adds 'other' to the CCD (+)
+        """
+        twins = []
+        for win,owin in zip(self,other):
+            twins.append(win + owin)
+        return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
+
+    def __sub__(self, other):
+        """
+        Subtracts 'other' from the CCD (-)
+        """
+        twins = []
+        for win,owin in zip(self,other):
+            twins.append(win - owin)
+        return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
+
+    def __mul__(self, other):
+        """
+        Multiplies CCD by 'other' (*)
+        """
+        twins = []
+        for win,owin in zip(self,other):
+            twins.append(win * owin)
+        return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
+
+    def __div__(self, other):
+        """
+        Divides CCD by 'other' (/)
+        """
+        twins = []
+        for win,owin in zip(self,other):
+            twins.append(win / owin)
+        return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
 
     def __str__(self):
         """
@@ -750,6 +826,103 @@ class MCCD(list):
         list.__init__(self, data)
         self.head  = head
 
+    @classmethod
+    def rucm(cls, fname, flt=True):
+        """
+        Facroy method to produce an MCCD from a ucm file.
+
+        fname -- ucm file name. '.ucm' will be appended if not supplied.
+
+        flt    -- convert to 4-byte floats whatever the input data, or not. ucm
+                  files can either contain 4-bytes floats or for reduced disk
+                  footprint, unsigned 2-byte integers. If flt=True, either type
+                  will end up as float32 internally. If flt=False, the disk type
+                  will be retained. The latter is unsafe when arithematic is involved
+                  hence the default is to convert to 4-byte floats.
+
+        Exceptions are thrown if the file cannot be found, or an error during the
+        read occurs.
+        """    
+
+        # Assume it is a file object, if that fails, assume it is
+        # the name of a file.
+        if not fname.endswith('.ucm'): fname += '.ucm'
+        uf = open(fname, 'rb')
+        start_format =  _check_ucm(uf)
+
+        # read the header
+        lmap = struct.unpack(start_format + 'i', uf.read(4))[0]
+
+        head = Uhead()
+        for i in xrange(lmap):
+            name    = _read_string(uf, start_format)
+            itype   = struct.unpack(start_format + 'i', uf.read(4))[0]
+            comment = _read_string(uf, start_format)
+
+            if itype == ITYPE_DOUBLE:
+                value = struct.unpack(start_format + 'd', uf.read(8))[0]
+            elif itype == ITYPE_INT:
+                value = struct.unpack(start_format + 'i', uf.read(4))[0]
+            elif itype == ITYPE_UINT:
+                value = struct.unpack(start_format + 'I', uf.read(4))[0]
+            elif itype == ITYPE_FLOAT:
+                value = struct.unpack(start_format + 'f', uf.read(4))[0]
+            elif itype == ITYPE_STRING:
+                value = _read_string(uf, start_format)
+            elif itype == ITYPE_BOOL:
+                value = struct.unpack(start_format + 'B', uf.read(1))[0]
+            elif itype == ITYPE_DIR:
+                value = None
+            elif itype == ITYPE_TIME:
+                value = struct.unpack(start_format + 'id', uf.read(12))
+            elif itype == ITYPE_DVECTOR:
+                nvec  = struct.unpack(start_format + 'i', uf.read(4))[0]
+                value = struct.unpack(start_format + str(nvec) + 'd', uf.read(8*nvec))
+            elif itype == ITYPE_UCHAR:
+                value = struct.unpack(start_format + 'c', uf.read(1))[0]
+            elif itype == ITYPE_USINT:
+                value = struct.unpack(start_format + 'H', uf.read(2))
+            elif itype == ITYPE_IVECTOR:
+                nvec  = struct.unpack(start_format + 'i', uf.read(4))[0]
+                value = struct.unpack(start_format + str(nvec) + 'i', uf.read(4*nvec))
+            elif itype == ITYPE_FVECTOR:
+                nvec  = struct.unpack(start_format + 'i', uf.read(4))[0]
+                value = struct.unpack(start_format + str(nvec) + 'f', uf.read(4*nvec))
+            else:
+                raise UltracamError('ultracam.MCCD.rucm: do not recognize itype = ' + str(itype))
+
+            # store header information, fast method
+            Odict.__setitem__(head, name, (value, itype, comment))
+        
+        # now for the data
+        data  = []
+        
+        # read number of CCDs
+        nccd = struct.unpack(start_format + 'i', uf.read(4))[0]
+
+        for nc in range(nccd):
+            # read number of wndows
+            nwin = struct.unpack(start_format + 'i', uf.read(4))[0]
+            wins  = []
+            for nw in range(nwin):
+                llx,lly,nx,ny,xbin,ybin,nxmax,nymax,iout = struct.unpack(start_format + '9i', uf.read(36))
+                if iout == 0:
+                    win = np.fromfile(file=uf, dtype=np.float32, count=nx*ny)
+                elif iout == 1:
+                    if flt:
+                        win = np.fromfile(file=uf, dtype=np.uint16, count=nx*ny).astype(np.float32)
+                    else:
+                        win = np.fromfile(file=uf, dtype=np.uint16, count=nx*ny)
+                else:
+                    raise UltracamError('ultracam.MCCD.rucm: iout = ' + str(iout) + ' not recognised')
+                win = win.reshape((ny,nx))
+                wins.append(Window(win,llx,lly,xbin,ybin))
+
+            data.append(CCD(wins,None,nxmax,nymax,True,None))
+        uf.close()
+
+        return cls(data, head)
+
     def __eq__(self, other):
         """
         Equality operator tests same number of CCDs and that each CCD matches.
@@ -757,10 +930,10 @@ class MCCD(list):
 
         if type(other) is type(self):
 
-            if self.nccd() != other.nccd(): return False
+            if len(self) != len(other): return False
 
             for sccd, occd in zip(self,other):
-                if len(ccd1) != len(ccd2): return False
+                if len(sccd) != len(occd): return False
             return True
         else:
             return NotImplemented
@@ -796,11 +969,11 @@ class MCCD(list):
 
         for key,val in self.head.iteritems():
 
-            write_string(uf, key)
+            _write_string(uf, key)
 
             value, itype, comment = val
             uf.write(struct.pack('i',itype))
-            write_string(uf, comment)
+            _write_string(uf, comment)
 
             if itype == ITYPE_DOUBLE:
                 uf.write(struct.pack('d', value))
@@ -811,7 +984,7 @@ class MCCD(list):
             elif itype == ITYPE_FLOAT:
                 uf.write(struct.pack('f', value))
             elif itype == ITYPE_STRING:
-                write_string(uf, value)
+                _write_string(uf, value)
             elif itype == ITYPE_BOOL:
                 uf.write(struct.pack('B', value))
             elif itype == ITYPE_DIR:
@@ -840,6 +1013,7 @@ class MCCD(list):
         uf.write(struct.pack('i', nccd))
 
         iout = 0 if self.anyFloat() else 1
+
         for ccd in self:
 
             # number of windows
@@ -853,7 +1027,10 @@ class MCCD(list):
                 if iout == 0:
                     win.astype(np.float32).tofile(uf)
                 elif iout == 1:
-                    win.astype(np.uint16).tofile(uf)
+                    if issubclass(win.dtype.type,np.integer):
+                        win.astype(np.uint16).tofile(uf)
+                    else:
+                        np.rint(win).astype(np.uint16).tofile(uf)
 
         uf.close()
 
@@ -945,7 +1122,7 @@ class MCCD(list):
         return tuple(mn)
 
     # arithematic
-    def __add__(self, other):
+    def __iadd__(self, other):
         """
         Adds 'other' to the MCCD in place (+=)
         """
@@ -953,7 +1130,7 @@ class MCCD(list):
             ccd += occd
         return self
 
-    def __sub__(self, other):
+    def __isub__(self, other):
         """
         Subtracts 'other' from the MCCD in place (-=)
         """
@@ -961,7 +1138,7 @@ class MCCD(list):
             ccd -= occd
         return self
 
-    def __mul__(self, other):
+    def __imul__(self, other):
         """
         Multiplies the MCCD by 'other' in place (*=)
         """
@@ -969,7 +1146,7 @@ class MCCD(list):
             ccd *= occd
         return self
 
-    def __div__(self, other):
+    def __idiv__(self, other):
         """
         Divides the MCCD by 'other' in place (/=)
         """
@@ -980,13 +1157,48 @@ class MCCD(list):
     def __str__(self):
         ret = ''
         if self.head is not None: ret += str(self.head)
-
-        ret = '\n\nNumber of CCDs = ' + str(len(self)) + '\n'
+        ret += '\n\nNumber of CCDs = ' + str(len(self)) + '\n'
 
         for nccd,ccd in enumerate(self):
             ret += '\nCCD number ' + str(nccd+1) + ':\n'
             ret += str(ccd)
         return ret
+
+    def __add__(self, other):
+        """
+        Adds 'other' to the MCCD (+)
+        """
+        tccd = []
+        for ccd,occd in zip(self,other):
+            tccd.append(ccd + occd)
+        return MCCD(tccd, self.head)
+
+    def __sub__(self, other):
+        """
+        Subtract 'other' from the MCCD (-)
+        """
+        tccd = []
+        for ccd,occd in zip(self,other):
+            tccd.append(ccd - occd)
+        return MCCD(tccd, self.head)
+
+    def __mul__(self, other):
+        """
+        Multiply 'other' by the MCCD (*)
+        """
+        tccd = []
+        for ccd,occd in zip(self,other):
+            tccd.append(ccd * occd)
+        return MCCD(tccd, self.head)
+
+    def __div__(self, other):
+        """
+        Divide MCCD by 'other' from the MCCD (/)
+        """
+        tccd = []
+        for ccd,occd in zip(self,other):
+            tccd.append(ccd / occd)
+        return MCCD(tccd, self.head)
 
     def plot(self, vlo=2., vhi=98., nc=-1, method='p', mpl=False, cmap=cm.binary, \
                  close=True, x1=None, x2=None, y1=None, y2=None):
@@ -1287,6 +1499,8 @@ class Rdata (Rhead):
                    safety, however the data are stored on disk as unsigned 2-byte 
                    ints. If you are not doing much to the data, and wish to keep
                    them in this form for speed and efficiency, then set flt=False.
+                   This parameter is used when iterating through an Rdata. The 
+                   __call__ method can override it.
         """
         Rhead.__init__(self, run + '.xml')
         self._fobj = open(run + '.dat', 'rb')
@@ -1302,7 +1516,7 @@ class Rdata (Rhead):
         """
         try:
             while 1:
-                yield self.__call__()
+                yield self.__call__(flt=self._flt)
         except:
             pass
 
@@ -1330,7 +1544,7 @@ class Rdata (Rhead):
                 self._fobj.seek(self.framesize*(nframe-1))
                 self._nf = nframe
 
-    def __call__(self, nframe=None):
+    def __call__(self, nframe=None, flt=None):
         """
         Reads the data of frame nframe (starts from 1) and returns a
         corresponding CCD or MCCD object, depending upon the type of data. If
@@ -1341,7 +1555,15 @@ class Rdata (Rhead):
 
         nframe -- frame number to get, starting at 1. 0 for the last
                   (complete) frame.
+
+        flt    -- Set True to reading data in as floats. The data are stored on
+                  disk as unsigned 2-byte ints. If you are not doing much to
+                  the data, and wish to keep them in this form for speed and
+                  efficiency, then set flt=False. If None then the value used when
+                  consrtucting the MCCD will be used.
         """
+
+        if flt is None: flt = self._flt
 
         # position read pointer
         self.set(nframe)
@@ -1442,123 +1664,6 @@ class Rdata (Rhead):
         return self._nf
         
 
-def _check_ucm(fobj):
-    """
-    Check a file opened for reading in binary mode to see if it is a ucm.
-
-    Returns endian which is a string to be passed
-    to later routines indicating endian-ness. 
-    """
-
-    # read the format code
-    fbytes = fobj.read(4)
-    (fcode,) = struct.unpack('i',fbytes)
-    if fcode != MAGIC:
-        (fcode,) = struct.unpack('>i',fbytes)
-        if fcode != MAGIC:
-            fobj.close()
-            raise CppError('_open_ucm: could not recognise first 4 bytes of ' + fname + ' as a ucm file')
-        endian = '>'
-    else:
-        endian = ''
-    return endian
-
-def _rucm(fnoro):
-    """
-    Read ucm file from disk
-
-    fnoro  -- either a string containing the name of the file to read from ('.ucm' 
-              will be appended if necessary), or a file object opened for reading
-              in binary mode. The file is closed on exiting the routine.
-
-    Returns head, data, off, xbin, ybin, nxmax, nymax as needed to construct a Ucm
-    """    
-
-    # Assume it is a file object, if that fails, assume it is
-    # the name of a file.
-    try:
-        uf = fnoro
-        start_format =  _check_ucm(uf)
-    except AttributeError, err:
-        uf = open(fnoro, 'rb')
-        start_format =  _check_ucm(uf)
-
-    # read the header
-    lmap = struct.unpack(start_format + 'i', uf.read(4))[0]
-
-    head = Odict()
-    for i in xrange(lmap):
-        name = cpp.read_string(uf, start_format)
-        itype = struct.unpack(start_format + 'i', uf.read(4))[0]
-        comment = cpp.read_string(uf, start_format)
-
-        if itype == ITYPE_DOUBLE:
-            value = struct.unpack(start_format + 'd', uf.read(8))[0]
-        elif itype == ITYPE_INT:
-            value = struct.unpack(start_format + 'i', uf.read(4))[0]
-        elif itype == ITYPE_UINT:
-            value = struct.unpack(start_format + 'I', uf.read(4))[0]
-        elif itype == ITYPE_FLOAT:
-            value = struct.unpack(start_format + 'f', uf.read(4))[0]
-        elif itype == ITYPE_STRING:
-            value = cpp.read_string(uf, start_format)
-        elif itype == ITYPE_BOOL:
-            value = struct.unpack(start_format + 'B', uf.read(1))[0]
-        elif itype == ITYPE_DIR:
-            value = None
-        elif itype == ITYPE_TIME:
-            value = struct.unpack(start_format + 'id', uf.read(12))
-        elif itype == ITYPE_DVECTOR:
-            nvec  = struct.unpack(start_format + 'i', uf.read(4))[0]
-            value = struct.unpack(start_format + str(nvec) + 'd', uf.read(8*nvec))
-        elif itype == ITYPE_UCHAR:
-            value = struct.unpack(start_format + 'c', uf.read(1))[0]
-        elif itype == ITYPE_USINT:
-            value = struct.unpack(start_format + 'H', uf.read(2))
-        elif itype == ITYPE_IVECTOR:
-            nvec  = struct.unpack(start_format + 'i', uf.read(4))[0]
-            value = struct.unpack(start_format + str(nvec) + 'i', uf.read(4*nvec))
-        elif itype == ITYPE_FVECTOR:
-            nvec  = struct.unpack(start_format + 'i', uf.read(4))[0]
-            value = struct.unpack(start_format + str(nvec) + 'f', uf.read(4*nvec))
-        else:
-            raise UltracamError('ultracam._rucm: do not recognize itype = ' + str(itype))
-
-        # store header information
-        head[name] = {'value' : value, 'comment' : comment, 'type' : itype}
-        
-    # now for the data
-    data  = []
-    off   = []
-        
-    # read number of CCDs
-    (nccd,) = struct.unpack(start_format + 'i', uf.read(4))
-
-    for nc in range(nccd):
-        # read number of wndows
-        (nwin,) = struct.unpack(start_format + 'i', uf.read(4))
-        ccd  = []
-        coff = []
-        for nw in range(nwin):
-            llx,lly,nx,ny,xbin,ybin,nxmax,nymax = struct.unpack(start_format + '8i', uf.read(32))
-            (iout,) = struct.unpack(start_format + 'i', uf.read(4))
-            if iout == 0:
-                win = numpy.fromfile(file=uf, dtype=numpy.float32, count=nx*ny)
-            elif iout == 1:
-                win = numpy.fromfile(file=uf, dtype=numpy.uint16, count=nx*ny)
-                win = numpy.cast['float32'](win)
-            else:
-                raise UltracamError('Ultracam data output type iout = ' + str(iout) + ' not recognised')
-            win = win.reshape((ny,nx))
-            ccd.append(win)
-            coff.append((llx, lly))
-
-        data.append(ccd)
-        off.append(coff)
-    uf.close()
-
-    return head, data, off, xbin, ybin, nxmax, nymax
-
 # Exception class
 class UltracamError(Exception):
     """For throwing exceptions from the ultracam module"""
@@ -1567,8 +1672,3 @@ class UltracamError(Exception):
             
     def __str__(self):
         return repr(self.value)
-
-
-
-
-
