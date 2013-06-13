@@ -1,14 +1,19 @@
 
-'trm.ultracam' is a Python module to provide access to raw ULTRACAM data
-files.
-
-Look in 'scripts' for some example scripts. This is a beta version 
-and there may well be changes in the future, in particular to the 
-currently crude way the headers are handled.
+'trm.ultracam' is a Python module to provide access to raw and ucm
+ULTRACAM data files, allow writing to FITS and the like. It is 
+supposed to allow quick development of scripts, such as may be
+needed to correct data problems.
 
 Installation:
 
-As well as standard Python, you need 'numpy' (http://numpy.scipy.org/),
+In addition to standard Python you need in approximately increasing 
+probability that you will need to install something:
+
+1) numpy      -- numerical Python library. 
+2) matplotlib -- widely-used Python plotting library.
+3) PyFITS     -- STScI-supported FITS libary.
+4) ppgplot    -- less-used but faster plotting library
+5) trm.subs   -- my own package of basic routines.
 
 Install with the usual:
 
