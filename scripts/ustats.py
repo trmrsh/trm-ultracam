@@ -66,6 +66,10 @@ for rpath, rnames, fnames in os.walk(raw):
 
         for run, stat in zip(runs, stats):
 
+            if not os.path.exists(run + '.dat'):
+                print run + '.dat does not exist.'
+                continue
+
             if not args.overwrite and os.path.exists(stat):
                 print stat,'exists and will not be overwritten.'
                 continue
