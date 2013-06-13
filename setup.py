@@ -1,7 +1,7 @@
 from distutils.core import setup, Extension
 from distutils.command.sdist import sdist as _sdist
 
-"""Setup script for Python module for ucm files"""
+"""Setup script for Python module for ULTRACAM files"""
 
 try:
     from sdist import sdist
@@ -9,15 +9,14 @@ try:
 except:
     cmdclass = {}
 
-setup(name='trm.ucm',
-      version='0.9',
-      packages = ['trm', 'trm.ucm'],
-      scripts=['scripts/pucm', 'scripts/snorm'],
+setup(name='trm.ultracam',
+      version='0',
+      packages = ['trm', 'trm.ultracam'],
+      scripts=['scripts/praw.py'],
 
       author='Tom Marsh',
-      description="Python module for reading/writing ucm files",
+      description="Python module for accessing ULTRACAM files",
       author_email='t.r.marsh@warwick.ac.uk',
       url='http://www.astro.warwick.ac.uk/',
       cmdclass = cmdclass
       )
-
