@@ -51,7 +51,7 @@ if not os.path.isdir(raw) or not os.path.isdir(meta):
 for rpath, rnames, fnames in os.walk(raw):
 
     # search only YYYY-MM-DD directories
-    if rdir.search(rpath):
+    if rdir.search(rpath) and (rext is None or rext.search(rpath)):
         # check for equivalent directory in derived_data
         dpath = meta + rpath[len(raw):]
         if not os.path.exists(dpath):
@@ -116,14 +116,10 @@ for rpath, rnames, fnames in os.walk(raw):
                     tbhdu   = pyfits.new_table([c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12])
                     hdulist = pyfits.HDUList([phdu,tbhdu])
                     hdulist.writeto(stat, clobber=True)
-
                 else:
-                    # go through again to get the error -- debug purposes
-                    print '***** probable programming error *****'
-                    rdat.set()
-                    while 1:
-                        rdat()
-                    
+                    print '*** No frames found in run',run
+                    print '*** should not happen'
+
             except Exception, err:
                 print 'Encountered problem on',run
                 traceback.print_exc(file=sys.stdout)
