@@ -22,6 +22,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm     as cm
 import struct
+import warnings
+import datetime
 
 # less widely known extras
 import ppgplot as pg
@@ -278,14 +280,32 @@ class Time(object):
     """
     Represents a time for a CCD. Three attributes:
 
-    mjd    -- modified Julian day, decimal.
+    mjd    -- modified Julian day number
     expose -- exposure time, seconds.
     good   -- is the time thought to be reliable?
+    reason -- if good == False, this is the reason.
     """
-    def __init__(self, mjd, expose, good):
+    def __init__(self, mjd, expose, good, reason):
         self.mjd    = mjd
         self.expose = expose
         self.good   = good
+        self.reason = reason
+
+    def __str__(self):
+        ret = 'MJD = ' + str(self.mjd) + ', exposure = ' + str(self.expose) + \
+            ', status = ' + str(self.good)
+        if not self.good:
+            ret += ', reason: ' + self.reason
+        return ret
+
+    def __repr__(self):
+        ret = '[' + str(self.mjd) + ' ' + str(self.expose) + \
+            ' ' + str(self.good)
+        if not self.good:
+            ret += ' ' + self.reason + ']'
+        else:
+            ret += ']'
+        return ret
 
 # Integer type numbers for ucm files. Commented out ones
 # are yet to be implemented
@@ -600,7 +620,7 @@ class CCD(list):
         """
         for win in self:
             if win.min() < 0 or win.max() > 65535:
-                raise Warning('CCD.toInt: input data out of range 0 to 65535')
+                warnings.warn('CCD.toInt: input data out of range 0 to 65535')
             win = np.rint(win).astype(np.uint16)
         
     def mean(self):
@@ -829,7 +849,7 @@ class MCCD(list):
     @classmethod
     def rucm(cls, fname, flt=True):
         """
-        Facroy method to produce an MCCD from a ucm file.
+        Factory method to produce an MCCD from a ucm file.
 
         fname -- ucm file name. '.ucm' will be appended if not supplied.
 
@@ -1295,13 +1315,12 @@ class Rhead (object):
         """
         Reads a run###.xml file. UltracamErrors are thrown if some items are not found.
         In some case it will carry on and corresponding attributes are returned as None.
-        See below for the list of attributes set.
 
         Arguments:
 
          uxml     -- xml file name with format run###.xml
 
-        Attributes set:
+         Many attributes are set; here are some of them:
 
          application  -- data acqusition application template name.
          fname        -- file used to define the format.
@@ -1328,7 +1347,7 @@ class Rhead (object):
         self.headerwords = int(node.getElementsByTagName('header_status')[0].getAttribute('headerwords'))
 
         # Frame format and other detail.
-        node        = udom.getElementsByTagName('instrument_status')[0]
+        node   = udom.getElementsByTagName('instrument_status')[0]
         self.instrument  = node.getElementsByTagName('name')[0].childNodes[0].data
         if self.instrument == 'Ultracam':
             self.instrument = 'ULTRACAM'
@@ -1341,11 +1360,28 @@ class Rhead (object):
 
         self.application = [nd for nd in node.getElementsByTagName('application_status') \
                                 if nd.getAttribute('id') == 'SDSU Exec'][0].getAttribute('name')
+
+        # get user info, if present
+        try:
+            nlist = dom.getElementsByTagName('user')
+            if len(nlist):
+                user = {}
+                node = nlist[0]
+                for nd in node.childNodes:
+                    if nd.nodeType == Node.ELEMENT_NODE and nd.hasChildNodes():
+                        user[nd.tagName] = nd.childNodes[0].data
+            else:
+                user = None
+        except Exception, err:
+            user = None
+
+        # gather together majority of values
         param = {}
         for nd in node.getElementsByTagName('parameter_status'):
             param[nd.getAttribute('name')] = nd.getAttribute('value')
 
         try:
+            # look for user-supplied information
             nlist = udom.getElementsByTagName('user')
             if len(nlist):
                 self.user = {}
@@ -1383,6 +1419,9 @@ class Rhead (object):
                 self.mode    = '1-USPEC'
             else:
                 self.mode    = '2-USPEC'
+        elif app == 'ap1_poweron' or app == 'ap1_250_poweron' or app == 'ap2_250_poweroff':
+            self.mode = 'PONOFF'
+            return
         else:
             raise UltracamError('Rhead.__init__: file = ' + self.fname + ' failed to identify application = ' + app)
 
@@ -1395,7 +1434,18 @@ class Rhead (object):
         fsize = 2*self.headerwords
         if self.instrument == 'ULTRACAM':
 
-            self.speed   = hex(int(param['GAIN_SPEED']))[2:] if 'GAIN_SPEED' in param else None
+            self.expose   = float(param['EXPOSE_TIME'])
+            self.numexp   = int(param['NO_EXPOSURES'])
+            self.speed    = hex(int(param['GAIN_SPEED']))[2:] if 'GAIN_SPEED' in param else None
+
+            if 'V_FT_CLK' in param:
+                self.v_ft_clk  = struct.unpack('<B',param['V_FT_CLK'][2])[0]
+            elif app == 'appl7_window3pair_cfg':
+                self.v_ft_clk  = 140;
+            else:
+                self.v_ft_clk = 0
+
+            self.nblue    = int(param['NBLUE']) if 'NBLUE' in param else 1
 
             if self.mode == 'FFCLR' or self.mode == 'FFNCLR':
                 self.win.append((  1, 1, 512//self.xbin, 1024//self.ybin))
@@ -1436,6 +1486,8 @@ class Rhead (object):
 
         elif self.instrument == 'ULTRASPEC':
 
+            self.expose   = float(param['DWELL'])
+            self.numexp   = int(param['NUM_EXPS'])
             self.speed    = ('F' if param['SPEED'] == '0' else \
                                  ('M' if param['SPEED'] == '1' else 'S')) if 'SPEED' in param else None
             self.en_clr   = ('Y' if param['EN_CLR'] == '1' else 'N') if 'EN_CLR' in param else None
@@ -1460,6 +1512,57 @@ class Rhead (object):
         if fsize != self.framesize:
             raise UltracamError('Rhead.__init__: file = ' + self.fname + '. Framesize = ' 
                                 + str(self.framesize) + ' clashes with calculated value = ' +  str(fsize))
+
+        # nasty stuff coming up ...
+        self.revision  = int(param['REVISION']) if 'REVISION' in param else int(param['VERSION']) if 'VERSION' in param else -1
+        self.urevision = int(user['revision']) if user is not None and 'revision' in user else -1
+        self.version   = self.urevision if user is not None else self.revision
+
+        if self.headerwords == 16:
+            VERSIONS = [100222, 111205, 120716, 120813, 130307]
+            if self.version not in VERSIONS:
+                raise UltracamError('Rhead.__init__: could not recognise version = ' + str(self.version))
+
+        elif user is not None:
+            if self.revision != -1 and self.revision != self.urevision:
+                raise UltracamError('Rhead.__init__: clashing revision numbers: ' + str(self.reversion) + ' vs ' + str(self.urevision))
+
+        self.whichRun = ''
+        if self.instrument == 'ULTRACAM':
+            if user is None:
+                self.time_units = 0.001
+            else:
+                self.time_units = 0.0001
+            if 'REVISION' not in param and 'VERSION' not in param and 'V_FT_CLK' not in param:
+                self.whichRun = 'MAY2002'
+        else:
+            if user is not None and self.headerwords == 16 and  self.revision >= 120813:
+                self.time_units = 0.0001
+            else:
+                self.time_units = 0.001
+
+
+    def isPonoff(self):
+        """
+        Is the run a power on / off? (no data)
+        """
+        return self.mode == 'PONOFF'
+
+# Bit masks needed for Meinberg GPS data. 
+# See description in read_header.cc in pipeline for more
+PCPS_FREER            = 0x01   # DCF77 clock running on xtal, GPS receiver has not verified its position 
+PCPS_DL_ENB           = 0x02   # daylight saving enabled 
+PCPS_SYNCD            = 0x04   # clock has sync'ed at least once after pwr up 
+PCPS_DL_ANN           = 0x08   # a change in daylight saving is announced 
+PCPS_UTC              = 0x10   # a special UTC firmware is installed 
+PCPS_LS_ANN           = 0x20   # leap second announced, (requires firmware rev. REV_PCPS_LS_ANN_...)
+PCPS_IFTM             = 0x40   # the current time was set via PC, (requires firmware rev. REV_PCPS_IFTM_...) 
+PCPS_INVT             = 0x80   # invalid time because battery was disconn'd
+PCPS_LS_ENB           = 0x0100 # current second is leap second 
+PCPS_ANT_FAIL         = 0x0200 # antenna failure 
+PCPS_UCAP_OVERRUN     = 0x2000 # events interval too short 
+PCPS_UCAP_BUFFER_FULL = 0x4000 # events read too slow 
+PCPS_IO_BLOCKED       = 0x8000 # access to microprocessor blocked
 
 class Rdata (Rhead):
     """
@@ -1514,10 +1617,21 @@ class Rdata (Rhead):
                    __call__ method can override it.
         """
         Rhead.__init__(self, run + '.xml')
-        self._fobj = open(run + '.dat', 'rb')
-        self._nf   = nframe
-        self._run  = run
-        self._flt  = flt
+        if self.isPonoff():
+            raise UltracamError('Rdata.__init__: attempted to read a power on/off')
+ 
+        # Attributes set are:
+        #
+        # _fobj   -- file object opened on data file
+        # _nf     -- next frame to be read
+        # _run    -- name of run
+        # _flt    -- whether to read as float (else uint16)
+        # _tstamp -- list of immediately preceding times
+        self._fobj   = open(run + '.dat', 'rb')
+        self._nf     = nframe
+        self._run    = run
+        self._flt    = flt
+        self._tstamp = []
         if nframe != 1:
             self._fobj.seek(self.framesize*(nframe-1))
     
@@ -1528,7 +1642,7 @@ class Rdata (Rhead):
         try:
             while 1:
                 yield self.__call__(flt=self._flt)
-        except:
+        except UendError:
             pass
 
     def set(self, nframe=1):
@@ -1554,27 +1668,6 @@ class Rdata (Rhead):
             elif self._nf != nframe:
                 self._fobj.seek(self.framesize*(nframe-1))
                 self._nf = nframe
-
-    def _timing(self, tbytes):
-        """
-        Interprets the ULTRACAM timing bytes. This is an involved process owing to the various
-        hardware changes and bugs that have cropped up over the years. The pipeline equivalent
-        routine is read_header.cc
-        """
-        if self.instrument == 'ULTRASPEC' and self.version == -1:
-            format = 2
-        elif self.version == -1 or self.version == 70514 or self.version == 80127:
-            format = 1
-        elif self.version == 100222 or self.version == 110921 or self.version == 111205 or \
-                self.version == 120716 or self.version == 120813:
-            format = 2
-        else:
-            raise Exception('Rdata._timing: version = ' + str(self.version) + ' unrecognised.')
-        
-        print 'timing format code = ', format
-        if format == 1:
-            nsec  = struct.unpack('u4', tbytes[9:13])
-            nnsec = struct.unpack('u4', tbytes[9:13])
 
     def __call__(self, nframe=None, flt=None):
         """
@@ -1602,10 +1695,17 @@ class Rdata (Rhead):
 
         # read timing bytes
         tbytes = self._fobj.read(2*self.headerwords)
-        if len(tbytes) != 2*self.headerwords:
+        if len(self._tbytes) != 2*self.headerwords:
             self._fobj.seek(0)
             self._nf = 1
-            raise UltracamError('Data.get: failed to read timing bytes')
+            raise UendError('Data.get: failed to read timing bytes')
+
+        # debug
+        try:
+            print utimer(tbytes, self, self._tstamp)
+        except Exception, err:
+            print 'timing problem:'
+            print err
 
         # read data
         buff = np.fromfile(self._fobj,'<u2',self.framesize/2-self.headerwords)
@@ -1678,7 +1778,6 @@ class Rdata (Rhead):
         else:
             raise UltracamError('Have yet to implement anything for ' + self.instrument)
 
-
     def ntotal(self):
         """
         Returns total number of frames in data file
@@ -1695,9 +1794,313 @@ class Rdata (Rhead):
         """
         return self._nf
 
-# Exception class
+class Rtime (Rhead):
+    """
+    Iterator class to enable swift reading of Ultracam times.
+    """
+    def __init__(self, run, nframe=1):
+        """
+        Connects to a raw data file for reading. The file is kept open. 
+        The file pointer is set to the start of frame nframe.
+
+        Arguments:
+
+        run     -- as in 'run036'. Will try to access equivalent .xml and .dat
+                   files
+
+        nframe  -- frame to position for next read, starting at 1 as the first.
+        """
+        Rhead.__init__(self, run + '.xml')
+        if self.isPonoff():
+            raise UltracamError('Rtime.__init__: attempted to read a power on/off')
+ 
+        # Attributes set are:
+        #
+        # _fobj   -- file object opened on data file
+        # _nf     -- next frame to be read
+        # _run    -- name of run
+        # _tstamp -- list of immediately preceding times
+        self._fobj   = open(run + '.dat', 'rb')
+        self._nf     = nframe
+        self._run    = run
+        self._tstamp = []
+        if nframe != 1:
+            self._fobj.seek(self.framesize*(nframe-1))
+    
+    def __iter__(self):
+        """
+        Generator to allow Rdata to function as an iterator
+        """
+        try:
+            while 1:
+                yield self.__call__()
+        except UendError:
+            pass
+
+    def set(self, nframe=1):
+        """
+        Sets the internal file pointer to point at frame nframe.
+
+        nframe  -- frame number to get, starting at 1. 0 for the last (complete) frame. 'None'
+                   will be ignored. A value < 0 will cause an exception. A value greater than
+                   the number of frames in the file will work, but will cause an exception to
+                   be raised on the next attempted read.
+        """
+
+        # position read pointer
+        if nframe is not None:
+            if nframe < 0:
+                raise UltracamError('Data.get: nframe < 0')
+            elif nframe == 0:
+                self._fobj.seek(0,2)
+                fp = self._fobj.tell() 
+                nf = fp // self.framesize
+                self._fobj.seek(self.framesize*(nf-1)-fp,2)
+                self._nf = nf
+            elif self._nf != nframe:
+                self._fobj.seek(self.framesize*(nframe-1))
+                self._nf = nframe
+
+    def __call__(self, nframe=None):
+        """
+        Reads the Time of frame nframe (starts from 1).
+
+        nframe -- frame number to get, starting at 1. 0 for the last
+                  (complete) frame.
+
+        """
+
+        # position read pointer
+        self.set(nframe)
+
+        # read timing bytes
+        tbytes = self._fobj.read(2*self.headerwords)
+        if len(tbytes) != 2*self.headerwords:
+            self._fobj.seek(0)
+            self._nf = 1
+            raise UendError('Data.get: failed to read timing bytes')
+
+        time = utimer(tbytes, self, self._nf, self._tstamp)
+        
+        # step to start of next frame
+        self._fobj.seek(self.framesize-2*self.headerwords,1)
+
+        # move frame counter on by one
+        self._nf += 1
+
+        return time
+
+# Some fixed dates needed by utimer. Put them here so
+# that they are only computed once.
+DSEC           = 86400
+MJD0           = datetime.date(1858,11,17).toordinal()
+UNIX           = datetime.date(1970,1,1).toordinal()
+DEFDAT         = datetime.date(2000,1,1).toordinal()
+MAY2002        = datetime.date(2001,5,12).toordinal()
+SEP2002        = datetime.date(2002,9,8).toordinal()
+TSTAMP_CHANGE1 = datetime.date(2003,8,1).toordinal()
+TSTAMP_CHANGE2 = datetime.date(2005,1,1).toordinal()
+TSTAMP_CHANGE3 = datetime.date(2010,3,1).toordinal()
+USPEC_CHANGE   = datetime.date(2011,9,21).toordinal()
+
+def utimer(tbytes, rhead, fnum, tstamp):
+    """
+    Computes the Time corresponding of the most recently read frame, 
+    None if no frame has been read. For the Time to be reliable 
+    (Time.good == True), several frames might have needed to
+    be read and their times passed through tstamp.
+
+    tbytes  -- string of timing bytes
+
+    rhead   -- Rhead header of data file
+
+    fnum    -- frame number we think we are on.
+
+    tstamp  -- a list of Times from the most recently read frames, 
+               most recent first. It is up to the user of this routine
+               to maintain this correctly. In particular, if a the
+               preceding time was not read, this list should be reset 
+               to an empty list, [].
+
+    Returns (time,badblue)
+
+    time    -- the Time as best as can be determined
+    badBlue -- True if the CCD3 is deemed to be junk.
+    """
+    
+    # This is an involved routine owing to the various hardware
+    # changes and bugs that have cropped up over the years. The 
+    # pipeline equivalent routine is read_header.cc
+    
+    # return immediately if no bytes have been read.
+    if tbytes is None: return None
+
+    # start by assuming the time will be good, but many things
+    # can wreck this. Once False, it can never return to True
+    goodTime = True
+    reason   = ''
+
+    if rhead.instrument == 'ULTRASPEC' and rhead.version == -1:
+        format = 2
+    elif rhead.version == -1 or rhead.version == 70514 or rhead.version == 80127:
+        format = 1
+    elif rhead.version == 100222 or rhead.version == 110921 or rhead.version == 111205 or \
+            rhead.version == 120716 or rhead.version == 120813:
+        format = 2
+    else:
+        raise UltracamError('Rdata._timing: version = ' + str(rhead.version) + ' unrecognised.')
+        
+    fnm = struct.unpack('<I', tbytes[4:8])[0]
+    if fnm != fnum:
+        warnings.warn('ultracam.utimer: expected frame number = ' + 
+                      str(fnum) + ' but found ' + str(fnm))
+
+    if format == 1:
+        nsec, nnsec = struct.unpack('<Ii', tbytes[9:17])
+        nsat = struct.unpack('<h', tbytes[21:23])[0]
+        if nsat <= 2:
+            goodTime = False
+            reason   = 'too few satellites (' + str(nsat) + ')'
+
+    elif format == 2:
+
+        nexp  = struct.unpack('<I', tbytes[8:12])
+        if nexp*rhead.tunits != rhead.expose:
+            goodTime = False
+            reason = 'XML expose time does not match time in timing bytes.'
+        nsec, nnsec = struct.unpack('<Ii', tbytes[12:16])
+        nnsec *= 100
+        nsat   = None
+        tstamp = struct.unpack('<H', tbytes[24:26])[0]
+        
+        if goodTime and (tstamp & PCPS_ANT_FAIL):
+            goodTime = False
+            reason   = 'GPS antenna failed'
+
+        if goodTime and (tstamp & PCPS_INVT):
+            goodTime = False
+            reason   = 'GPS battery disconnected'
+
+        if goodTime and not (tstamp & PCPS_SYNCD):
+            goodTime = False
+            reason = 'GPS clock not yet synced since power up'
+
+        if goodTime and (tstamp & PCPS_FREER):
+            goodTime = False
+            reason = 'GPS receiver has not verified its position'
+
+    else:
+        raise UltracamError('Rdata.time: format = ' + str(format) + ' not recognised.')
+
+    # One of the bits in the first byte is set if the blue frame is junk. 
+    # Unfortunately which bit was set changed hence the check of the format
+    fbyte   = struct.unpack('<B',tbytes[0])[0]
+    badBlue = rhead.nblue > 1 and \
+        ((format == 1 and bool(fbyte & 1<<3)) or (format == 2 and bool(fbyte & 1<<4)))
+
+    def tcon1(offset, nsec, nnsec):
+        """
+        Convert to MJD
+        """
+        return offset + float(nsec+nnsec/1.e9)/DSEC - MJD0
+
+    def tcon2(year, month, day, nsec, nnsec):
+        """
+        Convert to MJD
+        """
+        return datetime.date(year,month,day).toordinal() + float(nsec+nnsec/1.e9)/DSEC - MJD0
+
+    if format == 1 and nsat == -1:
+        goodTime = False
+        reason = 'no satellites.'
+        mjd = tcon1(DEFDAT, nsec, nnsec)
+        if rhead.v_ft_clk > 127:
+            vclock_frame = 6.e-9*(40+320*(rhead.v_ft_clk - 128))
+	else:
+	    vclock_frame = 6.e-9*(40+40*rhead.v_ft_clk);
+
+    else:
+        
+        if rhead.whichRun == 'MAY2002' and format == 1:
+            # Had no date info in the timestamps of this run
+            # nsec was offset from 12 May 2002
+            mjd = tcon1(MAY2002, nsec, nnsec)
+
+            # Some of the nights ran over the end of the week. Spot
+            # from dates prior to the start of the run on 16 May.
+            if mjd < MAY2002+4: mjd += 7
+
+            # Correct 10 second error that affected the May 2002 run.
+            # Only possible if we are reading all frames.
+            if len(tstamp) and mjd < tstamp[0].mjd: mjd += 10./DSEC
+
+            # Fix problem with very first night
+            if mjd < MAY2002+5.5:
+                vclock_frame = 10.0e-6
+            else:
+                vclock_frame = 24.46e-6
+
+        else:
+
+            # OK now have date info, although we
+            # need a stack of special case fixes
+            if format == 1:
+                day, month, year = struct.unpack('<BBH',tbytes[17:21])
+                
+                if month == 9 and year == 263: year = 2002
+                if year < 2002:
+                    mjd = tcon1(SEP2002, nsec, nnsec)
+
+                elif month == 9 and year == 2002:
+                    tdiff = datetime.date(year,month,day).toordinal()-SEP2002
+                    nweek = tdiff // 7
+                    days  = tdiff - 7*nweek
+                    if days > 3 and nsec < 2*DSEC:
+                        nweek += 1
+                    elif days <= 3 and nsec > 5*DSEC:
+                        nweek -= 1
+                    mjd = tcon1(SEP2002+7*nweek,nsec,nnsec)
+                else:
+                    mjd = tcon2(year, month, day, nsec % DSEC, nnsec)
+
+            elif format == 2:
+                mjd = tcon1(UNIX, nsec, nnsec)
+
+            if mjd > TSTAMP_CHANGE1:
+                if rhead.v_ft_clk > 127:
+                    vclock_frame = 6.e-9*(40+320*(rhead.v_ft_clk - 128))
+                else:
+                    vclock_frame = 6.e-9*(40+40*rhead.v_ft_clk)
+
+            else:
+                if rhead.v_ft_clk > 127:
+                    vclock_frame = 6.e-9*(80+160*(rhead.v_ft_clk - 128))
+                else:
+                    vclock_frame = 6.e-9*(80+20*rhead.v_ft_clk)
+
+    # 'midnight bug' correction
+    if (int(mjd-3) % 7) == ((nsec // DSEC) % 7):
+        warnings.warn('ultracam.utimer: midnight bug detected and corrected')
+        mjd += 1
+
+    return (Time(mjd,None,goodTime,reason),nsat,format,badBlue,rhead.whichRun)
+
+# Exception classes
 class UltracamError(Exception):
     """For throwing exceptions from the ultracam module"""
+    def __init__(self, value):
+        self.value = value
+            
+    def __str__(self):
+        return repr(self.value)
+
+class UendError(UltracamError):
+    """
+    Exception for the standard way to reach the end of a data 
+    file (failure to read the timing bytes). This allows the 
+    iterator to die silently in this case while  raising
+    exceptions for less anticipated cases.
+    """
     def __init__(self, value):
         self.value = value
             
