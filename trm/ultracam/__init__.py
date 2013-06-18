@@ -1305,7 +1305,7 @@ class MCCD(list):
         else:
             return tuple(prange)
 
-class _win(object):
+class Win(object):
     """
     Trivial container class for basic window info
     to help readability of code
@@ -1363,12 +1363,12 @@ class Rhead (object):
         udom = xml.dom.minidom.parse(uxml)
 
         # Find framesize and headerwords.
-        node        = udom.getElementsByTagName('data_status')[0]
+        node             = udom.getElementsByTagName('data_status')[0]
         self.framesize   = int(node.getAttribute('framesize'))
         self.headerwords = int(node.getElementsByTagName('header_status')[0].getAttribute('headerwords'))
 
         # Frame format and other detail.
-        node   = udom.getElementsByTagName('instrument_status')[0]
+        node             = udom.getElementsByTagName('instrument_status')[0]
         self.instrument  = node.getElementsByTagName('name')[0].childNodes[0].data
         if self.instrument == 'Ultracam':
             self.instrument = 'ULTRACAM'
@@ -1382,36 +1382,24 @@ class Rhead (object):
         self.application = [nd for nd in node.getElementsByTagName('application_status') \
                                 if nd.getAttribute('id') == 'SDSU Exec'][0].getAttribute('name')
 
-        # get user info, if present
-        try:
-            nlist = dom.getElementsByTagName('user')
-            if len(nlist):
-                user = {}
-                node = nlist[0]
-                for nd in node.childNodes:
-                    if nd.nodeType == Node.ELEMENT_NODE and nd.hasChildNodes():
-                        user[nd.tagName] = nd.childNodes[0].data
-            else:
-                user = None
-        except Exception, err:
-            user = None
-
         # gather together majority of values
         param = {}
         for nd in node.getElementsByTagName('parameter_status'):
             param[nd.getAttribute('name')] = nd.getAttribute('value')
 
+        # get user info, if present
         try:
-            # look for user-supplied information
             nlist = udom.getElementsByTagName('user')
             if len(nlist):
-                self.user = {}
+                user = {}
                 node = nlist[0]
                 for nd in node.childNodes:
-                    if nd.nodeType == Node.ELEMENT_NODE and nd.hasChildNodes():
-                        self.user[nd.tagName] = nd.childNodes[0].data
+                    if nd.nodeType == xml.dom.Node.ELEMENT_NODE and nd.hasChildNodes():
+                        user[nd.tagName] = nd.childNodes[0].data
+            else:
+                user = None
         except Exception, err:
-            self.user = None
+            user = None
 
         # Translate applications into meaningful mode names
         app = self.application
@@ -1456,13 +1444,12 @@ class Rhead (object):
         self.win = []
         fsize = 2*self.headerwords
         if self.instrument == 'ULTRACAM':
-
             self.exposeTime = float(param['EXPOSE_TIME'])
             self.numexp     = int(param['NO_EXPOSURES'])
             self.gainSpeed  = hex(int(param['GAIN_SPEED']))[2:] if 'GAIN_SPEED' in param else None
 
             if 'V_FT_CLK' in param:
-                self.v_ft_clk  = struct.unpack('<B',param['V_FT_CLK'][2])[0]
+                self.v_ft_clk  = struct.unpack('B',struct.pack('I',int(param['V_FT_CLK']))[2])[0]
             elif app == 'appl7_window3pair_cfg':
                 self.v_ft_clk  = 140;
             else:
@@ -1471,19 +1458,19 @@ class Rhead (object):
             self.nblue    = int(param['NBLUE']) if 'NBLUE' in param else 1
 
             if self.mode == 'FFCLR' or self.mode == 'FFNCLR':
-                self.win.append(_win(  1, 1, 512//self.xbin, 1024//self.ybin))
-                self.win.append(_win(513, 1, 512//self.xbin, 1024//self.ybin))
+                self.win.append(Win(  1, 1, 512//self.xbin, 1024//self.ybin))
+                self.win.append(Win(513, 1, 512//self.xbin, 1024//self.ybin))
             elif self.mode == 'FFOVER':
-                self.win.append(_win(  1, 1, 540//self.xbin, 1032//self.ybin))
-                self.win.append(_win(541, 1, 540//self.xbin, 1032//self.ybin))
+                self.win.append(Win(  1, 1, 540//self.xbin, 1032//self.ybin))
+                self.win.append(Win(541, 1, 540//self.xbin, 1032//self.ybin))
             else:
                 ystart = int(param['Y1_START'])
                 xleft  = int(param['X1L_START'])
                 xright = int(param['X1R_START'])
                 nx     = int(param['X1_SIZE']) // self.xbin
                 ny     = int(param['Y1_SIZE']) // self.ybin
-                self.win.append(_win(xleft, ystart, nx, ny))
-                self.win.append(_win(xright, ystart, nx, ny))
+                self.win.append(Win(xleft, ystart, nx, ny))
+                self.win.append(Win(xright, ystart, nx, ny))
             
             fsize += 12*self.win[-1].nx*self.win[-1].ny
 
@@ -1493,8 +1480,8 @@ class Rhead (object):
                 xright = int(param['X2R_START'])
                 nx     = int(param['X2_SIZE']) // self.xbin
                 ny     = int(param['Y2_SIZE']) // self.ybin
-                self.win.append(_win(xleft, ystart, nx, ny))
-                self.win.append(_win(xright, ystart, nx, ny))
+                self.win.append(Win(xleft, ystart, nx, ny))
+                self.win.append(Win(xright, ystart, nx, ny))
                 fsize += 12*self.win[-1].nx*self.win[-1].ny
 
             if self.mode == '3-PAIR':
@@ -1503,8 +1490,8 @@ class Rhead (object):
                 xright = int(param['X3R_START'])
                 nx     = int(param['X3_SIZE']) // self.xbin
                 ny     = int(param['Y3_SIZE']) // self.ybin
-                self.win.append(_win(xleft,ystart,nx,ny))
-                self.win.append(_win(xright,ystart,nx,ny))
+                self.win.append(Win(xleft,ystart,nx,ny))
+                self.win.append(Win(xright,ystart,nx,ny))
                 fsize += 12*self.win[-1].nx*self.win[-1].ny
 
         elif self.instrument == 'ULTRASPEC':
@@ -1521,7 +1508,7 @@ class Rhead (object):
             ystart = int(param['Y1_START'])
             nx     = int(param['X1_SIZE']) // self.xbin
             ny     = int(param['Y1_SIZE']) // self.ybin
-            self.win.append(_win(xstart,ystart,nx,ny))
+            self.win.append(Win(xstart,ystart,nx,ny))
             fsize += 2*self.win[-1].nx*self.win[-1].ny
 
             if self.mode == '2-USPEC':
@@ -1529,7 +1516,7 @@ class Rhead (object):
                 ystart = int(param['Y2_START'])
                 nx     = int(param['X2_SIZE']) // self.xbin
                 ny     = int(param['Y2_SIZE']) // self.ybin
-                self.win.append(_win(xstart,ystart,nx,ny))
+                self.win.append(Win(xstart,ystart,nx,ny))
                 fsize += 2*self.win[-1].nx*self.win[-1].ny
 
         if fsize != self.framesize:
@@ -1537,34 +1524,36 @@ class Rhead (object):
                                 + str(self.framesize) + ' clashes with calculated value = ' +  str(fsize))
 
         # nasty stuff coming up ...
-        self.revision  = int(param['REVISION']) if 'REVISION' in param else int(param['VERSION']) if 'VERSION' in param else -1
-        self.urevision = int(user['revision']) if user is not None and 'revision' in user else -1
-        self.version   = self.urevision if user is not None else self.revision
+        self.version   = int(user['revision']) if user is not None and 'revision' in user else \
+            (int(param['REVISION']) if 'REVISION' in param else int(param['VERSION']) if 'VERSION' in param else -1)
+
+        if 'REVISION' in param or 'VERSION' in param:
+            vcheck = int(param['REVISION']) if 'REVISION' in param else int(param['VERSION'])
+            if vcheck != self.version:
+                raise UltracamError('Rhead.__init__: clashing version numbers: ' + str(self.version) + ' vs ' + str(vcheck))
 
         if self.headerwords == 16:
             VERSIONS = [100222, 111205, 120716, 120813, 130307]
             if self.version not in VERSIONS:
                 raise UltracamError('Rhead.__init__: could not recognise version = ' + str(self.version))
 
-        elif user is not None:
-            if self.revision != -1 and self.revision != self.urevision:
-                raise UltracamError('Rhead.__init__: clashing revision numbers: ' + str(self.reversion) + ' vs ' + str(self.urevision))
-
         self.whichRun = ''
         if self.instrument == 'ULTRACAM':
             if user is None:
-                self.time_units = 0.001
+                self.timeUnits = 0.001
             else:
-                self.time_units = 0.0001
+                self.timeUnits = 0.0001
             if 'REVISION' not in param and 'VERSION' not in param and 'V_FT_CLK' not in param:
                 self.whichRun = 'MAY2002'
         else:
-            if user is not None and self.headerwords == 16 and  self.revision >= 120813:
-                self.time_units = 0.0001
+            if user is not None and self.headerwords == 16 and  self.version >= 120813:
+                self.timeUnits = 0.0001
             else:
-                self.time_units = 0.001
+                self.timeUnits = 0.001
 
-
+        # convert to seconds
+        self.exposeTime *= self.timeUnits
+ 
     def isPonoff(self):
         """
         Is the run a power on / off? (no data)
@@ -1641,7 +1630,7 @@ class Rdata (Rhead):
         """
         Rhead.__init__(self, run + '.xml')
         if self.isPonoff():
-            raise UltracamError('Rdata.__init__: attempted to read a power on/off')
+            raise PowerOnOffError('Rdata.__init__: attempted to read a power on/off')
  
         # Attributes set are:
         #
@@ -1833,7 +1822,7 @@ class Rtime (Rhead):
         """
         Rhead.__init__(self, run + '.xml')
         if self.isPonoff():
-            raise UltracamError('Rtime.__init__: attempted to read a power on/off')
+            raise PowerOnOffError('Rtime.__init__: attempted to read a power on/off')
  
         # Attributes set are:
         #
@@ -1914,14 +1903,14 @@ class Rtime (Rhead):
 # that they are only computed once.
 DSEC           = 86400
 MJD0           = datetime.date(1858,11,17).toordinal()
-UNIX           = datetime.date(1970,1,1).toordinal()
-DEFDAT         = datetime.date(2000,1,1).toordinal()
-MAY2002        = datetime.date(2001,5,12).toordinal()
-SEP2002        = datetime.date(2002,9,8).toordinal()
-TSTAMP_CHANGE1 = datetime.date(2003,8,1).toordinal()
-TSTAMP_CHANGE2 = datetime.date(2005,1,1).toordinal()
-TSTAMP_CHANGE3 = datetime.date(2010,3,1).toordinal()
-USPEC_CHANGE   = datetime.date(2011,9,21).toordinal()
+UNIX           = datetime.date(1970,1,1).toordinal()  - MJD0
+DEFDAT         = datetime.date(2000,1,1).toordinal()  - MJD0
+MAY2002        = datetime.date(2002,5,12).toordinal() - MJD0
+SEP2002        = datetime.date(2002,9,8).toordinal()  - MJD0
+TSTAMP_CHANGE1 = datetime.date(2003,8,1).toordinal()  - MJD0
+TSTAMP_CHANGE2 = datetime.date(2005,1,1).toordinal()  - MJD0
+TSTAMP_CHANGE3 = datetime.date(2010,3,1).toordinal()  - MJD0
+USPEC_CHANGE   = datetime.date(2011,9,21).toordinal() - MJD0
 
 # ULTRACAM Timing parameters from Vik
 INVERSION_DELAY = 110.          # microseconds
@@ -1950,7 +1939,7 @@ def utimer(tbytes, rhead, fnum):
 
 
 
-    Returns (time,blueTime,badBlue,gps,nsat,format,vclock_frame,whichRun)
+    Returns (time,blueTime,badBlue,gps,nsat,format,vclock_frame,whichRun,defTstamp)
 
      time         -- the Time as best as can be determined
 
@@ -1970,6 +1959,9 @@ def utimer(tbytes, rhead, fnum):
      vclock_frame -- vertical clocking time for a whole frame
 
      whichRun     -- run identifier
+
+     defTstamp    -- default time stamping or not (refers to point in cycle when time stamp
+                     is taken which changed a few times over the years)
     """
     
     # This is an involved routine owing to the various hardware
@@ -2007,30 +1999,33 @@ def utimer(tbytes, rhead, fnum):
     #  blueTimes            -- list of modified times of preceding frames, [0] most recent
 
     if hasattr(utimer,'previousFrameNumber'):
-        if frameNumber != utimer.previousFrameNumber + 1:
+        if frameNumber != utimer.previousFrameNumber + 1 or utimer.run != rhead._run:
             utimer.tstamp    = []
             utimer.blueTimes = []
     else:
         utimer.tstamp    = []
         utimer.blueTimes = []
+    utimer.run = rhead._run
 
     utimer.previousFrameNumber = frameNumber
 
 
     if format == 1:
-        nsec, nnsec = struct.unpack('<Ii', tbytes[9:17])
+        nsec, nnsec = struct.unpack('<II', tbytes[9:17])
         nsat = struct.unpack('<h', tbytes[21:23])[0]
         if nsat <= 2:
             goodTime = False
             reason   = 'too few satellites (' + str(nsat) + ')'
+        IMAX = struct.unpack('<I', '\xff\xff\xff\xff')[0]
+        if nsec  == IMAX: nsec = 0
+        if nnsec == IMAX: nnsec = 0
 
     elif format == 2:
-
-        nexp  = struct.unpack('<I', tbytes[8:12])
-        if nexp*rhead.tunits != rhead.expose:
+        nexp  = struct.unpack('<I', tbytes[8:12])[0]
+        if nexp*rhead.timeUnits != rhead.exposeTime:
             goodTime = False
             reason = 'XML expose time does not match time in timing bytes.'
-        nsec, nnsec = struct.unpack('<Ii', tbytes[12:16])
+        nsec, nnsec = struct.unpack('<II', tbytes[12:20])
         nnsec *= 100
         nsat   = None
         tstamp = struct.unpack('<H', tbytes[24:26])[0]
@@ -2064,13 +2059,13 @@ def utimer(tbytes, rhead, fnum):
         """
         Convert to MJD
         """
-        return offset + float(nsec+nnsec/1.e9)/DSEC - MJD0
+        return offset + float(nsec+nnsec/1.e9)/DSEC
 
     def tcon2(year, month, day, nsec, nnsec):
         """
         Convert to MJD
         """
-        return datetime.date(year,month,day).toordinal() + float(nsec+nnsec/1.e9)/DSEC - MJD0
+        return (datetime.date(year,month,day).toordinal() - MJD0) + float(nsec+nnsec/1.e9)/DSEC
 
     if format == 1 and nsat == -1:
         goodTime = False
@@ -2080,6 +2075,7 @@ def utimer(tbytes, rhead, fnum):
             vclock_frame = 6.e-9*(40+320*(rhead.v_ft_clk - 128))
 	else:
 	    vclock_frame = 6.e-9*(40+40*rhead.v_ft_clk)
+        day, month, year = struct.unpack('<BBH',tbytes[17:21])
 
     else:
         
@@ -2115,7 +2111,7 @@ def utimer(tbytes, rhead, fnum):
                     mjd = tcon1(SEP2002, nsec, nnsec)
 
                 elif month == 9 and year == 2002:
-                    tdiff = datetime.date(year,month,day).toordinal()-SEP2002
+                    tdiff = datetime.date(year,month,day).toordinal()-MJD0-SEP2002
                     nweek = tdiff // 7
                     days  = tdiff - 7*nweek
                     if days > 3 and nsec < 2*DSEC:
@@ -2188,14 +2184,14 @@ def utimer(tbytes, rhead, fnum):
         else:
 
             # Time taken to clear CCD
-            clear_time   = (1033. + 1027)*vclock_frame
+            clearTime   = (1033. + 1027)*vclock_frame
 
             # Time taken to read CCD (assuming cdd mode)
             if rhead.mode == 'FFCLR':
-                readout_time = (1024/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin + 
+                readoutTime = (1024/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin + 
                                                   536*HCLOCK + (512/rhead.xbin+2)*VIDEO)/1.e6
             elif rhead.mode == 'FFOVER':
-                readout_time = (1032/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin + 
+                readoutTime = (1032/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin + 
                                                   540*HCLOCK + (540/rhead.xbin+2)*VIDEO)/1.e6
             else:
                 nxb          = rhead.win[1].nx
@@ -2206,7 +2202,7 @@ def utimer(tbytes, rhead, fnum):
                 diff_shift   = abs(xleft - 1 - (1024 - xright) )
                 num_hclocks  =  nxu + diff_shift + (1024 - xright) + 8 \
                     if (xleft - 1 > 1024 - xright) else nxu + diff_shift + (xleft - 1) + 8
-                readout_time = nyb*(VCLOCK_STORAGE*serverdata.ybin + 
+                readoutTime = nyb*(VCLOCK_STORAGE*rhead.ybin + 
                                     num_hclocks*HCLOCK + (nxb+2)*VIDEO)/1.e6
 
             # Frame transfer time
@@ -2217,7 +2213,7 @@ def utimer(tbytes, rhead, fnum):
                 # Case where we have not got a previous timestamp. Hop back over the 
                 # readout and frame transfer and half the exposure delay
                 mjdCentre  = utimer.tstamp[0]
-                mjdCentre -= (frameTransfer+readout_time+serverdata.expose_time/2.)/DSEC
+                mjdCentre -= (frameTransfer+readoutTime+rhead.exposeTime/2.)/DSEC
                 if goodTime:
                     goodTime = False
                     reason = 'no previous GPS time found in non-default mode'
@@ -2228,7 +2224,7 @@ def utimer(tbytes, rhead, fnum):
                 # more reliable since we merely need to step forward over the clear time and
                 # half the exposure time.
                 mjdCentre  = utimer.tstamp[1]
-                mjdCentre += (clear_time + rhead.exposeTime/2.)/DSEC
+                mjdCentre += (clearTime + rhead.exposeTime/2.)/DSEC
 
             exposure = rhead.exposeTime
 
@@ -2243,11 +2239,11 @@ def utimer(tbytes, rhead, fnum):
         frameTransfer = 1033.*vclock_frame
 
         if rhead.mode == 'FFNCLR':
-            readout_time = (1024/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin + 
+            readoutTime = (1024/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin + 
                                               536*HCLOCK + (512/rhead.xbin+2)*VIDEO)/1.e6
         else:
 
-            readout_time = 0.
+            readoutTime = 0.
             xbin = rhead.xbin
             ybin = rhead.ybin
             ystart_old = -1
@@ -2290,11 +2286,11 @@ def utimer(tbytes, rhead, fnum):
                 # Time taken to read one line. The extra 2 is required to fill the video pipeline buffer
                 line_read = VCLOCK_STORAGE*ybin + num_hclocks*HCLOCK + (nxu/xbin+2)*VIDEO
 		
-                readout_time += y_shift + (nyu/ybin)*line_read
+                readoutTime += y_shift + (nyu/ybin)*line_read
 
-            readout_time /= 1.e6
-	          
-	if defTstamp:
+            readoutTime /= 1.e6
+
+        if defTstamp:
             if frameNumber == 1:
                 mjdCentre  = utimer.tstamp[0]
                 exposure   = rhead.exposeTime
@@ -2304,15 +2300,15 @@ def utimer(tbytes, rhead, fnum):
                 if len(utimer.tstamp) > 1:
                     texp = DSEC*(utimer.tstamp[0] - utimer.tstamp[1]) - frameTransfer
                     mjdCentre  = utimer.tstamp[1]
-                    mjdCentre += texp/DSEC
+                    mjdCentre += texp/2./DSEC
                     exposure   = texp
 
                 else:
-                    texp = readout_time + rhead.exposeTime
+                    texp       = readoutTime + rhead.exposeTime
                     mjdCentre  = utimer.tstamp[0]
                     mjdCentre -= (frameTransfer+texp/2.)/DSEC
                     exposure   = texp
-
+                
                     if goodTime:
                         goodTime = False
                         reason = 'could not establish an accurate time without previous GPS timestamp'
@@ -2321,12 +2317,12 @@ def utimer(tbytes, rhead, fnum):
             if frameNumber == 1:
                 mjdCentre  = utimer.tstamp[0]
                 exposure   = rhead.exposeTime
-                mjdCentre -= (frameTransfer+exposure/2.)/DSEC
+                mjdCentre -= (frameTransfer+readoutTime+exposure/2.)/DSEC
 
                 if goodTime:
                     goodTime = False
                     reason = 'cannot establish an accurate time for first frame in this mode'
-
+                
             else:
                 
                 if len(utimer.tstamp) > 2:
@@ -2346,7 +2342,7 @@ def utimer(tbytes, rhead, fnum):
                         reason = 'cannot establish an accurate time with only two prior timestamps'
 
                 else:
-                    texp       = readout_time + rhead.exposeTime
+                    texp       = readoutTime + rhead.exposeTime
                     mjdCentre  = utimer.tstamp[0]
                     mjdCentre += (rhead.exposeTime-texp-frameTransfer-texp/2.)/DSEC
                     exposure   = texp
@@ -2359,13 +2355,13 @@ def utimer(tbytes, rhead, fnum):
 
         wl     = rhead.win[0]
         xbin   = rhead.xbin
-        ybin   = rhead.xbin
+        ybin   = rhead.ybin
         nxu    = xbin*wl.nx
         nyu    = ybin*wl.ny
         ystart = wl.lly
         xleft  = wl.llx
         wr     = rhead.win[1]
-        xright = wl.llx + nxu -1
+        xright = wr.llx + nxu -1
 
         # Maximum number of windows in pipeline
         nwins = int((1033./nyu+1.)/2.)
@@ -2390,7 +2386,7 @@ def utimer(tbytes, rhead, fnum):
         # Time taken to read one line. The extra 2 is required to fill the video pipeline buffer
         line_read = VCLOCK_STORAGE*ybin + num_hclocks*HCLOCK + (nxu/xbin+2)*VIDEO
 		
-        readout_time = ((nyu/ybin)*line_read + pipe_shift*VCLOCK_STORAGE)/1.e6
+        readoutTime = ((nyu/ybin)*line_read + pipe_shift*VCLOCK_STORAGE)/1.e6
 
 	# Never need more than nwins+2 times
 	if len(utimer.tstamp) > nwins+2: utimer.tstamp.pop()
@@ -2399,8 +2395,7 @@ def utimer(tbytes, rhead, fnum):
 
 	    # Pre board change or post-bug fix
 	    if len(utimer.tstamp) > nwins:
-
-		texp = utimer.tstamp[nwins-1] - utimer.tstamp[nwins] - frameTransfer
+		texp = DSEC*(utimer.tstamp[nwins-1] - utimer.tstamp[nwins]) - frameTransfer
 		mjdCentre  = utimer.tstamp[nwins]
 		mjdCentre += texp/2./DSEC
 		exposure   = texp
@@ -2409,8 +2404,7 @@ def utimer(tbytes, rhead, fnum):
 
 		# Set to silly value for easy checking
 		mjdCentre = DEFDAT
-		exposure  = read.exposeTime
-
+		exposure  = rhead.exposeTime
 		if goodTime:
                     goodTime = False
 		    reason = 'too few stored timestamps for drift mode'
@@ -2419,16 +2413,16 @@ def utimer(tbytes, rhead, fnum):
 
 	    if len(utimer.tstamp) > nwins+1:
 
-		texp = utimer.tstamp[nwins] - utimer.tstamp[nwins+1] - frameTransfer
+		texp = DSEC*(utimer.tstamp[nwins] - utimer.tstamp[nwins+1]) - frameTransfer
 		mjdCentre  = utimer.tstamp[nwins]
-		mjdCentre += (rhead.expose_time-texp/2.)/DSEC
+		mjdCentre += (rhead.exposeTime-texp/2.)/DSEC
 		exposure   = texp
                 
             elif len(utimer.tstamp) == nwins+1:
 
-		texp       = utimer.tstamp[nwins-1] - utimer.tstamp[nwins] - frameTransfer
+		texp       = DSEC*(utimer.tstamp[nwins-1] - utimer.tstamp[nwins]) - frameTransfer
 		mjdCentre  = utimer.tstamp[nwins]
-		mjdCentre += (serverdata.expose_time-texp/2.)/DSEC
+		mjdCentre += (rhead.exposeTime-texp/2.)/DSEC
 		exposure   = texp
 
 		if goodTime:
@@ -2453,7 +2447,7 @@ def utimer(tbytes, rhead, fnum):
 
         if utimer.tstamp[0] < USPEC_CHANGE:  
             
-            texp = readout_time + serverdata.expose_time
+            texp = readoutTime + rhead.exposeTime
             mjdCentre = utimer.tstamp[0]
             if rhead.en_clr or frameNumber == 1:
                 
@@ -2462,7 +2456,7 @@ def utimer(tbytes, rhead, fnum):
                 
             elif len(utimer.tstamp) > 1:
                 
-                texp = utimer.tstamp[0] - utimer.tstamp[1] - USPEC_FT_TIME
+                texp = DSEC*(utimer.tstamp[0] - utimer.tstamp[1]) - USPEC_FT_TIME
                 mjdCentre -= text/2./DSEC
                 exposure   = texp
                 
@@ -2483,20 +2477,20 @@ def utimer(tbytes, rhead, fnum):
                 exposure = rhead.exposeTime
                 if len(utimer.tstamp) == 1:
                     mjdCentre = utimer.tstamp[0]
-                    mjdCentre -= (-USPEC_FT_TIME-serverdata.expose_time/2.)/DSEC
+                    mjdCentre -= (-USPEC_FT_TIME-rhead.exposeTime/2.)/DSEC
                     if goodTime:
                         reason = 'cannot establish an accurate time without at least 1 prior timestamp'
                         goodTime = False
                 else:
                     mjdCentre  = utimer.tstamp[1]
-                    mjdCentre += (USPEC_CLR_TIME+serverdata.expose_time/2.)/DSEC
+                    mjdCentre += (USPEC_CLR_TIME+rhead.exposeTime/2.)/DSEC
 
             elif len(utimer.tstamp) > 2:
 
                 # Can backtrack two frames to get a good exposure time.
-                texp = utimer.tstamp[1] - utimer.tstamp[2] - USPEC_FT_TIME
+                texp = DSEC*(utimer.tstamp[1] - utimer.tstamp[2]) - USPEC_FT_TIME
                 mjdCentre  = utimer.tstamp[1]
-                mjdCentre += (serverdata.expose_time-texp/2.)/DSEC
+                mjdCentre += (rhead.exposeTime-texp/2.)/DSEC
                 exposure   = texp
 
             elif len(utimer.tstamp) == 2:
@@ -2505,9 +2499,9 @@ def utimer(tbytes, rhead, fnum):
                 # actually based on the exposure following the one of
                 # interest. Probably not too bad, but technically unreliable
                 # as a time.
-                texp = utimer.tstamp[0] - utimer.tstamp[1] - USPEC_FT_TIME
+                texp = DSEC*(utimer.tstamp[0] - utimer.tstamp[1]) - USPEC_FT_TIME
                 mjdCentre  = utimer.tstamp[1]
-                mjdCentre += (serverdata.expose_time-texp/2.)/DSEC
+                mjdCentre += (rhead.exposeTime-texp/2.)/DSEC
                 exposure   = texp
 
                 if goodTime:
@@ -2518,14 +2512,14 @@ def utimer(tbytes, rhead, fnum):
 
                 # Only one time
                 mjdCentre  = utimer.tstamp[0]
-                mjdCentre -= (serverdata.expose_time/2.+serverdata.expose_time)/DSEC
+                mjdCentre -= (rhead.exposeTime/2.+rhead.exposeTime)/DSEC
                 exposure   = serverdata.exposeTime
 
                 if goodTime:
                     reason = 'too few stored timestamps'
                     goodTime = False
 
-    elif rhead.instrument == 'ULTRASPEC' or rhead.mode == 'UDRIFT':
+    elif rhead.instrument == 'ULTRASPEC' and rhead.mode == 'UDRIFT':
 
         ybin   = rhead.ybin
         nyu    = ybin*rhead.win[0].ny
@@ -2540,16 +2534,16 @@ def utimer(tbytes, rhead, fnum):
 
 	if len(utimer.tstamp) > nwins+1:
 
-	    texp       = utimer.tstamp[nwins] - utimer.tstamp[nwins+1] - frameTransfer
+	    texp       = DSEC*(utimer.tstamp[nwins] - utimer.tstamp[nwins+1]) - frameTransfer
 	    mjdCentre  = utimer.tstamp[nwins]
-	    mjdCentre += (serverdata.expose_time-texp/2.)/DSEC
+	    mjdCentre += (rhead.exposeTime-texp/2.)/DSEC
 	    exposure   = texp
 	    
 	elif len(utimer.tstamp) == nwins+1:
 	    
-	    texp          = utimer.tstamp[nwins-1] - utimer.tstamp[nwins] - frameTransfer
+	    texp          = DSEC*(utimer.tstamp[nwins-1] - utimer.tstamp[nwins]) - frameTransfer
 	    mjdCentre     = utimer.tstamp[nwins]
-	    mjdCentre     = (serverdata.expose_time-texp/2.)/DSEC
+	    mjdCentre     = (rhead.exposeTime-texp/2.)/DSEC
 	    exposure      = texp
 	    if goodTime:
 		reason = 'too few stored timestamps'
@@ -2611,7 +2605,7 @@ def utimer(tbytes, rhead, fnum):
     else:
         blueTime = time
 
-    return (time,blueTime,badBlue,gps,nsat,format,vclock_frame,rhead.whichRun)
+    return (time,blueTime,badBlue,gps,nsat,format,vclock_frame,rhead.whichRun,defTstamp)
 
 # Exception classes
 class UltracamError(Exception):
@@ -2628,6 +2622,16 @@ class UendError(UltracamError):
     file (failure to read the timing bytes). This allows the 
     iterator to die silently in this case while  raising
     exceptions for less anticipated cases.
+    """
+    def __init__(self, value):
+        self.value = value
+            
+    def __str__(self):
+        return repr(self.value)
+
+class PowerOnOffError(UltracamError):
+    """
+    Exception for trying to read a power on/off
     """
     def __init__(self, value):
         self.value = value
