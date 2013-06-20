@@ -12,7 +12,7 @@ except:
 setup(name='trm.ultracam',
       version='0',
       packages = ['trm', 'trm.ultracam'],
-      scripts=['scripts/praw.py'],
+      scripts=['scripts/praw.py','scripts/ustats.py','scripts/pproc.py'],
 
       author='Tom Marsh',
       description="Python module for accessing ULTRACAM files",

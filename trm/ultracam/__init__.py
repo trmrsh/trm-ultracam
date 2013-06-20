@@ -19,11 +19,14 @@ MCCD object. For more examples of usage, see the script demo.py
 # standard imports
 import xml.dom.minidom
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.cm     as cm
-import struct
 import warnings
+import struct
 import datetime
+try:
+    import matplotlib.pyplot as plt
+except:
+    warnings.warn('Failed to import matplotlib')
+import matplotlib.cm     as cm
 
 # less widely known extras
 import ppgplot as pg
@@ -343,9 +346,16 @@ class Uhead(Odict):
     Class for containing headers compatible with ucm files. Each entry is
     keyed on a string of the form 'User.Filter', the dot signifying a
     hierarchy. The class is a sub-class of an ordered dictionary class to
-    allow entries to retain an order. Each entry consists of a tuple
-    containing a value, a type and a comment, in that order. The type
-    corresponds to data types used in ucm files.
+    allow entries to retain an order. 
+
+    Each entry (i.e. what is returned using a key like 'User.Filter') in a
+    Uhead consists of a tuple containing a value, a type and a comment, in
+    that order. The type corresponds to data types used in ucm files. You can
+    simply extract the value from the tuple with index [0], or possibly easier
+    to remember, use its 'value' method:
+
+    print uhead['User.Filter'][0]
+    print uhead.value('User.Filter')
     
     The class is subclassed from Odict, a general ordered dictionary class
     supplied as part of the ultracam module. The purpose of subclassing this
@@ -829,9 +839,9 @@ class MCCD(list):
 
           data  -- list of CCD objects
 
-          head -- the header, either None of a Uhead object.
+          head -- the header, either None or a Uhead object.
           
-        Sets the equivalent attribute head
+        Sets the equivalent attribute 'head'
         """
         if not isinstance(data, list):
             raise UltracamError('MCCC.__init__: data should be a list.')
@@ -1430,7 +1440,8 @@ class Rhead (object):
                 self.mode    = '2-USPEC'
         elif app == 'ccd201_driftscan_cfg':
             self.mode    = 'UDRIFT'
-        elif app == 'ap1_poweron' or app == 'ap1_250_poweron' or app == 'ap2_250_poweroff':
+        elif app == 'ap1_poweron' or app == 'ap1_250_poweron' or app == 'ap2_250_poweroff' \
+                or app == 'appl1_pon_cfg':
             self.mode = 'PONOFF'
             return
         else:
@@ -1707,17 +1718,12 @@ class Rdata (Rhead):
 
         # read timing bytes
         tbytes = self._fobj.read(2*self.headerwords)
-        if len(self._tbytes) != 2*self.headerwords:
+        if len(tbytes) != 2*self.headerwords:
             self._fobj.seek(0)
             self._nf = 1
             raise UendError('Data.get: failed to read timing bytes')
 
-        # debug
-        try:
-            print utimer(tbytes, self, self._tstamp)
-        except Exception, err:
-            print 'timing problem:'
-            print err
+        time,blueTime,badBlue,info = utimer(tbytes, self, self._nf)
 
         # read data
         buff = np.fromfile(self._fobj,'<u2',self.framesize/2-self.headerwords)
@@ -1736,9 +1742,11 @@ class Rdata (Rhead):
         head.add_entry('Instrument.instrument',self.instrument,ITYPE_STRING,'Instrument identifier')
         head.add_entry('Instrument.headerwords',self.headerwords,ITYPE_INT,'Number of 2-byte words in timing')
         head.add_entry('Instrument.framesize',self.framesize,ITYPE_INT,'Total number of bytes per frame')
-        head.add_entry('Data', 'File information')
+        head.add_entry('Data', 'data frame information')
         head.add_entry('Data.run',self._run,ITYPE_STRING,'run the frame came from')
         head.add_entry('Data.frame',self._nf,ITYPE_INT,'frame number within run')
+        head.add_entry('Data.midnight',info['midnightCorr'],ITYPE_BOOL,'midnight bug correction applied')
+        head.add_entry('Data.ferror',info['frameError'],ITYPE_BOOL,'problem with frame numbers found')
 
         # interpret data
         xbin, ybin = self.xbin, self.ybin
@@ -1754,34 +1762,34 @@ class Rdata (Rhead):
                     wins1.append(Window(np.reshape(buff[noff:noff+npix:6],(wl.ny,wl.nx)),
                                         wl.llx,wl.lly,xbin,ybin).astype(np.float32))
                     wins1.append(Window(np.reshape(buff[noff+npix-5:noff:-6],(wr.ny,wr.nx)),
-                                        llxr,llyr,xbin,ybin).astype(np.float32))
+                                        wr.llx,wr.lly,xbin,ybin).astype(np.float32))
                     wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6],(wl.ny,wl.nx)),
                                         wl.llx,wl.lly,xbin,ybin).astype(np.float32))
                     wins2.append(Window(np.reshape(buff[noff+npix-3:noff:-6],(wr.ny,wr.nx)),
-                                        llxr,llyr,xbin,ybin).astype(np.float32))
+                                        wr.llx,wr.lly,xbin,ybin).astype(np.float32))
                     wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6],(wl.ny,wl.nx)),
                                         wl.llx,wl.lly,xbin,ybin).astype(np.float32))
                     wins3.append(Window(np.reshape(buff[noff+npix-1:noff:-6],(wr.ny,wr.nx)),
-                                        llxr,llyr,xbin,ybin).astype(np.float32))
+                                        wr.llx,wr.lly,xbin,ybin).astype(np.float32))
                 else:
                     wins1.append(Window(np.reshape(buff[noff:noff+npix:6],(wl.ny,wl.nx)),
                                         wl.llx,wl.lly,xbin,ybin))
                     wins1.append(Window(np.reshape(buff[noff+npix-5:noff:-6],(wr.ny,wr.nx)),
-                                        llxr,llyr,xbin,ybin))
+                                        wr.llx,wr.lly,xbin,ybin))
                     wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6],(wl.ny,wl.nx)),
                                         wl.llx,wl.lly,xbin,ybin))
                     wins2.append(Window(np.reshape(buff[noff+npix-3:noff:-6],(wr.ny,wr.nx)),
-                                        llxr,llyr,xbin,ybin))
+                                        wr.llx,wr.lly,xbin,ybin))
                     wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6],(wl.ny,wl.nx)),
                                         wl.llx,wl.lly,xbin,ybin))
                     wins3.append(Window(np.reshape(buff[noff+npix-1:noff:-6],(wr.ny,wr.nx)),
-                                        llxr,llyr,xbin,ybin))
+                                        wr.llx,wr.lly,xbin,ybin))
                 noff += npix
 
             # Build CCDs
-            ccd1 = CCD(wins1, None, self.nxmax, self.nymax, True, None)
-            ccd2 = CCD(wins2, None, self.nxmax, self.nymax, True, None)
-            ccd3 = CCD(wins3, None, self.nxmax, self.nymax, True, None)
+            ccd1 = CCD(wins1, time, self.nxmax, self.nymax, True, None)
+            ccd2 = CCD(wins2, time, self.nxmax, self.nymax, True, None)
+            ccd3 = CCD(wins3, blueTime, self.nxmax, self.nymax, not badBlue, None)
 
             # Return an MCCD
             return MCCD([ccd1,ccd2,ccd3], head)
@@ -1890,7 +1898,7 @@ class Rtime (Rhead):
             raise UendError('Data.get: failed to read timing bytes')
 
         tinfo = utimer(tbytes, self, self._nf)
-        
+
         # step to start of next frame
         self._fobj.seek(self.framesize-2*self.headerwords,1)
 
@@ -1901,16 +1909,17 @@ class Rtime (Rhead):
 
 # Some fixed dates needed by utimer. Put them here so
 # that they are only computed once.
-DSEC           = 86400
-MJD0           = datetime.date(1858,11,17).toordinal()
-UNIX           = datetime.date(1970,1,1).toordinal()  - MJD0
-DEFDAT         = datetime.date(2000,1,1).toordinal()  - MJD0
-MAY2002        = datetime.date(2002,5,12).toordinal() - MJD0
-SEP2002        = datetime.date(2002,9,8).toordinal()  - MJD0
-TSTAMP_CHANGE1 = datetime.date(2003,8,1).toordinal()  - MJD0
-TSTAMP_CHANGE2 = datetime.date(2005,1,1).toordinal()  - MJD0
-TSTAMP_CHANGE3 = datetime.date(2010,3,1).toordinal()  - MJD0
-USPEC_CHANGE   = datetime.date(2011,9,21).toordinal() - MJD0
+DSEC            = 86400
+MJD0            = datetime.date(1858,11,17).toordinal()
+UNIX            = datetime.date(1970,1,1).toordinal()  - MJD0
+DEFDAT          = datetime.date(2000,1,1).toordinal()  - MJD0
+FIRST           = datetime.date(2002,5,16).toordinal() - MJD0
+MAY2002         = datetime.date(2002,5,12).toordinal() - MJD0
+SEP2002         = datetime.date(2002,9,8).toordinal()  - MJD0
+TSTAMP_CHANGE1  = datetime.date(2003,8,1).toordinal()  - MJD0
+TSTAMP_CHANGE2  = datetime.date(2005,1,1).toordinal()  - MJD0
+TSTAMP_CHANGE3  = datetime.date(2010,3,1).toordinal()  - MJD0
+USPEC_CHANGE    = datetime.date(2011,9,21).toordinal() - MJD0
 
 # ULTRACAM Timing parameters from Vik
 INVERSION_DELAY = 110.          # microseconds
@@ -1939,7 +1948,7 @@ def utimer(tbytes, rhead, fnum):
 
 
 
-    Returns (time,blueTime,badBlue,gps,nsat,format,vclock_frame,whichRun,defTstamp)
+    Returns (time,blueTime,badBlue,info)
 
      time         -- the Time as best as can be determined
 
@@ -1947,21 +1956,19 @@ def utimer(tbytes, rhead, fnum):
 
      badBlue      -- blue frame is bad for nblue > 1 (nblue-1 out nblue are bad)
 
-     gps          -- the raw GPS time associated with the frame, no corrections applied
-                    other than for various bugs in the timing. i.e. not corrected to 
-                    mid-exposure, or for drift mode etc.
+    info          -- a dictionary of optional extra to allow for possible future 
+                     updates without breaking code. Currently returns values for the 
+                     following keys:
 
-     nsat         -- number of satellites (only for early configurations of GPS card, otherwise
-                    comes back as -1)
+         nsat         -- number of satellites (if set)
+         format       -- the format integer used to translate the timing bytes
+         vclock_frame -- vertical clocking time for a whole frame
+         whichRun     -- special case run identifier. MAY2002 or nothing
+         defTstamp    -- whether the "default" time stamping cycle was thought to apply
+         gps          -- the raw GPS time associated with the frame, no corrections applied
+         frameError   -- was there a frame numbering clash
+         midnightCorr -- was the midnight bug correction applied
 
-     format       -- the format integer used to translate the timing bytes
-
-     vclock_frame -- vertical clocking time for a whole frame
-
-     whichRun     -- run identifier
-
-     defTstamp    -- default time stamping or not (refers to point in cycle when time stamp
-                     is taken which changed a few times over the years)
     """
     
     # This is an involved routine owing to the various hardware
@@ -1990,6 +1997,9 @@ def utimer(tbytes, rhead, fnum):
     if frameNumber != fnum:
         warnings.warn('ultracam.utimer: run ' + rhead._run + ' expected frame number = ' + 
                       str(fnum) + ' but found ' + str(frameNumber))
+        frameError = True
+    else:
+        frameError = False
 
     # initialize some attributes of utimer which are used as the equivalent
     # of static variables in C++. They are:
@@ -2141,6 +2151,9 @@ def utimer(tbytes, rhead, fnum):
     if (int(mjd-3) % 7) == ((nsec // DSEC) % 7):
         warnings.warn('ultracam.utimer: run ' + rhead._run + ' midnight bug detected and corrected')
         mjd += 1
+        midnightCorr = True
+    else:
+        midnightCorr = False
 
     # save this as the raw GPS time.
     gps = mjd
@@ -2605,7 +2618,12 @@ def utimer(tbytes, rhead, fnum):
     else:
         blueTime = time
 
-    return (time,blueTime,badBlue,gps,nsat,format,vclock_frame,rhead.whichRun,defTstamp)
+    # return lots of potentially useful extras in a dictionary
+    info = {'nsat' : nsat, 'format' : format, 'vclock_frame' : vclock_frame, 
+            'whichRun' : rhead.whichRun, 'defTstamp' : defTstamp, 'gps' : gps,
+            'frameError' : frameError, 'midnightCorr' : midnightCorr}
+
+    return (time,blueTime,badBlue,info)
 
 # Exception classes
 class UltracamError(Exception):
