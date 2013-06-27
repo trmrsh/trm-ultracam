@@ -4,22 +4,6 @@ ULTRACAM data files, allow writing to FITS and the like. It is
 supposed to allow quick development of scripts, such as may be
 needed to correct data problems.
 
-Installation:
-
-In addition to standard Python you need in approximately increasing 
-probability that you will need to install something:
-
-1) numpy      -- numerical Python library. 
-2) matplotlib -- widely-used Python plotting library.
-3) PyFITS     -- STScI-supported FITS libary.
-4) ppgplot    -- less-used but faster plotting library
-5) trm.subs   -- my own package of basic routines.
-
-Install with the usual:
-
-python setup.py install --prefix=your_top_level_installation_directory
-
-
 Tom Marsh
 
 
