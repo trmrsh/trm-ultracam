@@ -31,6 +31,131 @@ import matplotlib.cm     as cm
 # less widely known extras
 import ppgplot as pg
 
+# Various constants to do with past runs in the main.
+
+# Some fixed dates needed by utimer. Put them here so
+# that they are only computed once.
+DSEC            = 86400
+MJD0            = datetime.date(1858,11,17).toordinal()
+UNIX            = datetime.date(1970,1,1).toordinal()  - MJD0
+DEFDAT          = datetime.date(2000,1,1).toordinal()  - MJD0
+FIRST           = datetime.date(2002,5,16).toordinal() - MJD0
+MAY2002         = datetime.date(2002,5,12).toordinal() - MJD0
+SEP2002         = datetime.date(2002,9,8).toordinal()  - MJD0
+TSTAMP_CHANGE1  = datetime.date(2003,8,1).toordinal()  - MJD0
+TSTAMP_CHANGE2  = datetime.date(2005,1,1).toordinal()  - MJD0
+TSTAMP_CHANGE3  = datetime.date(2010,3,1).toordinal()  - MJD0
+USPEC_CHANGE    = datetime.date(2011,9,21).toordinal() - MJD0
+
+# Bias level change dates and associated before and after levels
+# 3 changes imply 4 bias levels.
+BIAS_CHANGES    = (52450,52850,53900)
+
+# for each readout mode there are len(BIAS_CHANGES) + 1 sets of values.
+# Each set gives typical bias levels for left and right of each CCD. There
+# are not values in all cases.
+BIAS_LEVELS = {'cdd' : (
+        ((1975,2050),(1825,1848),(1830,2020)),
+        ((2125,2180),(1985,2040),(2390,2190)),
+        ((2245,2300),(2150,2210),(2470,2360)),
+        ((1635,1695),(1532,1562),(1835,1685))
+        ),
+               'fbb' : (
+        None,
+        None,
+        ((2660,2720),(2350,2330),(2900,2840)),
+        ((1620,1690),(1280,1252),(1827,1685))
+        ),
+               'fdd' : (
+        ((2125,2180),(1985,2040),(2390,2190)),
+        None,
+        None,
+        None
+        )}
+               
+# ULTRACAM Timing parameters from Vik
+INVERSION_DELAY = 110.          # microseconds
+HCLOCK          = 0.48          # microseconds
+CDS_TIME_FDD    = 2.2           # microseconds
+CDS_TIME_FBB    = 4.4           # microseconds
+CDS_TIME_CDD    = 10.           # microseconds
+SWITCH_TIME     = 1.2           # microseconds
+
+USPEC_FT_ROW    = 14.4e-6       # seconds
+USPEC_FT_OFF    = 49.e-6        # seconds
+USPEC_CLR_TIME  = 0.0309516     # seconds 
+
+# Run dates (for checking for spurious times).
+# Format: overall run id, start, stop.
+RUN_DATES = (('2002-05','2002-05-16','2002-05-20'),
+             ('2002-09','2002-09-09','2002-09-14'),
+             ('2002-09','2002-09-16','2002-09-17'),
+             ('2002-09','2002-09-19','2002-09-21'),
+             ('2003-05','2003-05-19','2003-05-25'),
+             ('2003-05','2003-06-06','2003-06-08'),
+             ('2003-11','2003-10-29','2003-11-06'),
+             ('2003-11','2003-11-10','2003-11-13'),
+             ('2004-05','2004-04-29','2004-04-29'),
+             ('2004-05','2004-05-02','2004-05-05'),
+             ('2004-05','2004-05-17','2004-05-19'),
+             ('2004-08','2004-08-20','2004-08-30'),
+             ('2005-05','2005-05-04','2005-05-21'),
+             ('2005-08','2005-08-09','2005-08-15'),
+             ('2005-08','2005-08-25','2005-09-01'),
+             ('2005-11','2005-11-23','2005-11-28'),
+             ('2006-03','2006-03-01','2006-03-12'),
+             ('2007-06','2007-06-08','2007-06-23'),
+             ('2007-10','2007-10-16','2007-10-28'),
+             ('2007-11','2007-11-19','2007-11-24'),
+             ('2008-08','2008-08-04','2008-08-11'),
+             ('2009-01','2008-12-31','2009-01-06'),
+             ('2010-01','2010-01-05','2010-01-07'),
+             ('2010-04','2010-04-20','2010-06-15'),
+             ('2010-12','2010-11-09','2010-12-17'),
+             ('2010-12','2011-01-06','2011-01-11'),
+             ('2010-12','2011-01-14','2011-01-14'),
+             ('2010-12','2011-01-16','2011-01-18'),
+             ('2011-05','2011-04-21','2011-04-27'),
+             ('2011-05','2011-05-18','2011-06-01'),
+             ('2011-08','2011-08-15','2011-08-21'),
+             ('2011-08','2011-08-25','2011-08-27'),
+             ('2011-10','2011-10-29','2011-11-03'),
+             ('2012-01','2012-01-09','2012-01-22'),
+             ('2012-01','2012-01-28','2012-02-05'),
+             ('2012-04','2012-04-24','2012-04-29'),
+             ('2012-09','2012-08-31','2012-09-13'),
+             ('2012-10','2012-10-08','2012-10-16'),
+             ('2013-04','2013-04-19','2013-04-24'),
+             )
+
+RUN_TELS = {'2002-05' : 'WHT',
+            '2002-09' : 'WHT',
+            '2003-05' : 'WHT',
+            '2003-11' : 'WHT',
+            '2004-05' : 'WHT',
+            '2004-08' : 'WHT',
+            '2005-05' : 'VLT',
+            '2005-08' : 'WHT',
+            '2005-11' : 'VLT',
+            '2006-03' : 'WHT',
+            '2007-06' : 'VLT',
+            '2007-10' : 'WHT',
+            '2007-11' : 'WHT',
+            '2008-08' : 'WHT',
+            '2009-01' : 'WHT',
+            '2010-01' : 'WHT',
+            '2010-04' : 'NTT',
+            '2010-12' : 'NTT',
+            '2011-05' : 'NTT',
+            '2011-08' : 'WHT',
+            '2011-10' : 'WHT',
+            '2012-01' : 'WHT',
+            '2012-04' : 'WHT',
+            '2012-09' : 'WHT',
+            '2012-10' : 'WHT',
+            '2013-04' : 'WHT',
+            }
+
 # kick off with some semi-hidden helper routines
 def _write_string(fobj, strng):
     """
@@ -70,7 +195,8 @@ def _check_ucm(fobj):
         fcode = struct.unpack('>i',fbytes)[0]
         if fcode != MAGIC:
             fobj.close()
-            raise UltracamError('ultracam._check_ucm: could not recognise first 4 bytes of ' + fname + ' as a ucm file')
+            raise UltracamError('ultracam._check_ucm: could not recognise first 4 bytes of ' + 
+                                fname + ' as a ucm file')
         endian = '>'
     else:
         endian = ''
@@ -276,7 +402,7 @@ class Window(np.ndarray):
             plt.imshow(np.asarray(self), cmap=cmap, interpolation='nearest', \
                            vmin=vmin, vmax=vmax, origin='lower', extent=limits)
         else:
-            tr = [self.llx-self.xbin,self.xbin,0,self.lly-self.ybin,0,self.ybin]
+            tr = np.array([self.llx-self.xbin,self.xbin,0,self.lly-self.ybin,0,self.ybin])
             pg.pggray(self,0,nx-1,0,ny-1,vmax,vmin,tr)
 
 class Time(object):
@@ -661,6 +787,12 @@ class CCD(list):
         for win in self:
             maxv = win.max() if maxv is None else max(maxv, win.max())
         return maxv
+
+    def npix(self):
+        np = 0
+        for win in self:
+            np += win.size
+        return np
 
     def median(self):
         """
@@ -1231,7 +1363,7 @@ class MCCD(list):
         return MCCD(tccd, self.head)
 
     def plot(self, vlo=2., vhi=98., nc=-1, method='p', mpl=False, cmap=cm.binary, \
-                 close=True, x1=None, x2=None, y1=None, y2=None):
+                 close=True, x1=None, x2=None, y1=None, y2=None, sepmin=1.):
         """
         Plots an MCCD using pgplot or matplotlib if preferred.
 
@@ -1247,6 +1379,7 @@ class MCCD(list):
                    implies opening the plot at the start, i.e. a self-contained quick plot.
          x1,x2, -- plot limits. Default to 0.5,nxmax+0.5,0.5,nymax+0.5 if not defined. 
          y1,y1 
+         sepmin -- minimum separation between intensity limits (> 0 to stop PGPLOT complaining)
 
         Returns the plot range(s) used either as a single 2-element tuple, or
         a list of them, one per CCD plotted.
@@ -1275,7 +1408,10 @@ class MCCD(list):
                 vmin, vmax = vlo, vhi
             else:
                 raise UltracamError('MCCD.plot: method must be one of p, a or d.')
-            
+
+            if vmin == vmax:
+                vmin -= sepmin/2.
+                vmax += sepmin/2.
             prange.append((vmin, vmax))
 
             # start
@@ -1343,30 +1479,30 @@ class Rhead (object):
 
          Many attributes are set; here are some of them:
 
-         application  -- data acqusition application template name.
+          application  -- data acqusition application template name.
 
-         fname        -- file used to define the format.
+          fname        -- file used to define the format.
 
-         framesize    -- total number of bytes per frame.
+          framesize    -- total number of bytes per frame.
 
-         headerwords  -- number of words (2-bytes/word) in timing info at start of a frame.
+          headerwords  -- number of words (2-bytes/word) in timing info at start of a frame.
 
-         instrument   -- instrument name.
+          instrument   -- instrument name.
 
-         mode         -- a standardised summary of the readout mode derived from the application name.
+          mode         -- a standardised summary of the readout mode derived from the application name.
 
-         speed        -- readout speed.
+          speed        -- readout speed.
 
-         user         -- dictionary of user information. Set to None if there was none found.
+          user         -- dictionary of user information. Set to None if there was none found.
 
-         win          -- A list of Window objects, one per window. ULTRACAM data is multi-CCD
-                         but the windows of each CCD are identical so the information is only stored 
-                         once for all CCDs. Each one contains the corrdinates of the lower-left
-                         pixel of the window and the binned dimensions
+          win          -- A list of Window objects, one per window. ULTRACAM data is multi-CCD
+                          but the windows of each CCD are identical so the information is only stored 
+                          once for all CCDs. Each one contains the corrdinates of the lower-left
+                          pixel of the window and the binned dimensions
 
-         xbin, ybin   -- pixel binning factors (same for all windows of all CCDs)
+          xbin, ybin   -- pixel binning factors (same for all windows of all CCDs)
 
-         nxmax, nymax -- maximum unbinned dimensions, same for all CCDs.
+          nxmax, nymax -- maximum unbinned dimensions, same for all CCDs.
         """
 
         self.fname = uxml
@@ -1564,7 +1700,16 @@ class Rhead (object):
 
         # convert to seconds
         self.exposeTime *= self.timeUnits
- 
+
+    def npix(self):
+        """
+        Returns number of (binned) pixels per CCD
+        """
+        np = 0
+        for win in self.win:
+            np += win.nx*win.ny
+        return np
+
     def isPonoff(self):
         """
         Is the run a power on / off? (no data)
@@ -1747,6 +1892,7 @@ class Rdata (Rhead):
         head.add_entry('Data.frame',self._nf,ITYPE_INT,'frame number within run')
         head.add_entry('Data.midnight',info['midnightCorr'],ITYPE_BOOL,'midnight bug correction applied')
         head.add_entry('Data.ferror',info['frameError'],ITYPE_BOOL,'problem with frame numbers found')
+        head.add_entry('Data.ntmin',info['ntmin'],ITYPE_INT,'number of sequential timestamps needed')
 
         # interpret data
         xbin, ybin = self.xbin, self.ybin
@@ -1761,28 +1907,28 @@ class Rdata (Rhead):
                 if flt:
                     wins1.append(Window(np.reshape(buff[noff:noff+npix:6],(wl.ny,wl.nx)),
                                         wl.llx,wl.lly,xbin,ybin).astype(np.float32))
-                    wins1.append(Window(np.reshape(buff[noff+npix-5:noff:-6],(wr.ny,wr.nx)),
+                    wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
                                         wr.llx,wr.lly,xbin,ybin).astype(np.float32))
                     wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6],(wl.ny,wl.nx)),
                                         wl.llx,wl.lly,xbin,ybin).astype(np.float32))
-                    wins2.append(Window(np.reshape(buff[noff+npix-3:noff:-6],(wr.ny,wr.nx)),
+                    wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
                                         wr.llx,wr.lly,xbin,ybin).astype(np.float32))
                     wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6],(wl.ny,wl.nx)),
                                         wl.llx,wl.lly,xbin,ybin).astype(np.float32))
-                    wins3.append(Window(np.reshape(buff[noff+npix-1:noff:-6],(wr.ny,wr.nx)),
+                    wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
                                         wr.llx,wr.lly,xbin,ybin).astype(np.float32))
                 else:
                     wins1.append(Window(np.reshape(buff[noff:noff+npix:6],(wl.ny,wl.nx)),
                                         wl.llx,wl.lly,xbin,ybin))
-                    wins1.append(Window(np.reshape(buff[noff+npix-5:noff:-6],(wr.ny,wr.nx)),
+                    wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
                                         wr.llx,wr.lly,xbin,ybin))
                     wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6],(wl.ny,wl.nx)),
                                         wl.llx,wl.lly,xbin,ybin))
-                    wins2.append(Window(np.reshape(buff[noff+npix-3:noff:-6],(wr.ny,wr.nx)),
+                    wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
                                         wr.llx,wr.lly,xbin,ybin))
                     wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6],(wl.ny,wl.nx)),
                                         wl.llx,wl.lly,xbin,ybin))
-                    wins3.append(Window(np.reshape(buff[noff+npix-1:noff:-6],(wr.ny,wr.nx)),
+                    wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
                                         wr.llx,wr.lly,xbin,ybin))
                 noff += npix
 
@@ -1811,6 +1957,38 @@ class Rdata (Rhead):
         sequentially (starts at 1)
         """
         return self._nf
+
+    def time(self, nframe=None):
+        """
+        Returns timing information of frame nframe (starts from 1). This saves
+        effort reading the data in some cases. See for example the ustats script.
+
+        nframe -- frame number to get, starting at 1. 0 for the last
+                  (complete) frame.
+
+        See utimer for what gets returned by this. See also Rtime for a class
+        dedicated to reading times only.
+        """
+
+        # position read pointer
+        self.set(nframe)
+
+        # read timing bytes
+        tbytes = self._fobj.read(2*self.headerwords)
+        if len(tbytes) != 2*self.headerwords:
+            self._fobj.seek(0)
+            self._nf = 1
+            raise UendError('Data.get: failed to read timing bytes')
+
+        tinfo = utimer(tbytes, self, self._nf)
+
+        # step to start of next frame
+        self._fobj.seek(self.framesize-2*self.headerwords,1)
+
+        # move frame counter on by one
+        self._nf += 1
+
+        return tinfo
 
 class Rtime (Rhead):
     """
@@ -1907,32 +2085,6 @@ class Rtime (Rhead):
 
         return tinfo
 
-# Some fixed dates needed by utimer. Put them here so
-# that they are only computed once.
-DSEC            = 86400
-MJD0            = datetime.date(1858,11,17).toordinal()
-UNIX            = datetime.date(1970,1,1).toordinal()  - MJD0
-DEFDAT          = datetime.date(2000,1,1).toordinal()  - MJD0
-FIRST           = datetime.date(2002,5,16).toordinal() - MJD0
-MAY2002         = datetime.date(2002,5,12).toordinal() - MJD0
-SEP2002         = datetime.date(2002,9,8).toordinal()  - MJD0
-TSTAMP_CHANGE1  = datetime.date(2003,8,1).toordinal()  - MJD0
-TSTAMP_CHANGE2  = datetime.date(2005,1,1).toordinal()  - MJD0
-TSTAMP_CHANGE3  = datetime.date(2010,3,1).toordinal()  - MJD0
-USPEC_CHANGE    = datetime.date(2011,9,21).toordinal() - MJD0
-
-# ULTRACAM Timing parameters from Vik
-INVERSION_DELAY = 110.          # microseconds
-HCLOCK          = 0.48          # microseconds
-CDS_TIME_FDD    = 2.2           # microseconds
-CDS_TIME_FBB    = 4.4           # microseconds
-CDS_TIME_CDD    = 10.           # microseconds
-SWITCH_TIME     = 1.2           # microseconds
-
-USPEC_FT_ROW    = 14.4e-6       # seconds
-USPEC_FT_OFF    = 49.e-6        # seconds
-USPEC_CLR_TIME  = 0.0309516     # seconds 
-
 def utimer(tbytes, rhead, fnum):
     """
     Computes the Time corresponding of the most recently read frame, 
@@ -1956,7 +2108,7 @@ def utimer(tbytes, rhead, fnum):
 
      badBlue      -- blue frame is bad for nblue > 1 (nblue-1 out nblue are bad)
 
-    info          -- a dictionary of optional extra to allow for possible future 
+     info         -- a dictionary of optional extra to allow for possible future 
                      updates without breaking code. Currently returns values for the 
                      following keys:
 
@@ -2188,6 +2340,7 @@ def utimer(tbytes, rhead, fnum):
 
         # never need more than two times
         if len(utimer.tstamp) > 2: utimer.tstamp.pop()
+        ntmin = 2
 
         if defTstamp:
             mjdCentre  = utimer.tstamp[0]
@@ -2247,6 +2400,7 @@ def utimer(tbytes, rhead, fnum):
 
         # never need more than three times
         if len(utimer.tstamp) > 3: utimer.tstamp.pop()
+        ntmin = 3
 
         # Time taken to move 1033 rows.
         frameTransfer = 1033.*vclock_frame
@@ -2403,6 +2557,7 @@ def utimer(tbytes, rhead, fnum):
 
 	# Never need more than nwins+2 times
 	if len(utimer.tstamp) > nwins+2: utimer.tstamp.pop()
+        ntmin = nwins+2
 
 	if defTstamp:
 
@@ -2457,6 +2612,7 @@ def utimer(tbytes, rhead, fnum):
  
 	# Avoid excessive accumulation of timestamps.
 	if len(utimer.tstamp) > 3: utimer.tstamp.pop()
+        ntmin = 3
 
         if utimer.tstamp[0] < USPEC_CHANGE:  
             
@@ -2542,6 +2698,7 @@ def utimer(tbytes, rhead, fnum):
 
 	# Never need more than nwins+2 times
 	if len(utimer.tstamp) > nwins+2: utimer.tstamp.pop() 
+        ntmin = nwins+2
 
 	# Non-standard mode
 
@@ -2597,20 +2754,20 @@ def utimer(tbytes, rhead, fnum):
 	    ncont  = min(rhead.nblue, len(utimer.blueTimes))
 	    start  = utimer.blueTimes[ncont-1].mjd - utimer.blueTimes[ncont-1].expose/2./DSEC
 	    end    = utimer.blueTimes[0].mjd       + utimer.blueTimes[0].expose/2./DSEC
-	    expose = end - start
+	    expose = DSEC*(end - start)
 
 	    # correct the times
 	    ok = ncont == rhead.nblue
             reason = ''
 	    if not ok:
 		expose *= rhead.nblue/float(ncont)
-		start   = end - expose
+		start   = end - expose/DSEC
                 reason  = 'not all contributing frames found'
 	    else:
 		ok = utimer.blueTimes[0].good and utimer.blueTimes[ncont-1].good
                 if not ok: reason  = 'time of start or end frame was unreliable'
 
-            blueTime = Time((start+end)/2., time, ok, reason)
+            blueTime = Time((start+end)/2., expose, ok, reason)
 
         # Avoid wasting memory storing past times
 	if len(utimer.blueTimes) > rhead.nblue: utimer.blueTimes.pop()
@@ -2621,9 +2778,79 @@ def utimer(tbytes, rhead, fnum):
     # return lots of potentially useful extras in a dictionary
     info = {'nsat' : nsat, 'format' : format, 'vclock_frame' : vclock_frame, 
             'whichRun' : rhead.whichRun, 'defTstamp' : defTstamp, 'gps' : gps,
-            'frameError' : frameError, 'midnightCorr' : midnightCorr}
+            'frameError' : frameError, 'midnightCorr' : midnightCorr, 
+            'ntmin' : ntmin}
 
     return (time,blueTime,badBlue,info)
+
+def str2mjd(date):
+    """
+    Returns an MJD given a YYYY-MM-DD date (can also
+    be any other separator, but the YYYY, MM and DD
+    must come at the exact same positions)
+    """
+    year  = date[:4]
+    month = date[5:7]
+    day   = date[8:11]
+    return datetime.date(int(year),int(month),int(day)).toordinal()  - MJD0
+
+# helper routine
+def mjd2str(mjd, musec=False):
+    """
+    Converts an MJD to a string.
+
+    mjd   -- a decimal MJD
+    musec -- whether to go to fractions of a second or not
+    """
+    mjd   += MJD0
+    imjd   = int(mjd)
+    date   = datetime.date.fromordinal(imjd)
+    hour   = 24.*(mjd-imjd)
+    ihour  = int(hour)
+    mins   = 60.*(hour-ihour)
+    imins  = int(mins)
+    secs   = 60.*(mins-imins)
+    isecs  = int(secs)
+    if musec:
+        musecs = int(1000000*(secs-isecs))
+        tim    = datetime.time(ihour, imins, isecs, musecs)
+    else:
+        tim    = datetime.time(ihour, imins, isecs)
+    dtime  = datetime.datetime.combine(date, tim)
+    return dtime.isoformat(' ')
+
+def runID(mjd):
+    """
+    Identifies a run from an MJD. Returns the run ID and telescope.
+    Raises an UltracamError if it cannot match the time.
+    """
+    for dtup in RUN_DATES:
+        run_id, start, stop = dtup
+        mstart = str2mjd(start)
+        mstop  = str2mjd(stop)
+        if mstart < mjd and mjd < mstop+1.5:
+            return (run_id,RUN_TELS[run_id])
+    
+    raise UltracamError('could not identify time = ' + mjd2str(mjd))    
+
+def blevs(mjd, mode):
+    """
+    Returns tuple of tuples containing typical bias levels for each CCD, and
+    for each side of each CCD. This has to be done as a function of time and
+    readout mode. Rather than enter the time from the file which can be
+    subject to error, it is best to generate the MJD from the night of the run.
+    This can be done once and reliably for a given run. Some modes have no 
+    calibration data and no default values. This routine will return None in
+    this case. 
+
+    If the return is 'def' than def[nc] is a 2-element tuple containing the left
+    and right default bias levels for ccd nc. def[1][0] is thus the default value
+    for the left-window of the green CCD.
+    """
+    BMJDS = np.array(BIAS_CHANGES)
+    ind   = np.searchsorted(BMJDS, mjd)
+    return BIAS_LEVELS[mode][ind]
+
 
 # Exception classes
 class UltracamError(Exception):
