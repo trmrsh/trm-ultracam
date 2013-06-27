@@ -3,28 +3,18 @@
 usage = \
 """
 Computes and and stores statistics on all ultracam files it can locate. For
-each run it locates, it computes the minimum, the 5%-ile, mean, median,
-95%-ile, 99%-ile, 99.9%-ile and maximum, the most common value and the number
-of occurrences. It does this for the left- and right-hand sides of each CCD of
-each exposure. The results are stored in a file called run###_stats.fits
-
-The script can only be run from the top-level directory containing the
-raw_data and meta_data directories because it will look through the raw
-directories but store the results in the corresponding meta_data
-directories. It specifically searches for all directories of the form
-YYYY-MM-DD, but you can specify a regular expression to narrow the
+each run it locates, it computes the minimum, median, mean, mode and maximum,
+the following percentiles in addition to the median 0.1, 1, 5, 95, 99, 99.9,
+the number of occurrences of the mode, the time at mid-exposure and the
+exposure time.  It does this for the left- and right-hand sides of each CCD of
+each exposure, subject to a user-defined maximum. The results are stored in a
+file called runXYZ_stats.fits. The script can only be run from the top-level
+directory containing the raw_data and meta_data directories because it will
+look through the raw directories but store the results in the corresponding
+meta_data directories. It specifically searches for all directories of the
+form YYYY-MM-DD, but you can specify a regular expression to narrow the
 search. e.g. '2010' will find all runs in directories containing 2010, as well
-as having the YYYY-MM-DD format.
-
-This script takes a very long time to complete on the full ULTRACAM archive.
-
-The intention is to add an AUTOID keyword which will have the following outcomes:
-
- bias  -- bias
- data  -- a data frame
- dark  -- dark frame
- sky   -- sky flat field
- tech  -- technical data (internal flats etc)
+as having the YYYY-MM-DD format. In all cases it starts from frame 1.
 """
 
 # builtins
@@ -36,11 +26,12 @@ import pyfits, numpy as np
 # mine
 from trm import ultracam
 
-parser = argparse.ArgumentParser(description=usage)
+parser = argparse.ArgumentParser(description=usage,formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 # optional
 parser.add_argument('--regex', '-r', help='regular expression for matching specific directories')
 parser.add_argument('--overwrite', '-o', action='store_true', help='overwrite existing statistics files or not')
+parser.add_argument('--max', '-m', type=int, default=10000, help='maximum number of frames to analyse')
 
 # OK, done with arguments.
 args = parser.parse_args()
@@ -95,6 +86,10 @@ for rpath, rnames, fnames in os.walk(raw):
             maxrs   = [] # RH maxima
             meanls  = [] # LH means
             meanrs  = [] # RH means
+            p01ls   = [] # LH 0.1%-iles
+            p01rs   = [] # RH 0.1%-iles
+            p1ls    = [] # LH 1%-iles
+            p1rs    = [] # RH 1%-iles
             p5ls    = [] # LH 5%-iles
             p5rs    = [] # RH 5%-iles
             medls   = [] # LH medians
@@ -114,11 +109,22 @@ for rpath, rnames, fnames in os.walk(raw):
             flags   = [] # timing flags
 
             try:
-                rdat = ultracam.Rdata(run,flt=False)
+                rdat   = ultracam.Rdata(run,flt=False)
+                nframe = rdat.ntotal()
+                nskip  = nframe // args.max + 1
                 numMidnight    = 0
                 numFrameErrors = 0
-                for mccd in rdat:
-                    
+
+                # we go through every frame, but if nskip > 1, we only read the data
+                # 1 in every nskip files. We read all times to ensure that we get good 
+                # times in drift and other modes that require them.
+                for nf in xrange(1,nframe):
+                    if (nf-1) % nskip == 0:
+                        mccd = rdat(nf)
+                    else:
+                        rdat.time(nf)
+                        continue
+
                     if mccd.head.value('Data.midnight'):
                         numMidnight += 1
 
@@ -132,6 +138,10 @@ for rpath, rnames, fnames in os.walk(raw):
                     maxr   = []
                     meanl  = []
                     meanr  = []
+                    p01l   = []
+                    p01r   = []
+                    p1l    = []
+                    p1r    = []
                     p5l    = []
                     p5r    = []
                     medl   = []
@@ -151,6 +161,7 @@ for rpath, rnames, fnames in os.walk(raw):
                     flag   = []
 
                     for ccd in mccd:
+                        npix = ccd.npix()
                         # treat left and right sides separately
                         larr, rarr = [], []
                         for winl, winr in zip(ccd[::2],ccd[1::2]):
@@ -165,13 +176,17 @@ for rpath, rnames, fnames in os.walk(raw):
                         maxr.append(rarr.max())
                         meanl.append(larr.mean())
                         meanr.append(rarr.mean())
-                        p5,med,p95,p99,p999 = np.percentile(larr,(5.,50.,95.,99.,99.9))
+                        p01,p1,p5,med,p95,p99,p999 = np.percentile(larr,(0.1,1.,5.,50.,95.,99.,99.9))
+                        p01l.append(p01)
+                        p1l.append(p1)
                         p5l.append(p5)
                         medl.append(med)
                         p95l.append(p95)
                         p99l.append(p99)                        
                         p999l.append(p999)                        
-                        p5,med,p95,p99,p999 = np.percentile(rarr,(5.,50.,95.,99.,99.9))
+                        p01,p1,p5,med,p95,p99,p999 = np.percentile(rarr,(0.1,1.,5.,50.,95.,99.,99.9))
+                        p01r.append(p01)
+                        p1r.append(p1)
                         p5r.append(p5)
                         medr.append(med)
                         p95r.append(p95)
@@ -181,18 +196,17 @@ for rpath, rnames, fnames in os.walk(raw):
                         exp.append(ccd.time.expose)
                         flag.append(ccd.time.good)
                         
-                        hist,bed = np.histogram(larr,65536,(-0.5,65535.5))
+                        hist = np.bincount(larr)
                         imax = np.argmax(hist)
                         nmax = hist[imax]
                         model.append(imax)
                         nmodel.append(nmax)
 
-                        hist,bed = np.histogram(rarr,65536,(-0.5,65535.5))
+                        hist = np.bincount(rarr)
                         imax = np.argmax(hist)
                         nmax = hist[imax]
                         moder.append(imax)
                         nmoder.append(nmax)
-
 
                     minls.append(minl)
                     maxls.append(maxl)
@@ -200,6 +214,10 @@ for rpath, rnames, fnames in os.walk(raw):
                     maxrs.append(maxr)
                     meanls.append(meanl)
                     meanrs.append(meanr)
+                    p01ls.append(p01l)
+                    p01rs.append(p01r)
+                    p1ls.append(p1l)
+                    p1rs.append(p1r)
                     p5ls.append(p5l)
                     p5rs.append(p5r)
                     medls.append(medl)
@@ -220,6 +238,9 @@ for rpath, rnames, fnames in os.walk(raw):
 
                 dataProblem = False
 
+            except ultracam.PowerOnOffError, err:
+                # silently pass these ones
+                pass
             except Exception, err:
                 # Can get here after reading some frames if last is
                 # partial.
@@ -234,6 +255,10 @@ for rpath, rnames, fnames in os.walk(raw):
                 flags   = np.array(flags)
                 minls   = np.array(minls)
                 minrs   = np.array(minrs)
+                p01ls   = np.array(p01ls)
+                p01rs   = np.array(p01rs)
+                p1ls    = np.array(p1ls)
+                p1rs    = np.array(p1rs)
                 p5ls    = np.array(p5ls)
                 p5rs    = np.array(p5rs)
                 medls   = np.array(medls)
@@ -257,15 +282,19 @@ for rpath, rnames, fnames in os.walk(raw):
                 # followed by tables for each CCD
                 phdu             = pyfits.PrimaryHDU()
                 head             = phdu.header
-                head['NFRAME']   = (len(maxrs),'Number of frames')
+                head['NFRAME']   = (nframe,'Total number of frames in file')
+                head['NSKIP']    = (nskip,'ustats skip distance(1=all read)')
+                head['NMAX']     = (args.max,'maximum number of frames to analyse')
+                head['NANAL']    = (len(tims),'actual number of frames analysed')
                 head['SPEED']    = (rdat.gainSpeed,'Readout speed hex code')
                 head['XBIN']     = (rdat.xbin,'X pixel binning factor')
                 head['YBIN']     = (rdat.ybin,'Y pixel binning factor')
+                head['NPIX']     = (rdat.npix(),'Total number of binned pixels')
                 head['MODE']     = (rdat.mode,'Window readout mode')
-                head['MIDNIGHT'] = (rdat.mode,'Number of midnight-bug corrections')
-                head['FERROR']   = (rdat.mode,'Number of frame number clashes')
+                head['MIDNIGHT'] = (numMidnight,'Number of midnight-bug corrections')
+                head['FERROR']   = (numFrameErrors,'Number of frame number clashes')
                 head['DERROR']   = (dataProblem,'Flags possible problems with raw data file')
-                head[''] = ''
+                head['']         = '-------'
                 head['COMMENT'] = 'File of statistsics with one table per CCD'
                 head['COMMENT'] = 'For each frame of a run this records the following:'
                 head['COMMENT'] = 'MJD, Expose, Good -- exposure mid-time & length, and timing status flag'
@@ -275,6 +304,7 @@ for rpath, rnames, fnames in os.walk(raw):
                 head['COMMENT'] = 'medl,medr     -- medians of left- and right-hand windows'
                 head['COMMENT'] = 'model,moder   -- modes of left- and right-hand windows'
                 head['COMMENT'] = 'nmodel,nmoder -- modes of left- and right-hand windows'
+                head['COMMENT'] = 'p1l,p1r       -- 1-percentiles of left- and right-hand windows'
                 head['COMMENT'] = 'p5l,p5r       -- 5-percentiles of left- and right-hand windows'
                 head['COMMENT'] = 'p95l,p95r     -- 95-percentiles of left- and right-hand windows'
                 head['COMMENT'] = 'p99l,p99r     -- 99-percentiles of left- and right-hand windows'
@@ -292,6 +322,10 @@ for rpath, rnames, fnames in os.walk(raw):
                     c.append(pyfits.Column(name='Good', format='L', array=flags[:,nc]))
                     c.append(pyfits.Column(name='minl', format='E', unit='DN', array=minls[:,nc]))
                     c.append(pyfits.Column(name='minr', format='E', unit='DN', array=minrs[:,nc]))
+                    c.append(pyfits.Column(name='p01l', format='E', unit='DN', array=p01ls[:,nc]))
+                    c.append(pyfits.Column(name='p01r', format='E', unit='DN', array=p01rs[:,nc]))
+                    c.append(pyfits.Column(name='p1l', format='E', unit='DN', array=p1ls[:,nc]))
+                    c.append(pyfits.Column(name='p1r', format='E', unit='DN', array=p1rs[:,nc]))
                     c.append(pyfits.Column(name='p5l', format='E', unit='DN', array=p5ls[:,nc]))
                     c.append(pyfits.Column(name='p5r', format='E', unit='DN', array=p5rs[:,nc]))
                     c.append(pyfits.Column(name='meanl', format='E', unit='DN', array=meanls[:,nc]))
@@ -318,7 +352,7 @@ for rpath, rnames, fnames in os.walk(raw):
                             tims[-1,nc]-tims[0,nc] > 0.5 or tims[:,nc].min() < ultracam.FIRST:
                         timingError = True
 
-                head['TIMEOK'] = (timingError, 'Flags possible problems with the times')
+                head['TERROR'] = (timingError, 'Flags possible problems with the times')
                 hdulist = pyfits.HDUList(hdul)
                 hdulist.writeto(stat, clobber=True)
             else:
