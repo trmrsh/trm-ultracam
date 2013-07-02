@@ -1,0 +1,151 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[dvips]{graphicx}
+\renewcommand{\d}{\mathrm{d}}
+\setlength{\textwidth}{160mm}
+\setlength{\oddsidemargin}{0mm}
+\setlength{\evensidemargin}{0mm}
+
+\newcommand{\dt}[1]{\texttt{#1}}
+
+\begin{document}
+
+\begin{center}
+{\bf\large ULTRACAM run classification}\\
+{\bf Tom Marsh, July 2013}
+\end{center}
+
+\section{Introduction}
+ULTRACAM is a high-speed astronomical camera that works in three wavebands
+simultaneously to take time-series images of the sky in order to study
+time-variable astronomical objects. The detectors are CCDs 1024x1024 square.
+ULTRACAM has been running since May 2002 and has had over 300 nights on
+telescopes. An archive of around 9TB has been built up. These date need to be
+``reduced'' to simply one measurement per CCD per exposure. We have used a
+fairly hands-on reduction ``pipeline'' but use of these data would be greatly
+facilitated by an automatic reduction of all data just to see what is
+present. Unfortunately this is essentially impossible at the moment because we
+do not have a reliable classifcation of the various types of runs. I have come
+to the conclusion that the only way forward is a classification by eye of all
+the runs. This represents a considerable amount of effort, so the more people
+who carry it out the better. The purpose of this document is to help
+relatively inexperienced classifiers get started.
+
+The two most important principles of the classification are
+\begin{enumerate}
+\item \emph{It is \underline{much} better to be sure that to be fast!} i .e. if
+  you are unsure of a run's type, mark it \dt{unsure} for later checking, do not
+  simply choose a category in order to move on. Take your time in
+  deciding. This cannot be emphasized enough. Unreliable classification is
+  worse than none at all.
+
+\item \emph{If you notice something unusual, comment upon it.} You can type 
+a comment for each run. If you don't, to some extent the effort of looking at
+the images is going to waset.
+\end{enumerate}
+
+\section{Different data types}
+ULTRACAM's basic purpose is to measure the amount of light coming from
+astronomical objects. It does this by accumulating ``counts'' in ``picture
+elements'' (hereafter pixels). Each pixel corresponds to a place on the sky
+determined by the pointing of the telescope during the observation. ULTRACAM's
+field of view is small, around 6 arcminutes or 1/5$^\mathrm{th}$ of the
+angular diameter of the Moon. A count is directly related to the number of
+electrons captured in a pixels following the detection of photons (particles
+of light) which generate electron/hole pairs in the detector. In ULTRACAM,
+the relation is close to 1-to-1 counts vs electrons.
+
+In addition to the ``science'' data, there are a variety of other types,
+including some that simply have to be classified as ``junk''. The main purpose
+of the classification is to decide whether a frame is science, junk etc. This
+is facilitated by a scrip called ``\dt{rchecker.py}''. The complete list of
+data types recognised by \dt{rchecker.py} and their meanings is as follows:
+\begin{enumerate}
+
+\item \dt{acquisition}: when first moving to a target it usually takes at
+  least a few frames, and sometimes more, to define its precise position an
+  orientation. One often ends up with sequence of images in which the targets
+  change position. These are useful for later working out where the target is,
+  but not for scientific data because the flux will vary in unpredictable
+  ways. Such frames should be classified as \dt{acquisition}. Note that one
+  should prefer if possible to classify data frames as \dt{science} (see
+  below), so \dt{acquisition} should be reserved for runs where there is
+  clearly something wrong compared to a classic science run. Usually this will
+  be a change is position, possibly multiple times.
+
+\item \dt{bias}: even a zero second exposure on a CCD will return ``counts''
+  but these are an artefact of the electronics and known as the ``bias
+  level''. One of the first steps in data reduction is to remove this bias, in
+  order to measure the true number of counts in each pixel. This requires
+  measuring the bias level by taking short exposure frames with as little
+  light getting to the detectors as possible. This means all lights off in the
+  telescope dome, and trying to block the light path. A well-taken bias should
+  have no obvious images on it. There are many such frames in the ULTRACAM
+  archive. Only classify a run as \dt{bias} if there are no evident problems
+  with it. This is one type of frame where a certain level of automated
+  checking is possible, but it is still important to make the classification.
+
+\item \dt{dark}: if one exposes a CCD with zero light, counts still pile up on
+  top of the bias to to thermal excitation. These are called ``dark
+  counts''. They have the nasty property of varying considerably from 
+  pixel-to-pixel. To calibrate these, we need exposures with zero light. These
+  are classified as \dt{dark}. They are in fact very difficult to get right
+  because it is hard to ensure a complete absence of light. Look for comments
+  in the logs: ``dome closed'', ``lights off'', ``mirror in beam'' etc which
+  show that the observers have been careful. A short exposure \dt{dark} will
+  look very similar to a \dt{bias}. If in doubt, mark \dt{unsure}, and make a
+  comment about what you were unsure about.
+
+\item \dt{flat}: the pixels of CCDs vary slightly from each other in
+  sensitivity. To calibrate this one takes images of a uniformly lit
+  scene. The usual ``object'' of choice is the twilight blue sky. These
+  produce images known as ``flat fields'', with type \dt{flat}. Ideally they 
+  have a large number of counts to reduce the noise. The maximum number of
+  counts $= 2^{16} - 1 = 65535$ (set by the 16-bits used to store each pixel),
+  however the ULTRACAM chips are not actually reliable up to this
+  level. Instead a phenomenon we call ``peppering'' affects the green and blue
+  CCDs at levels of around 28,000 or more. 
+
+\item \dt{flux}: to calibrate the overall system throughput, observations of
+  stars called ``flux standards'' are taken. These are constant stars whose
+  brightnesses have been carefully measured by others. Flux standard runs are
+  often marked as such, but otherwise they typically happen during the period
+  immediately after and before twilight in the evening and morning, and
+  involve a bright star moved into the right-hand half of the CCDs. 
+
+\item \dt{junk}: data of no use at all. Examples are runs with all CCDs
+  saturated, affected by readout problems, all zeroes, or just no stars
+  visible but some light getting on to the CCDs. Please be absolutely sure
+  before deciding to call a run \dt{junk} because it carries the implication
+  that we would lose nothing by deleting the data.
+
+\item \dt{publicity}: ``pretty pictures'' for publicity. Galaxies, nebulae and
+  the like, which are not of interest from a time-variability perspective.
+
+\item \dt{science}: the runs which actually produce what we are after. These
+  should generally be as dull as possible -- long sequence of images, all in
+  the same place. Sometimes the telescope will drift off position, and you
+  might then see the objects move at the end of a run. These should still be
+  classified as \dt{science} if you think there is any worthwhile data there.
+  If you see any translation or rotation during a run, \textbf{comment on it}!
+  You may also see the objects disappear, perhaps because of clouds. If you do
+  \textbf{comment on it}! Such comments will be invaluable for diagnosing
+  problems with the automated pipeline.
+
+\item \dt{technical}: a miscellaneous category to cover test data that does
+  not fit into any other bin. e.g. noise tests where successively brighter
+  frames are taken to calibrate the noise characteristics of the CCDs.
+
+\item \dt{unsure}: this one is an easy one. If you can't decide on the data
+  type, mark is an \dt{unsure}. Write a comment to explain which categories
+  you were trying to decide between.
+
+\end{enumerate}
+
+
+\section{Filters}
+
+As well as the data type, you will need to decide upon the filters in use.
+
+\end{document}
+
+
