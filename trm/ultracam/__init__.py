@@ -18,17 +18,16 @@ MCCD object. For more examples of usage, see the script demo.py
 
 # standard imports
 import xml.dom.minidom
-import numpy as np
 import warnings
-import struct
-import datetime
+import struct, datetime, re
+
+# third-party
+import numpy as np
 try:
     import matplotlib.pyplot as plt
 except:
     warnings.warn('Failed to import matplotlib')
 import matplotlib.cm     as cm
-
-# less widely known extras
 import ppgplot as pg
 
 # Various constants to do with past runs in the main.
@@ -56,6 +55,7 @@ BIAS_CHANGES    = (52450,52850,53900)
 # are not values in all cases.
 BIAS_LEVELS = {'cdd' : (
         ((1975,2050),(1825,1848),(1830,2020)),
+        ((2125,2180),(1985,2040),(2290,2190)),
         ((2125,2180),(1985,2040),(2390,2190)),
         ((2245,2300),(2150,2210),(2470,2360)),
         ((1635,1695),(1532,1562),(1835,1685))
@@ -307,83 +307,196 @@ class Odict(dict):
         except AttributeError:
             self._keys = [key]
 
-class Window(np.ndarray):
+class Window(object):
     """
-    Subclass of numpy.ndarray to represent a window of a CCD. The numpy part
-    contains the data. The extra attributes are:
+    Class to represent a window of a CCD. Contains a numpy.ndarray
+    along with the following attributes:
+
      llx, lly     -- lower-left pixels of window
      xbin, ybin   --  pixel binning factors
 
-    Thus a Window is a numpy array that knows where it is in a detector.
+    Indexed access to the numpy array is provided so that some 
+    numpy-like expressions work:
+
+    win = Window(data, 1, 2, 3, 4)
+    print win[0][1], win[0,1]
     """
 
-    def __new__(cls, data, llx, lly, xbin, ybin):
+    def __init__(self, data, llx, lly, xbin, ybin):
         """
         Creates  a Window given some data, a lower-left
         pixel position and binning factors.
+
+        data  -- a 2D numpy.ndarray
+        llx   -- X position of left-most pixels in the window.
+        lly   -- Y position of lowest pixels in the window.
+        xbin  -- X binning factor
+        ybin  -- Y binning factor
+        """
+        if len(data.shape) != 2:
+            raise UltracamError('Window._init__: data must be 2D')
+        self._arr = data
+        self.llx  = llx
+        self.lly  = lly
+        self.xbin = xbin
+        self.ybin = ybin
+
+    @property
+    def data(self):
+        """
+        The data array (2D numpy.ndarray)
+        """
+        return self._arr
+
+    @data.setter
+    def data(self, arr):
+        if len(arr.shape) != 2:
+            raise UltracamError('Window.data: arr must be 2D')
+        self._arr = arr
+
+    @property
+    def nx(self):
+        """
+        The X dimension in binned pixels
+        """
+        return self._arr.shape[1]
+
+    @property
+    def ny(self):
+        """
+        The Y dimension in binned pixels
+        """
+        return self._arr.shape[0]
+
+    @property
+    def dtype(self):
+        """
+        Type of data stored in the array
+        """
+        return self._arr.dtype
+
+    @property
+    def size(self):
+        """
+        Total number of binned pixels
+        """
+        return self._arr.size
+
+    def astype(self, dtype):
+        """
+        Returns the data as a numpy.ndarray with data type = dtype, (e.g. np.uint16) 
+        rounding if converting from a non-integer to an integer type
+        """
+        if issubclass(dtype, np.integer) and issubclass(self._arr.dtype.type,np.integer):
+            return self._arr.astype(dtype)
+        elif issubclass(dtype, np.integer):
+            return np.rint(self._arr).astype(dtype)
+        else:
+            return self._arr.astype(dtype)
+
+    def totype(self, dtype):
+        """
+        Converts the internal data to have data type = dtype, 
+        rounding if converting from a non-integer to an integer type
+        """
+        if issubclass(dtype, np.integer) and issubclass(self._arr.dtype.type,np.integer):
+            self._arr = self._arr.astype(dtype)
+        elif issubclass(dtype, np.integer):
+            self._arr = np.rint(self._arr).astype(dtype)
+        else:
+            self._arr = self._arr.astype(dtype)
+
+    def min(self):
+        """
+        Returns the minimum value of the Window
+        """
+        return self._arr.min()
+
+    def max(self):
+        """
+        Returns the maximum value of the Window
+        """
+        return self._arr.max()
+
+    def mean(self):
+        """
+        Returns the mean value of the Window
+        """
+        return self._arr.mean()
+
+    def median(self):
+        """
+        Returns the median value of the Window
+        """
+        return np.median(self._arr)
+
+    def flatten(self):
+        """
+        Returns a 1D version of the data of the Window
+        """
+        return self._arr.flatten()
+
+    def sum(self):
+        """
+        Returns the sum of the data values of the Window
+        """
+        return self._arr.sum()
+
+    def canCropTo(self, other):
+        """
+        Determines whether the Window has the correct format to be 
+        cropped to match other. For this to be the case, the Window 
+        has to equal or exceed 'other' in area, have the same binning
+        factors, and its pixels must be in step.
         """
 
-        obj = np.asarray(data).view(cls)
+        return (self.xbin == other.xbin and self.ybin == other.ybin and
+                self.llx <= other.llx and self.lly <= other.lly and 
+                self.llx + self.xbin*self.nx >= other.llx + other.xbin*other.nxo and
+                self.lly + self.ybin*self.ny >= other.lly + other.ybin*other.nyo and
+                (self.llx - other.llx) % self.xbin == 0 and
+                (self.lly - other.lly) % self.ybin == 0)
 
-        # set the extra attributes
-        obj.llx   = llx
-        obj.lly   = lly
-        obj.xbin  = xbin
-        obj.ybin  = ybin
-
-        # Return the newly created object:
-        return obj
-
-    def __array_finalize__(self, obj):
-        # See the scipy web pages on subclassing ndarray objects
-        if obj is None: return
-
-        self.llx   = getattr(obj,'llx',0)
-        self.lly   = getattr(obj,'lly',0)
-        self.xbin  = getattr(obj,'xbin',0)
-        self.ybin  = getattr(obj,'ybin',0)
+    def cropTo(self, other):
+        """
+        Crops the Window to match the format of 'other',
+        returning the cropped Window. The Window itself is
+        unchanged.
         
-    def __array_wrap__(self, obj):
+        Raises an UltracamError if it is not possible
+
+        other -- the Window to crop to.
         """
-        This is to allow for the case when a single number is returned, e.g. by max()
-        In this case rather than returning a Window of a zero-ranked array, we just
-        return the number, losing the attributes
-        """
-        if len(obj.shape) == 0:
-            return obj[()]
+        if self.canCropTo(other):
+            x1 = (other.llx-self.llx) // self.xbin
+            x2 = x1 + other.nx
+            y1 = (other.lly-self.lly) // self.ybin
+            y2 = y1 + other.ny
+            return Window(self._arr[y1:y2,x1:x2], other.llx, other.lly, other.xbin, other.ybin)
         else:
-            return np.ndarray.__array_wrap__(self, obj)
+            raise UltracamError('Window.cropTo: Window cannot be cropped to "other"') 
 
-    def __str__(self):
-        ret  = '  llx, lly = ' + str(self.llx) + ', ' + str(self.lly) + \
-            '; nx, ny = ' + str(self.shape[1]) + ', ' + str(self.shape[0]) + \
-            '; xbin, ybin = ' + str(self.xbin) + ', ' + str(self.ybin) + '\n'
-        ret += np.ndarray.__str__(self) + ', dtype = ' + str(self.dtype)
-        return ret
+    def trim(self, nleft, nright, nbottom, ntop):
+        """
+        Clips off rows and columns from a Window, and shifts the
+        lower-left pixel correspondingly.
 
-    def __eq__(self, other):
+        nleft    -- number of columns on left to remove
+        nright   -- number of columns on right to remove
+        nbottom  -- number of rows on bottom to remove
+        ntop     -- number of rows on top to remove
         """
-        Equality of two windows is defined by their matching binned dimensions
-        lower-left pixel and binning-factors.
-        """
-        if type(other) is type(self):
-            return (self.llx == other.llx and self.lly == other.lly and 
-                    self.xbin == other.xbin and self.ybin == other.ybin and
-                    self.shape == other.shape)
-        else:
-            return NotImplemented  
-
-    def __neq__(self, other):
-        """
-        Negation of equality operator.
-        """
-        if type(other) is type(self):
-            return (self.llx != other.llx or self.lly != other.lly or
-                    self.xbin != other.xbin or self.ybin != other.ybin or
-                    self.shape != other.shape)
-
-        else:
-            return NotImplemented  
+        if nleft != 0 or nright != 0 or nbottom != 0 or ntop != 0:
+            if ntop and nright:
+                self._arr = self._arr[nbottom:-ntop,nleft:-nright]
+            elif ntop:
+                self._arr = self._arr[nbottom:-ntop,nleft:]
+            elif nright:
+                self._arr = self._arr[nbottom:,nleft:-nright]
+            else:
+                self._arr = self._arr[nbottom:,nleft:]
+            self.llx += nleft*self.xbin
+            self.lly += nbottom*self.ybin
 
     def plot(self, vmin, vmax, mpl=False, cmap=cm.binary):
         """
@@ -396,14 +509,98 @@ class Window(np.ndarray):
         mpl    -- True for matplotlib, otherwise pgplot
         cmap   -- colour map if mpl
         """
-        ny, nx = self.shape
         if mpl:
-            limits = self.llx-0.5,self.llx+self.xbin*nx-0.5,self.lly-0.5,self.lly+self.ybin*ny-0.5
-            plt.imshow(np.asarray(self), cmap=cmap, interpolation='nearest', \
+            limits = self.llx-0.5,self.llx+self.xbin*self.nx-0.5,self.lly-0.5,self.lly+self.ybin*self.ny-0.5
+            plt.imshow(self._arr, cmap=cmap, interpolation='nearest', \
                            vmin=vmin, vmax=vmax, origin='lower', extent=limits)
         else:
             tr = np.array([self.llx-self.xbin,self.xbin,0,self.lly-self.ybin,0,self.ybin])
-            pg.pggray(self,0,nx-1,0,ny-1,vmax,vmin,tr)
+            pg.pggray(self._arr,0,self.nx-1,0,self.ny-1,vmax,vmin,tr)
+
+    def __getitem__(self, i):
+        """
+        Returns arr[i] where arr is the internal ndarray data.
+
+        Example:
+
+        win  = Window(data,10,10,2,2)
+        print win[10:-10,10:-10]
+
+        Will print the specified slice of the stored data.
+        """
+        return self._arr[i]
+
+    def __str__(self):
+        ret  = '  llx, lly = ' + str(self.llx) + ', ' + str(self.lly) + \
+            '; nx, ny = ' + str(self.nx) + ', ' + str(self.ny) + \
+            '; xbin, ybin = ' + str(self.xbin) + ', ' + str(self.ybin) + '\n'
+        ret += str(self._arr) + ', dtype = ' + str(self._arr.dtype)
+        return ret
+
+    def __eq__(self, other):
+        """
+        Tests quality of two Windows. True if the binned dimensions,
+        binning factors and lower-left pixels all match.
+        """
+        return (self.llx == other.llx and self.lly == other.lly and 
+                self.xbin == other.xbin and self.ybin == other.ybin and
+                self.nx == other.nx and self.ny == other.ny)
+
+    def __neq__(self, other):
+        """
+        Negation of the equality operator.
+        """
+        return (self.llx != other.llx or self.lly != other.lly or
+                self.xbin != other.xbin or self.ybin != other.ybin or
+                self.nx != other.nx or self.ny != other.ny)
+
+    def __iadd__(self, other):
+        if isinstance(other, Window):
+            self._arr += other._arr
+        else:
+            self._arr += other
+
+    def __isub__(self, other):
+        if isinstance(other, Window):
+            self._arr -= other._arr
+        else:
+            self._arr -= other
+
+    def __imul__(self, other):
+        if isinstance(other, Window):
+            self._arr *= other._arr
+        else:
+            self._arr *= other
+
+    def __idiv__(self, other):
+        if isinstance(other, Window):
+            self._arr /= other._arr
+        else:
+            self._arr /= other
+
+    def __add__(self, other):
+        if isinstance(other, Window):
+            return Window(self._arr + other._arr, self.llx, self.lly, self.xbin, self.ybin)
+        else:
+            return Window(self._arr + other, self.llx, self.lly, self.xbin, self.ybin)
+
+    def __sub__(self, other):
+        if isinstance(other, Window):
+            return Window(self._arr - other._arr, self.llx, self.lly, self.xbin, self.ybin)
+        else:
+            return Window(self._arr - other, self.llx, self.lly, self.xbin, self.ybin)
+
+    def __mul__(self, other):
+        if isinstance(other, Window):
+            return Window(self._arr * other._arr, self.llx, self.lly, self.xbin, self.ybin)
+        else:
+            return Window(self._arr * other, self.llx, self.lly, self.xbin, self.ybin)
+
+    def __div__(self, other):
+        if isinstance(other, Window):
+            return Window(self._arr / other._arr, self.llx, self.lly, self.xbin, self.ybin)
+        else:
+            return Window(self._arr / other, self.llx, self.lly, self.xbin, self.ybin)
 
 class Time(object):
     """
@@ -744,9 +941,9 @@ class CCD(list):
         """
         for win in self:
             if single:
-                win = win.astype(np.float32)
+                win.totype(np.float32)
             else:
-                win = win.astype(np.float64)
+                win.totype(np.float64)
 
     def toInt(self):
         """
@@ -757,7 +954,7 @@ class CCD(list):
         for win in self:
             if win.min() < 0 or win.max() > 65535:
                 warnings.warn('CCD.toInt: input data out of range 0 to 65535')
-            win = np.rint(win).astype(np.uint16)
+            win.totype(np.uint16)
         
     def mean(self):
         """
@@ -860,6 +1057,41 @@ class CCD(list):
     def append(self, item):
         raise NotImplementedError
 
+    def canCropTo(self, ccd):
+        """
+        Determines whether the CCD is croppable to the format of ccd.
+        It does this by checking that each Window of ccd is enclosed
+        by a Window of the CCD.
+        """
+        if self.nxmax != ccd.nxmax or self.nymax != ccd.nymax:
+            return False
+
+        for wino in ccd:
+            for win in self:
+                if win >= wino: break
+            else:
+                return False
+        return True
+
+    def cropTo(self, ccd):
+        """
+        Crops the CCD to match ccd returning the cropped
+        CCD with the CCD itself unchanged. Raises an UltracamError 
+        if it does not succeed.
+        """
+        if self.nxmax != ccd.nxmax or self.nymax != ccd.nymax:
+            raise UltracamError('CCD.crop: maximum dimensions did not match')
+        
+        wins = []
+        for wino in ccd:
+            for win in self:
+                if win >= wino:
+                    wins.append(win.crop(wino))
+                    break
+            else:
+                raise UltracamError('CCD.crop: could not crop CCD to match argument')
+        return CCD(wins, self.time, self.nxmax, self.nymax, self.good, self.head)
+        
     # arithematic
     def __iadd__(self, other):
         """
@@ -1085,6 +1317,19 @@ class MCCD(list):
 
         return cls(data, head)
 
+    def crop(self, mccd):
+        """
+        Crops the MCCD to match mccd if possible, returns the cropped
+        MCCD. Raises an UltracamError if it does not succeed.
+        """
+        if len(self) != len(mccd):
+            raise UltracamError('MCCD.crop: number of CCDs did not match')
+
+        ccds = []
+        for ccd, ccdo in zip(self, mccd):
+            ccds.append(ccd.crop(ccdo))
+        return MCCD(ccds, self.head)
+
     def __eq__(self, other):
         """
         Equality operator tests same number of CCDs and that each CCD matches.
@@ -1183,16 +1428,12 @@ class MCCD(list):
             uf.write(struct.pack('i', nwin))
 
             for win in ccd:
-                ny,nx   = win.shape
-                uf.write(struct.pack('9i',win.llx,win.lly,nx,ny,win.xbin,win.ybin,
+                uf.write(struct.pack('9i',win.llx,win.lly,win.nx,win.ny,win.xbin,win.ybin,
                                      ccd.nxmax,ccd.nymax,iout))
                 if iout == 0:
                     win.astype(np.float32).tofile(uf)
                 elif iout == 1:
-                    if issubclass(win.dtype.type,np.integer):
-                        win.astype(np.uint16).tofile(uf)
-                    else:
-                        np.rint(win).astype(np.uint16).tofile(uf)
+                    win.astype(np.uint16).tofile(uf)
 
         uf.close()
 
@@ -1451,7 +1692,7 @@ class MCCD(list):
         else:
             return tuple(prange)
 
-class Win(object):
+class _Win(object):
     """
     Trivial container class for basic window info
     to help readability of code
@@ -1577,7 +1818,7 @@ class Rhead (object):
         elif app == 'ccd201_driftscan_cfg':
             self.mode    = 'UDRIFT'
         elif app == 'ap1_poweron' or app == 'ap1_250_poweron' or app == 'ap2_250_poweroff' \
-                or app == 'appl1_pon_cfg':
+                or app == 'appl1_pon_cfg' or app == 'appl2_pof_cfg':
             self.mode = 'PONOFF'
             return
         else:
@@ -1591,7 +1832,11 @@ class Rhead (object):
         self.win = []
         fsize = 2*self.headerwords
         if self.instrument == 'ULTRACAM':
-            self.exposeTime = float(param['EXPOSE_TIME'])
+            try:
+                self.exposeTime = float(param['EXPOSE_TIME'])
+            except ValueError, err:
+                raise UltracamError('Rhead.__init__: file = ' + self.fname + ' failed to interpret EXPOSE_TIME')
+
             self.numexp     = int(param['NO_EXPOSURES'])
             self.gainSpeed  = hex(int(param['GAIN_SPEED']))[2:] if 'GAIN_SPEED' in param else None
 
@@ -1605,19 +1850,19 @@ class Rhead (object):
             self.nblue    = int(param['NBLUE']) if 'NBLUE' in param else 1
 
             if self.mode == 'FFCLR' or self.mode == 'FFNCLR':
-                self.win.append(Win(  1, 1, 512//self.xbin, 1024//self.ybin))
-                self.win.append(Win(513, 1, 512//self.xbin, 1024//self.ybin))
+                self.win.append(_Win(  1, 1, 512//self.xbin, 1024//self.ybin))
+                self.win.append(_Win(513, 1, 512//self.xbin, 1024//self.ybin))
             elif self.mode == 'FFOVER':
-                self.win.append(Win(  1, 1, 540//self.xbin, 1032//self.ybin))
-                self.win.append(Win(541, 1, 540//self.xbin, 1032//self.ybin))
+                self.win.append(_Win(  1, 1, 540//self.xbin, 1032//self.ybin))
+                self.win.append(_Win(541, 1, 540//self.xbin, 1032//self.ybin))
             else:
                 ystart = int(param['Y1_START'])
                 xleft  = int(param['X1L_START'])
                 xright = int(param['X1R_START'])
                 nx     = int(param['X1_SIZE']) // self.xbin
                 ny     = int(param['Y1_SIZE']) // self.ybin
-                self.win.append(Win(xleft, ystart, nx, ny))
-                self.win.append(Win(xright, ystart, nx, ny))
+                self.win.append(_Win(xleft, ystart, nx, ny))
+                self.win.append(_Win(xright, ystart, nx, ny))
             
             fsize += 12*self.win[-1].nx*self.win[-1].ny
 
@@ -1627,8 +1872,8 @@ class Rhead (object):
                 xright = int(param['X2R_START'])
                 nx     = int(param['X2_SIZE']) // self.xbin
                 ny     = int(param['Y2_SIZE']) // self.ybin
-                self.win.append(Win(xleft, ystart, nx, ny))
-                self.win.append(Win(xright, ystart, nx, ny))
+                self.win.append(_Win(xleft, ystart, nx, ny))
+                self.win.append(_Win(xright, ystart, nx, ny))
                 fsize += 12*self.win[-1].nx*self.win[-1].ny
 
             if self.mode == '3-PAIR':
@@ -1637,8 +1882,8 @@ class Rhead (object):
                 xright = int(param['X3R_START'])
                 nx     = int(param['X3_SIZE']) // self.xbin
                 ny     = int(param['Y3_SIZE']) // self.ybin
-                self.win.append(Win(xleft,ystart,nx,ny))
-                self.win.append(Win(xright,ystart,nx,ny))
+                self.win.append(_Win(xleft,ystart,nx,ny))
+                self.win.append(_Win(xright,ystart,nx,ny))
                 fsize += 12*self.win[-1].nx*self.win[-1].ny
 
         elif self.instrument == 'ULTRASPEC':
@@ -1655,7 +1900,7 @@ class Rhead (object):
             ystart = int(param['Y1_START'])
             nx     = int(param['X1_SIZE']) // self.xbin
             ny     = int(param['Y1_SIZE']) // self.ybin
-            self.win.append(Win(xstart,ystart,nx,ny))
+            self.win.append(_Win(xstart,ystart,nx,ny))
             fsize += 2*self.win[-1].nx*self.win[-1].ny
 
             if self.mode == '2-USPEC':
@@ -1663,7 +1908,7 @@ class Rhead (object):
                 ystart = int(param['Y2_START'])
                 nx     = int(param['X2_SIZE']) // self.xbin
                 ny     = int(param['Y2_SIZE']) // self.ybin
-                self.win.append(Win(xstart,ystart,nx,ny))
+                self.win.append(_Win(xstart,ystart,nx,ny))
                 fsize += 2*self.win[-1].nx*self.win[-1].ny
 
         if fsize != self.framesize:
@@ -1700,6 +1945,9 @@ class Rhead (object):
 
         # convert to seconds
         self.exposeTime *= self.timeUnits
+
+        self.target  = user['target'] if user and 'target' in user else None
+        self.filters = user['filters'] if user and 'filters' in user else None
 
     def npix(self):
         """
@@ -1905,18 +2153,18 @@ class Rdata (Rhead):
             for wl, wr in zip(self.win[::2],self.win[1::2]):
                 npix = 6*wl.nx*wl.ny
                 if flt:
-                    wins1.append(Window(np.reshape(buff[noff:noff+npix:6],(wl.ny,wl.nx)),
-                                        wl.llx,wl.lly,xbin,ybin).astype(np.float32))
-                    wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
-                                        wr.llx,wr.lly,xbin,ybin).astype(np.float32))
-                    wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6],(wl.ny,wl.nx)),
-                                        wl.llx,wl.lly,xbin,ybin).astype(np.float32))
-                    wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
-                                        wr.llx,wr.lly,xbin,ybin).astype(np.float32))
-                    wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6],(wl.ny,wl.nx)),
-                                        wl.llx,wl.lly,xbin,ybin).astype(np.float32))
-                    wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
-                                        wr.llx,wr.lly,xbin,ybin).astype(np.float32))
+                    wins1.append(Window(np.reshape(buff[noff:noff+npix:6].astype(np.float32),(wl.ny,wl.nx)),
+                                        wl.llx,wl.lly,xbin,ybin))
+                    wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,::-1],
+                                        wr.llx,wr.lly,xbin,ybin))
+                    wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6].astype(np.float32),(wl.ny,wl.nx)),
+                                        wl.llx,wl.lly,xbin,ybin))
+                    wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,::-1],
+                                        wr.llx,wr.lly,xbin,ybin))
+                    wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6].astype(np.float32),(wl.ny,wl.nx)),
+                                        wl.llx,wl.lly,xbin,ybin))
+                    wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,::-1],
+                                        wr.llx,wr.lly,xbin,ybin))
                 else:
                     wins1.append(Window(np.reshape(buff[noff:noff+npix:6],(wl.ny,wl.nx)),
                                         wl.llx,wl.lly,xbin,ybin))
@@ -2851,6 +3099,60 @@ def blevs(mjd, mode):
     ind   = np.searchsorted(BMJDS, mjd)
     return BIAS_LEVELS[mode][ind]
 
+class Log(object):
+    """
+    Class to read and store log file data. These come in two formats:
+
+    1) Old style: run, target name, filters, comment
+    2) New style: run, comment (target names are in the xml files)
+
+    The class just stores the data in dictionaries 'comment',
+    'target', and 'filters'; 'format' is an integer specifying 
+    the format as above. 'target' and 'filters' are blank in 
+    the case of format == 2. It is assumed in this case that 
+    they are present in corresponding xml files. The dictionaries
+    are keyed on the run id, i.e. 'run005'
+    """
+
+    def __init__(self, fname):
+        """
+        Constructs a new Log given a file. Makes empty
+        dictionaries if none found and reports an error
+        """
+        self.format  = 2
+        self.target  = {}
+        self.filters = {}
+        self.comment = {}
+
+        rec    = re.compile('file\s+object\s+filter', re.I)
+        old    = re.compile('\s*(\S+)\s+(\S+)\s+(.*)$')
+        oldii  = re.compile('\s*(\S+)\s*$')
+        f  = open(fname)
+        for line in f:
+            m = rec.search(line)
+            if m:
+                self.format = 1
+                if len(self.comment):
+                    raise UltracamError('Error in night log = ' + fname + ', line = ' + line)
+
+            if line.startswith('run'):
+                run = line[:6]
+                if self.format == 2:
+                    self.comment[run] = line[6:].strip()
+                else:
+                    m = old.search(line[6:])
+                    if m:
+                        self.target[run]  = m.group(1)
+                        self.filters[run] = m.group(2)
+                        self.comment[run] = m.group(3)
+                    else:
+                        m = oldii.search(line[6:])
+                        if m:
+                            self.target[run]  = m.group(1)
+                        else:
+                            self.target[run]  = 'UNKNOWN'
+                        self.filters[run] = 'UNKNOWN'
+                        self.comment[run] = ''
 
 # Exception classes
 class UltracamError(Exception):
