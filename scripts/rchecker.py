@@ -33,11 +33,11 @@ which the changes have occurred. It is quite easy for mistakes to occur, so
 take care if there have been changes.
 
 The program stores the results in a google spreadsheet called "ULTRACAM run
-IDs" or in a local file. The latter can be added later manually using the
-import mechanism on the google spreadsheet, appending to what is there already
-and using "|" as a custom separation character. The latter means you should
-not have any "|" characters in your input or everything will become hopelessly
-confused. If you can manage it, the direct upload method is to be preferred.
+IDs" or in a local tab-separated-value (tsv) file. The latter can be added
+later manually using the import mechanism on the google spreadsheet, appending
+to what is there already. The google spreadsheet automatically recognises the
+use of the tab separator, so probably wise not to include any tabs in your
+input.  Can't think why you would in fact.
 
 To use the google spreadsheet upload mechanism will require my sharing it with
 you and the installation of the google data API, "gdata". It also requires you
@@ -255,17 +255,20 @@ if __name__ == '__main__':
     # list of recognised users
     USERS = {'phsaap' : ('trm', 'tom.r.marsh@gmail.com'), 
              'phslax' : ('mcpb', 'mcpbours@gmail.com'), 
+             'phsjaf' : ('eb',   'elme.breedt@gmail.com'), 
              }
 
     if args.local:
         # store in a local file for later upload
-        logFile = args.local if args.local.endswith('.txt') else args.local + '.txt'
+        logFile = args.local if args.local.endswith('.tsv') else args.local + '.tsv'
         fstore = open(logFile,'a')
     else:
 
+        # more complex part to connect to the right work sheet of a
+        # specific google spreadsheet
+
         import gdata.spreadsheet.service
 
-        # write to google spreadsheet
         if args.email:
             email = args.email
         elif user in USERS:
@@ -286,21 +289,35 @@ if __name__ == '__main__':
         gd_client.ProgrammaticLogin()
 
         sheets = gd_client.GetSpreadsheetsFeed()
-        title  = 'ULTRACAM run IDs'
-        for i, entry in enumerate(sheets.entry):
-            if entry.title.text == title:
-                skey = sheets.entry[i].id.text.split('/')[-1]
+        spread  = 'ULTRACAM run IDs'
+        for entry in sheets.entry:
+            if entry.title.text == spread:
+                skey = entry.id.text.split('/')[-1]
+                print 'Found spreadsheet =',spread
                 break
         else:
-            print 'Failed to find spreadsheet =',title
+            print 'Failed to find spreadsheet =',spread
             exit(1)
 
+        nsheet = year + '-' + month + '-' + day
         wsheets = gd_client.GetWorksheetsFeed(skey)
-        pkey = wsheets.entry[0].id.text.split('/')[-1]
-        if not pkey:
-            print 'Failed to find page of spreadsheet.'
-            exit(1)
-    
+        for entry in wsheets.entry:
+            if entry.title.text == nsheet:
+                pkey = entry.id.text.split('/')[-1]
+                print 'Found work sheet =',nsheet
+                break
+        else:
+            # have not found the sheet, so create it and set column names
+            cnames = ('Time stamp', 'Night', 'Run', 'Data type', 'Target', 'Filters', 'Checker', 'Comment')
+            wsheet = gd_client.AddWorksheet(title=nsheet,row_count=1, col_count=len(cnames), key=skey)
+            pkey   = wsheet.id.text.split('/')[-1]
+            for i, cname in enumerate(cnames):
+                gd_client.UpdateCell(1, i+1, cname, skey, pkey)
+            print 'Created a new work sheet called',nsheet
+
+        # That's it! We now have two keys, skey and pkey, which can be
+        # used to talk to the correct work sheet of the spreadsheet.
+
     # translate user to more meaningful characters if possible
     if user in USERS: user = USERS[user][0]
 
@@ -548,13 +565,13 @@ if __name__ == '__main__':
 
         if args.local:
             # write data to a disk file
-            fstore.write(' | '.join([elem[1] for elem in row]) + '\n')
+            fstore.write('\t'.join([elem[1] for elem in row]) + '\n')
             print 'Written data for',nstore+'/'+run,'to',args.local
         else:
             # upload to google spreadsheet
             entry = gd_client.InsertRow(dict(row), skey, pkey) 
             if isinstance(entry, gdata.spreadsheet.SpreadsheetsList):
-                print 'Uploaded data for',nstore+'/'+run,'to',title
+                print 'Uploaded data for',nstore+'/'+run,'to',spread,'/',nsheet
             else:
                 print 'Died while uploading to spreadsheet.'
                 exit(1)
