@@ -1692,6 +1692,113 @@ class MCCD(list):
         else:
             return tuple(prange)
 
+class UCAM(MCCD):
+    """
+    Specialised version of an MCCD which represents ULTRACAM frames.
+    Basically allows more specialised methods.
+    """
+    def __init__(self, data, head):
+        """
+        Imposes some restrictions on the inputs not set by MCCD. There must be
+        3 CCDs, and each must have an even number of Windows
+        """
+        if len(data) != 3:
+            raise UltracamError('UCAM.__init__: require list of 3 CCDs for data')
+        for ccd in data:
+            if len(ccd) % 2 != 0:
+                raise UltracamError('UCAM.__init__: all CCDs must have an even number of Windows')
+
+        MCCD.__init__(self, data, head)
+
+    def checkData(self):
+        """
+        Checks the CCDs for some standard problems with ULTRACAM data. For each
+        CCD it returns with a flag that is True if the corresponding CCD is thought
+        to have a problem, along with a string describing the issue. This should
+        only be applied to raw ULTRACAM images, not ones that have been processed
+        in any way and it will only work if they have been read in as integers.
+
+        The problems this routine picks up are:
+
+         -- too low overall level (judged from many previous images)
+         -- too high an overall level (loosely based on when peppering occurs)
+         -- left, right windows differ too much which sometimes happens
+         -- too many pixels with the same value
+
+        It will only report one problem per CCD at most and breaks off checking as 
+        soon as it finds an issue, thus it is possible that there are other problems.
+        It is chiefly here to enable warnings of possible problems.
+
+        Returns a list of tuples, one for each CCD. Each of these consists of a 
+        True/False flag and a string. Thus the following code makes sense:
+
+        r,g,b = mccd.check()
+        if r[0]: print 'Red CCD has a problem: ',r[1]
+        if g[0]: print 'Green CCD has a problem: ',g[1]
+        if b[0]: print 'Blue CCD has a problem: ',b[1]
+
+        """
+        if self[0][0].dtype != np.uint16:
+            raise UltracamError('UCAM.checkData: only works with raw unsigned 16-bit int images')
+
+        ret = []
+        for nc, ccd in enumerate(self):
+           for winl, winr in zip(ccd[::2],ccd[1::2]):
+               l = winl.median()
+               r = winr.median()
+               
+               if nc == 0:
+                   if l < 1580 or r < 1580:
+                       ret.append((True,'too low'))
+                       break
+                   elif l > 55000 or r > 55000:
+                       ret.append((True,'too high'))
+                       break
+                   elif abs(r-l-70) > 30+0.05*max(0,l - 1700):
+                       ret.append((True,'left and right too different'))
+                       break
+
+               elif nc == 1:
+                   if l < 1200 or r < 1200:
+                       ret.append((True,'too low'))
+                       break
+                   elif l > 30000 or r > 30000:
+                       ret.append((True,'too high'))
+                       break
+                   elif abs(r-l-10) > 60+0.05*max(0,l - 1300):
+                       ret.append((True,'left and right too different'))
+                       break
+
+               elif nc == 2:
+                   if l < 1000 or r < 1000:
+                       ret.append((True,'too low'))
+                       break
+                   elif l > 30000 or r > 30000:
+                       ret.append((True,'too high'))
+                       break
+                   elif abs(r-l-100+5.5*l/60.) > 70+0.05*max(0,l - 1500):
+                       ret.append((True,'left and right too different'))
+                       break
+
+               # check the modes
+               hist  = np.bincount(winl.flatten())
+               nmode = hist[np.argmax(hist)]
+               if nmode > winl.size // 4:
+                   ret.append((True,'a window has >25% pixels of same value'))
+                   break
+
+               hist = np.bincount(winr.flatten())
+               nmode = hist[np.argmax(hist)]
+               if nmode > winl.size // 4:
+                   ret.append((True,'a window has >25% pixels of same value'))
+                   break
+
+           else:
+               # loop traversed without a problem
+               ret.append((False,''))
+
+        return ret
+        
 class _Win(object):
     """
     Trivial container class for basic window info
@@ -2012,11 +2119,15 @@ class Rdata (Rhead):
     This enables sequential reads to be swift. If an attempt is made to access a 
     frame that does not exist, this is set to the start of the file (frame 1), and 
     this is the state at the end of the sequential read above for instance.
+
+    The above code returns MCCD objects for ULTRACAM data.
     """
     def __init__(self, run, nframe=1, flt=True):
         """
         Connects to a raw data file for reading. The file is kept open. 
-        The file pointer is set to the start of frame nframe.
+        The file pointer is set to the start of frame nframe. The Rdata
+        object can then generate MCCD or CCD objects through being called 
+        as a function or iterator.
 
         Arguments:
 
@@ -2053,7 +2164,8 @@ class Rdata (Rhead):
     
     def __iter__(self):
         """
-        Generator to allow Rdata to function as an iterator
+        Generator to allow Rdata to function as an iterator.
+        This produces the same type of object as __call__ does.
         """
         try:
             while 1:
@@ -2088,7 +2200,7 @@ class Rdata (Rhead):
     def __call__(self, nframe=None, flt=None):
         """
         Reads the data of frame nframe (starts from 1) and returns a
-        corresponding CCD or MCCD object, depending upon the type of data. If
+        corresponding CCD or UCAM object, depending upon the type of data. If
         nframe is None, just reads whatever frame we are on. Raises an
         exception if it fails to read data.  Resets to start of the file in
         this case. The data are stored internally as either 4-byte floats or
@@ -2101,7 +2213,9 @@ class Rdata (Rhead):
                   disk as unsigned 2-byte ints. If you are not doing much to
                   the data, and wish to keep them in this form for speed and
                   efficiency, then set flt=False. If None then the value used when
-                  consrtucting the MCCD will be used.
+                  constructing the MCCD will be used.
+
+        Returns a UCAM object for ULTRACAM, CCD for ULTRASPEC.
         """
 
         if flt is None: flt = self._flt
@@ -2123,7 +2237,9 @@ class Rdata (Rhead):
         if len(buff) != self.framesize/2-self.headerwords:
             self._fobj.seek(0)
             self._nf = 1
-            raise UltracamError('Data.get: failed to read data')
+            raise UltracamError('Data.get: failed to read frame ' + str(self._nf) + 
+                                '. Buffer length vs attempted = '
+                                + str(len(buff)) + ' vs ' + str(self.framesize/2-self.headerwords))
 
         # move frame counter on by one
         self._nf += 1
@@ -2185,8 +2301,8 @@ class Rdata (Rhead):
             ccd2 = CCD(wins2, time, self.nxmax, self.nymax, True, None)
             ccd3 = CCD(wins3, blueTime, self.nxmax, self.nymax, not badBlue, None)
 
-            # Return an MCCD
-            return MCCD([ccd1,ccd2,ccd3], head)
+            # Return a UCAM object
+            return UCAM([ccd1,ccd2,ccd3], head)
         else:
             raise UltracamError('Have yet to implement anything for ' + self.instrument)
 
