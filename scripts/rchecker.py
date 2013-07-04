@@ -9,7 +9,7 @@ first run the script.
 """
 
 # builtin imports
-import sys, argparse, os, time, urllib, urllib2, re
+import sys, argparse, os, time, re
 import getpass, datetime, textwrap
 
 # and some extras
@@ -531,7 +531,7 @@ if __name__ == '__main__':
 
         # The comment
         comment = 'h'
-        while comment == 'h' or (dtype == 'j' and comment == ''):
+        while comment == 'h' or (dtype == 'junk' and comment == ''):
             if lastComment is None:
                 comment = raw_input('Comment: h(elp), q(uit): ')
             else:
