@@ -14,13 +14,14 @@ parser = argparse.ArgumentParser(description=usage)
 parser.add_argument('run', help='run to plot, e.g. "run045"')
 
 # optional
-parser.add_argument('--nccd', '-n', type=int, default=0, help='CCD to plot (0 for all)')
+parser.add_argument('-n', dest='nccd', type=int, default=0, help='CCD to plot (0 for all)')
 parser.add_argument('-plo', type=float, default=2., help='Lower percentile for intensity display')
 parser.add_argument('-phi', type=float, default=98., help='Upper percentile for intensity display')
-parser.add_argument('--first', '-f', type=int, default=1, help='first frame to plot (default = 1)')
-parser.add_argument('--last', '-l', type=int, default=0, help='last frame to plot (0 to go up to last one)')
-parser.add_argument('--sleep', '-s', type=float, default=0, help='number of seconds to pause between frames')
-parser.add_argument('--back', '-b', action='store_true', help='subtract median background from each window')
+parser.add_argument('-f', dest='first', type=int, default=1, help='first frame to plot (default = 1)')
+parser.add_argument('-l', dest='last', type=int, default=0, help='last frame to plot (0 to go up to last one)')
+parser.add_argument('-s', dest='sleep', type=float, default=0, help='number of seconds to pause between frames')
+parser.add_argument('-b', dest='back', action='store_true', help='subtract median background from each window')
+parser.add_argument('-u', dest='ucam', action='store_true', help='Get data via the ULTRACAM FileServer')
 parser.add_argument('-x1', type=float, help='left-hand X-limit')
 parser.add_argument('-x2', type=float, help='right-hand X-limit')
 parser.add_argument('-y1', type=float, help='lower Y-limit')
@@ -31,10 +32,10 @@ args = parser.parse_args()
 
 # Check arguments
 run   = args.run
-if not os.path.exists(run + '.xml'):
+if not args.ucam and not os.path.exists(run + '.xml'):
     print 'ERROR: could not find',run+'.xml'
     exit(1)
-if not os.path.exists(run + '.dat'):
+if not args.ucam and not os.path.exists(run + '.dat'):
     print 'ERROR: could not find',run+'.dat'
     exit(1)
 
@@ -68,7 +69,7 @@ from ppgplot import *
 pgopen('/xs')
 
 fnum = args.first
-for mccd in ultracam.Rdata(run,args.first):
+for mccd in ultracam.Rdata(run,args.first,server=args.ucam):
 
     if args.back:
         mccd.rback(nccd)
