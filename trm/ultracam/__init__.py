@@ -1745,7 +1745,7 @@ class MCCD(list):
             y2    = nymax+0.5 if y2 is None else y2
 
             if mpl:
-                plt.add_subplot(1,nc2-nc1,nc-nc1+1)
+                plt.subplot(1,nc2-nc1,nc+1)
                 plt.axis('equal')
             else:
                 pg.pgpanl(nc-nc1+1,1)
