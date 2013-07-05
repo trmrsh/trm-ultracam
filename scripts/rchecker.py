@@ -256,6 +256,7 @@ if __name__ == '__main__':
     USERS = {'phsaap' : ('trm', 'tom.r.marsh@gmail.com'), 
              'phslax' : ('mcpb', 'mcpbours@gmail.com'), 
              'phsjaf' : ('eb',   'elme.breedt@gmail.com'), 
+             'phsmam' : ('scr',  'scatalanruiz@gmail.com'), 
              }
 
     if args.local:
