@@ -1,25 +1,56 @@
 #!/usr/bin/env python
 
 """
-enables Python access to ultracam/spec files. The purpose is to facilitate 
-development of test and data quality routines. In some aspects it is reasonably
-competitive with the pipeline for speed.
+enables Python access to ultracam/spec files. The purpose is to facilitate
+development of test and data quality routines. In some aspects it is
+reasonably competitive with the pipeline for speed and is easily good 
+enought for quick scripts.
 
 To access an ultracam raw data file, open it with Rdata which then acts as
 a source of the data frames using get. e.g.
 
- rdat  = Udata('run045')
- frame = rdat.get(10)
+  rdat  = Rdata('run045')
+  frame = rdat.get(10)
 
-The first line creates an object with a connection to the run045 data. 
-The second reads frame 10 from this (assuming it exists) returning an
-MCCD object. For more examples of usage, see the script demo.py
+[trm.ultracam suppressed]. The first line creates a trm.ultracam.Rdata object
+with a connection to the run045 data file. The second reads frame 10 from this
+(assuming it exists) returning an MCCD object. This example reads from a local
+disk file. You could do the same via the ATC ULTRACAM FileServer as follows:
+
+  rdat  = Rdata('run045',server=True)
+  frame = rdat.get(10)
+
+The 'frame' above is an UCAM object, a sub-class of MCCD, itself a class
+designed as a general container of multiple CCD data. MCCDs are lists of CCD
+objects so that:
+
+ red, green, blue = frame
+ red = frame[0]
+
+are valid ways to separate out the component frames, producing CCD
+objects. These are, in turn, lists of Window objects so that
+
+ for win in red:
+   print win
+
+would loop through all Windows of a CCD called red. Window objects
+support various operations so that
+
+ for ccd in frame:
+    for win in ccd:
+       win -= 100.
+
+would remove 100 from all Windows of all CCDs. MCCD and CCD objects
+contain header information in the attribute head:
+
+ print frame.head, frame[0].head
+
 """
 
 # standard imports
 import xml.dom.minidom
-import warnings
-import struct, datetime, re
+import urllib, urllib2, warnings
+import struct, datetime, re, os
 
 # third-party
 import numpy as np
@@ -156,7 +187,58 @@ RUN_TELS = {'2002-05' : 'WHT',
             '2013-04' : 'WHT',
             }
 
-# kick off with some semi-hidden helper routines
+# The ATC FileServer recognises various GET requests
+# (look for 'action=' in the code) which are accessed 
+# using urllib2. The following code is to allow urllib2 
+# to connect to a local version of the FileServer which 
+# does not work without this code.
+
+proxy_support = urllib2.ProxyHandler({})
+opener = urllib2.build_opener(proxy_support)
+urllib2.install_opener(opener)
+
+# Get the URL of the FileServer from the environment
+# If not set, a later request to the server will raise
+# an UltracamError
+URL = os.environ['ULTRACAM_DEFAULT_URL'] if 'ULTRACAM_DEFAULT_URL' in os.environ else None
+
+def get_nframe_from_server(run):
+    """
+    Returns the number of frames in the run via the FileServer
+    """
+
+    if URL is None:
+        raise UltracamError('get_nframe_from_server: no url for server found.' + 
+                            ' Have you set the ULTRACAM_DEFAULT_URL environment variable?')
+    # get from FileServer
+    full_url = URL + run + '?action=get_num_frames'
+    resp = urllib2.urlopen(full_url).read()
+
+    # parse the response
+    loc = resp.find('nframes="')
+    if loc > -1:
+        end = resp[loc+9:].find('"')
+        return int(resp[loc+9:loc+9+end])
+    else:
+        raise UltracamError('get_nframe_from_server: failed to parse server response to ' + full_url)
+
+def get_runs_from_server():
+    """
+    Returns with a list of runs from the server
+    """
+    if URL is None:
+        raise UltracamError('get_runs_from_server: no url for server found.' + 
+                            ' Have you set the ULTRACAM_DEFAULT_URL environment variable?')
+    # get from FileServer
+    full_url = URL + '?action=dir'
+    resp = urllib2.urlopen(full_url).read()
+
+    # parse response from server
+    ldir = resp.split('<li>')
+    runs = [entry[entry.find('>run')+1:entry.find('>run')+7] for entry in ldir if entry.find('getdata">run') > -1]
+    runs.sort()
+    return runs
+
 def _write_string(fobj, strng):
     """
     Writes a string in binary format for my C++ code which
@@ -1727,12 +1809,13 @@ class UCAM(MCCD):
 
         It will only report one problem per CCD at most and breaks off checking as 
         soon as it finds an issue, thus it is possible that there are other problems.
-        It is chiefly here to enable warnings of possible problems.
+        It is chiefly here to enable warnings of possible problems. It tries to
+        find the worst problems first.
 
         Returns a list of tuples, one for each CCD. Each of these consists of a 
         True/False flag and a string. Thus the following code makes sense:
 
-        r,g,b = mccd.check()
+        r,g,b = mccd.checkData()
         if r[0]: print 'Red CCD has a problem: ',r[1]
         if g[0]: print 'Green CCD has a problem: ',g[1]
         if b[0]: print 'Blue CCD has a problem: ',b[1]
@@ -1744,6 +1827,21 @@ class UCAM(MCCD):
         ret = []
         for nc, ccd in enumerate(self):
            for winl, winr in zip(ccd[::2],ccd[1::2]):
+
+               # check the modes
+               hist  = np.bincount(winl.flatten())
+               nmode = hist[np.argmax(hist)]
+               if nmode > winl.size // 4:
+                   ret.append((True,'a window has >25% pixels of same value'))
+                   break
+
+               hist = np.bincount(winr.flatten())
+               nmode = hist[np.argmax(hist)]
+               if nmode > winl.size // 4:
+                   ret.append((True,'a window has >25% pixels of same value'))
+                   break
+
+               # check the medians
                l = winl.median()
                r = winr.median()
                
@@ -1780,19 +1878,6 @@ class UCAM(MCCD):
                        ret.append((True,'left and right too different'))
                        break
 
-               # check the modes
-               hist  = np.bincount(winl.flatten())
-               nmode = hist[np.argmax(hist)]
-               if nmode > winl.size // 4:
-                   ret.append((True,'a window has >25% pixels of same value'))
-                   break
-
-               hist = np.bincount(winr.flatten())
-               nmode = hist[np.argmax(hist)]
-               if nmode > winl.size // 4:
-                   ret.append((True,'a window has >25% pixels of same value'))
-                   break
-
            else:
                # loop traversed without a problem
                ret.append((False,''))
@@ -1816,45 +1901,61 @@ class Rhead (object):
     run###.xml file. 
     """
 
-    def __init__(self, uxml):
+    def __init__(self, run, server=False):
         """
         Reads a run###.xml file. UltracamErrors are thrown if some items are not found.
         In some case it will carry on and corresponding attributes are returned as None.
 
         Arguments:
 
-         uxml     -- xml file name with format run###.xml
+         run     -- run name e.g. 'run002'. Can include path to disk file.
 
-         Many attributes are set; here are some of them:
+         server  -- True to attempt to access the ATC FileServer. It uses ULTRACAM_DEFAULT_URL
+                    in this instance.
 
+        Following attributes are set:
+
+          run          -- run 
+          server       -- True/False to indicate server access
           application  -- data acqusition application template name.
-
-          fname        -- file used to define the format.
-
           framesize    -- total number of bytes per frame.
-
           headerwords  -- number of words (2-bytes/word) in timing info at start of a frame.
-
           instrument   -- instrument name.
-
           mode         -- a standardised summary of the readout mode derived from the application name.
-
-          speed        -- readout speed.
-
           user         -- dictionary of user information. Set to None if there was none found.
-
-          win          -- A list of Window objects, one per window. ULTRACAM data is multi-CCD
+          win          -- A list of Win objects, one per window. ULTRACAM data is multi-CCD
                           but the windows of each CCD are identical so the information is only stored 
                           once for all CCDs. Each one contains the corrdinates of the lower-left
                           pixel of the window and the binned dimensions
-
           xbin, ybin   -- pixel binning factors (same for all windows of all CCDs)
-
           nxmax, nymax -- maximum unbinned dimensions, same for all CCDs.
+          exposeTime   -- exposure delay, secs
+          numexp       -- integer exposure number; can be -1 meaning unlimited
+          gainSpeed    -- readout speed (ULTRACAM)
+          v_ft_clk     -- vertical frame transfer parameter
+          nblue        -- how often to read the blue CCD (ULTRACAM)
+          speed        -- readout speed (ULTRASPEC)
+          en_clr       -- enable clear flag (ULTRASPEC)
+          hv_gain      -- HV gain (ULTRASPEC)
+          output       -- which output (ULTRASPEC)
+          version      -- version number
+          target       -- target name (None if not found)
+          filters      -- filters (None if not found)
         """
 
-        self.fname = uxml
-        udom = xml.dom.minidom.parse(uxml)
+        self.run    = run
+        self.server = server
+        if server:
+            if URL is None:
+                raise UltracamError('Rhead.__init__: no url for server found.' + 
+                                    ' Have you set the ULTRACAM_DEFAULT_URL environment variable?')
+            # get from server
+            full_url = URL + run + '?action=get_xml'
+            sxml = urllib2.urlopen(full_url).read()
+            udom = xml.dom.minidom.parseString(sxml)
+        else:
+            # local disk file
+            udom = xml.dom.minidom.parse(run + '.xml')
 
         # Find framesize and headerwords.
         node             = udom.getElementsByTagName('data_status')[0]
@@ -1871,7 +1972,7 @@ class Rhead (object):
             self.instrument = 'ULTRASPEC'
             self.nxmax, self.nymax = 1056, 1072
         else:
-            raise UltracamError('Rhead.__init__: file = ' + self.fname + ', failed to identify instrument.')
+            raise UltracamError('Rhead.__init__: run = ' + self.run + ', failed to identify instrument.')
 
         self.application = [nd for nd in node.getElementsByTagName('application_status') \
                                 if nd.getAttribute('id') == 'SDSU Exec'][0].getAttribute('name')
@@ -1929,7 +2030,7 @@ class Rhead (object):
             self.mode = 'PONOFF'
             return
         else:
-            raise UltracamError('Rhead.__init__: file = ' + self.fname + ' failed to identify application = ' + app)
+            raise UltracamError('Rhead.__init__: file = ' + self.run + ' failed to identify application = ' + app)
 
         # binning factors
         self.xbin = int(param['X_BIN_FAC']) if 'X_BIN_FAC' in param else int(param['X_BIN'])
@@ -1942,7 +2043,7 @@ class Rhead (object):
             try:
                 self.exposeTime = float(param['EXPOSE_TIME'])
             except ValueError, err:
-                raise UltracamError('Rhead.__init__: file = ' + self.fname + ' failed to interpret EXPOSE_TIME')
+                raise UltracamError('Rhead.__init__: file = ' + self.run + ' failed to interpret EXPOSE_TIME')
 
             self.numexp     = int(param['NO_EXPOSURES'])
             self.gainSpeed  = hex(int(param['GAIN_SPEED']))[2:] if 'GAIN_SPEED' in param else None
@@ -2019,7 +2120,7 @@ class Rhead (object):
                 fsize += 2*self.win[-1].nx*self.win[-1].ny
 
         if fsize != self.framesize:
-            raise UltracamError('Rhead.__init__: file = ' + self.fname + '. Framesize = ' 
+            raise UltracamError('Rhead.__init__: file = ' + self.run + '. Framesize = ' 
                                 + str(self.framesize) + ' clashes with calculated value = ' +  str(fsize))
 
         # nasty stuff coming up ...
@@ -2121,8 +2222,13 @@ class Rdata (Rhead):
     this is the state at the end of the sequential read above for instance.
 
     The above code returns MCCD objects for ULTRACAM data.
+
+    The same class also can talk to the ATC FileServer if it is running, e.g.
+
+      rdat = Rdata('run045',server=True)
+
     """
-    def __init__(self, run, nframe=1, flt=True):
+    def __init__(self, run, nframe=1, flt=True, server=False):
         """
         Connects to a raw data file for reading. The file is kept open. 
         The file pointer is set to the start of frame nframe. The Rdata
@@ -2142,24 +2248,31 @@ class Rdata (Rhead):
                    them in this form for speed and efficiency, then set flt=False.
                    This parameter is used when iterating through an Rdata. The 
                    __call__ method can override it.
+
+        server  -- True/False for server vs local disk access
         """
-        Rhead.__init__(self, run + '.xml')
+
+        Rhead.__init__(self, run, server)
         if self.isPonoff():
             raise PowerOnOffError('Rdata.__init__: attempted to read a power on/off')
  
         # Attributes set are:
         #
-        # _fobj   -- file object opened on data file
+        # _fobj   -- file object opened on data file (set to None if using server)
         # _nf     -- next frame to be read
         # _run    -- name of run
         # _flt    -- whether to read as float (else uint16)
         # _tstamp -- list of immediately preceding times
-        self._fobj   = open(run + '.dat', 'rb')
+        if server:
+            self._fobj   = None
+        else:
+            self._fobj   = open(run + '.dat', 'rb')
+
         self._nf     = nframe
         self._run    = run
         self._flt    = flt
         self._tstamp = []
-        if nframe != 1:
+        if not server and nframe != 1:
             self._fobj.seek(self.framesize*(nframe-1))
     
     def __iter__(self):
@@ -2171,6 +2284,8 @@ class Rdata (Rhead):
             while 1:
                 yield self.__call__(flt=self._flt)
         except UendError:
+            pass
+        except urllib2.HTTPError:
             pass
 
     def set(self, nframe=1):
@@ -2186,15 +2301,22 @@ class Rdata (Rhead):
         # position read pointer
         if nframe is not None:
             if nframe < 0:
-                raise UltracamError('Data.get: nframe < 0')
+                raise UltracamError('Rdata.set: nframe < 0')
             elif nframe == 0:
-                self._fobj.seek(0,2)
-                fp = self._fobj.tell() 
-                nf = fp // self.framesize
-                self._fobj.seek(self.framesize*(nf-1)-fp,2)
-                self._nf = nf
+                if self.server:
+                    self._nf = get_nframe_from_server(self.run)
+                else:
+                    # wind to end of file, work out where we are
+                    # to deduce number of frames
+                    self._fobj.seek(0,2)
+                    fp = self._fobj.tell() 
+                    nf = fp // self.framesize
+                    self._fobj.seek(self.framesize*(nf-1)-fp,2)
+                    self._nf = nf
+
             elif self._nf != nframe:
-                self._fobj.seek(self.framesize*(nframe-1))
+                if not self.server:
+                    self._fobj.seek(self.framesize*(nframe-1))
                 self._nf = nframe
 
     def __call__(self, nframe=None, flt=None):
@@ -2207,7 +2329,7 @@ class Rdata (Rhead):
         2-byte unsigned ints.
 
         nframe -- frame number to get, starting at 1. 0 for the last
-                  (complete) frame.
+                  (complete) frame. None just returns the next frame.
 
         flt    -- Set True to reading data in as floats. The data are stored on
                   disk as unsigned 2-byte ints. If you are not doing much to
@@ -2223,23 +2345,38 @@ class Rdata (Rhead):
         # position read pointer
         self.set(nframe)
 
-        # read timing bytes
-        tbytes = self._fobj.read(2*self.headerwords)
-        if len(tbytes) != 2*self.headerwords:
-            self._fobj.seek(0)
-            self._nf = 1
-            raise UendError('Data.get: failed to read timing bytes')
+        if self.server:
+            # read timing and data in one go from the server
+            full_url = URL + self.run + '?action=get_frame&frame=' + str(self._nf-1)
+            buff     = urllib2.urlopen(full_url).read()
+            if len(buff) != self.framesize:
+                self._nf = 1
+                raise UltracamError('Rdata.__call__: failed to read frame ' + str(self._nf) + 
+                                    ' from FileServer. Buffer length vs expected = '
+                                    + str(len(buff)) + ' vs ' + str(self.framesize) + ' bytes.')
 
+            # have data. Re-format into the timing bytes and unsigned 2 byte int data buffer
+            tbytes = buff[:2*self.headerwords]
+            buff   = np.fromstring(buff[2*self.headerwords:],dtype='uint16')
+        else:
+            # read timing bytes
+            tbytes = self._fobj.read(2*self.headerwords)
+            if len(tbytes) != 2*self.headerwords:
+                self._fobj.seek(0)
+                self._nf = 1
+                raise UendError('Rdata.__call__: failed to read timing bytes')
+
+            # read data
+            buff = np.fromfile(self._fobj,'<u2',self.framesize/2-self.headerwords)
+            if len(buff) != self.framesize/2-self.headerwords:
+                self._fobj.seek(0)
+                self._nf = 1
+                raise UltracamError('Rdata.__call__: failed to read frame ' + str(self._nf) + 
+                                    '. Buffer length vs attempted = '
+                                    + str(len(buff)) + ' vs ' + str(self.framesize/2-self.headerwords))
+
+        # OK from this point, both server and local disk methods are the same
         time,blueTime,badBlue,info = utimer(tbytes, self, self._nf)
-
-        # read data
-        buff = np.fromfile(self._fobj,'<u2',self.framesize/2-self.headerwords)
-        if len(buff) != self.framesize/2-self.headerwords:
-            self._fobj.seek(0)
-            self._nf = 1
-            raise UltracamError('Data.get: failed to read frame ' + str(self._nf) + 
-                                '. Buffer length vs attempted = '
-                                + str(len(buff)) + ' vs ' + str(self.framesize/2-self.headerwords))
 
         # move frame counter on by one
         self._nf += 1
@@ -2304,15 +2441,19 @@ class Rdata (Rhead):
             # Return a UCAM object
             return UCAM([ccd1,ccd2,ccd3], head)
         else:
-            raise UltracamError('Have yet to implement anything for ' + self.instrument)
+            raise UltracamError('Rdata.__init__: have yet to implement anything for ' + self.instrument)
 
     def ntotal(self):
         """
         Returns total number of frames in data file
         """
-        self._fobj.seek(0,2)
-        ntot = self._fobj.tell() // self.framesize
-        self._fobj.seek(self.framesize*(self._nf-1))
+        if self.server:
+            ntot = get_nframe_from_server(self.run)
+        else:
+            self._fobj.seek(0,2)
+            ntot = self._fobj.tell() // self.framesize
+            self._fobj.seek(self.framesize*(self._nf-1))
+
         return ntot
 
     def nframe(self):
@@ -2326,6 +2467,7 @@ class Rdata (Rhead):
         """
         Returns timing information of frame nframe (starts from 1). This saves
         effort reading the data in some cases. See for example the ustats script.
+        Once done, it moves to the next frame.
 
         nframe -- frame number to get, starting at 1. 0 for the last
                   (complete) frame.
@@ -2337,17 +2479,31 @@ class Rdata (Rhead):
         # position read pointer
         self.set(nframe)
 
-        # read timing bytes
-        tbytes = self._fobj.read(2*self.headerwords)
-        if len(tbytes) != 2*self.headerwords:
-            self._fobj.seek(0)
-            self._nf = 1
-            raise UendError('Data.get: failed to read timing bytes')
+        if self.server:
+            # somewhat inefficiently in the server case, we have to read the whole 
+            # frame because there are no options for timing data alone, although
+            # at least no data re-formatting is required.
+            full_url = URL + self.run + '?action=get_frame&frame=' + str(self._nf-1)
+            buff     = urllib2.urlopen(full_url).read()
+            if len(buff) != self.framesize:
+                self._nf = 1
+                raise UltracamError('Rdata.time: failed to read frame ' + str(self._nf) + 
+                                    ' from FileServer. Buffer length vs expected = '
+                                    + str(len(buff)) + ' vs ' + str(self.framesize) + ' bytes.')
+            tbytes = buff[:2*self.headerwords]
+        else:
+            # read timing bytes alone
+            tbytes = self._fobj.read(2*self.headerwords)
+            if len(tbytes) != 2*self.headerwords:
+                self._fobj.seek(0)
+                self._nf = 1
+                raise UendError('Rdata.time: failed to read timing bytes')
 
         tinfo = utimer(tbytes, self, self._nf)
 
         # step to start of next frame
-        self._fobj.seek(self.framesize-2*self.headerwords,1)
+        if self.server is None:
+            self._fobj.seek(self.framesize-2*self.headerwords,1)
 
         # move frame counter on by one
         self._nf += 1
@@ -2358,7 +2514,7 @@ class Rtime (Rhead):
     """
     Iterator class to enable swift reading of Ultracam times.
     """
-    def __init__(self, run, nframe=1):
+    def __init__(self, run, nframe=1, server=False):
         """
         Connects to a raw data file for reading. The file is kept open. 
         The file pointer is set to the start of frame nframe.
@@ -2369,8 +2525,10 @@ class Rtime (Rhead):
                    files
 
         nframe  -- frame to position for next read, starting at 1 as the first.
+
+        server  -- True/False for server vs local disk access
         """
-        Rhead.__init__(self, run + '.xml')
+        Rhead.__init__(self, run, server)
         if self.isPonoff():
             raise PowerOnOffError('Rtime.__init__: attempted to read a power on/off')
  
@@ -2379,20 +2537,25 @@ class Rtime (Rhead):
         # _fobj   -- file object opened on data file
         # _nf     -- next frame to be read
         # _run    -- name of run
-        self._fobj   = open(run + '.dat', 'rb')
+        if server:
+            self._fobj   = None
+        else:
+            self._fobj   = open(run + '.dat', 'rb')
         self._nf     = nframe
         self._run    = run
-        if nframe != 1:
+        if not server and nframe != 1:
             self._fobj.seek(self.framesize*(nframe-1))
     
     def __iter__(self):
         """
-        Generator to allow Rdata to function as an iterator
+        Generator to allow Rtime to function as an iterator
         """
         try:
             while 1:
                 yield self.__call__()
         except UendError:
+            pass
+        except urllib2.HTTPError:
             pass
 
     def set(self, nframe=1):
@@ -2408,15 +2571,19 @@ class Rtime (Rhead):
         # position read pointer
         if nframe is not None:
             if nframe < 0:
-                raise UltracamError('Data.get: nframe < 0')
+                raise UltracamError('Rtime.set: nframe < 0')
             elif nframe == 0:
-                self._fobj.seek(0,2)
-                fp = self._fobj.tell() 
-                nf = fp // self.framesize
-                self._fobj.seek(self.framesize*(nf-1)-fp,2)
-                self._nf = nf
+                if self.server:
+                    self._nf = get_nframe_from_server(self.run)
+                else:
+                    self._fobj.seek(0,2)
+                    fp = self._fobj.tell() 
+                    nf = fp // self.framesize
+                    self._fobj.seek(self.framesize*(nf-1)-fp,2)
+                    self._nf = nf
             elif self._nf != nframe:
-                self._fobj.seek(self.framesize*(nframe-1))
+                if not self.server:
+                    self._fobj.seek(self.framesize*(nframe-1))
                 self._nf = nframe
 
     def __call__(self, nframe=None):
@@ -2432,17 +2599,31 @@ class Rtime (Rhead):
         # position read pointer
         self.set(nframe)
 
-        # read timing bytes
-        tbytes = self._fobj.read(2*self.headerwords)
-        if len(tbytes) != 2*self.headerwords:
-            self._fobj.seek(0)
-            self._nf = 1
-            raise UendError('Data.get: failed to read timing bytes')
+        if self.server:
+            # have to read both timing and data in one go from the server
+            # and just ignore the data
+            full_url = URL + self.run + '?action=get_frame&frame=' + str(self._nf-1)
+            buff     = urllib2.urlopen(full_url).read()
+            if len(buff) != self.framesize:
+                self._nf = 1
+                raise UltracamError('Rtime.__call__: failed to read frame ' + str(self._nf) + 
+                                    ' from FileServer. Buffer length vs expected = '
+                                    + str(len(buff)) + ' vs ' + str(self.framesize) + ' bytes.')
+
+            # have data. Re-format into the timing bytes and unsigned 2 byte int data buffer
+            tbytes = buff[:2*self.headerwords]
+        else:
+            # read timing bytes
+            tbytes = self._fobj.read(2*self.headerwords)
+            if len(tbytes) != 2*self.headerwords:
+                self._fobj.seek(0)
+                self._nf = 1
+                raise UendError('Data.get: failed to read timing bytes')
+
+            # step to start of next frame
+            self._fobj.seek(self.framesize-2*self.headerwords,1)
 
         tinfo = utimer(tbytes, self, self._nf)
-
-        # step to start of next frame
-        self._fobj.seek(self.framesize-2*self.headerwords,1)
 
         # move frame counter on by one
         self._nf += 1
