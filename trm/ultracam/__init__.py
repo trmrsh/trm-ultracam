@@ -391,17 +391,21 @@ class Odict(dict):
 
 class Window(object):
     """
-    Class to represent a window of a CCD. Contains a numpy.ndarray
-    along with the following attributes:
+    Class to represent a window of a CCD. Contains an array
+    of data along with the following attributes:
 
      llx, lly     -- lower-left pixels of window
      xbin, ybin   --  pixel binning factors
 
-    Indexed access to the numpy array is provided so that some 
-    numpy-like expressions work:
+    Indexed access to the array along the lines of a numpy.ndarray
+    so that for example the following work: 
 
     win = Window(data, 1, 2, 3, 4)
-    print win[0][1], win[0,1]
+    print win[0][1]
+    print win[0,1]
+    print win[1:-1,1:-1]
+
+    with the last printing out the data values with the outer edge removed.
     """
 
     def __init__(self, data, llx, lly, xbin, ybin):
@@ -417,7 +421,7 @@ class Window(object):
         """
         if len(data.shape) != 2:
             raise UltracamError('Window._init__: data must be 2D')
-        self._arr = data
+        self._data = data
         self.llx  = llx
         self.lly  = lly
         self.xbin = xbin
@@ -428,101 +432,101 @@ class Window(object):
         """
         The data array (2D numpy.ndarray)
         """
-        return self._arr
+        return self._data
 
     @data.setter
-    def data(self, arr):
-        if len(arr.shape) != 2:
-            raise UltracamError('Window.data: arr must be 2D')
-        self._arr = arr
+    def data(self, dat):
+        if len(dat.shape) != 2:
+            raise UltracamError('Window.data: dat must be 2D')
+        self._data = dat
 
     @property
     def nx(self):
         """
         The X dimension in binned pixels
         """
-        return self._arr.shape[1]
+        return self._data.shape[1]
 
     @property
     def ny(self):
         """
         The Y dimension in binned pixels
         """
-        return self._arr.shape[0]
+        return self._data.shape[0]
 
     @property
     def dtype(self):
         """
         Type of data stored in the array
         """
-        return self._arr.dtype
+        return self._data.dtype
 
     @property
     def size(self):
         """
         Total number of binned pixels
         """
-        return self._arr.size
+        return self._data.size
 
     def astype(self, dtype):
         """
         Returns the data as a numpy.ndarray with data type = dtype, (e.g. np.uint16) 
         rounding if converting from a non-integer to an integer type
         """
-        if issubclass(dtype, np.integer) and issubclass(self._arr.dtype.type,np.integer):
-            return self._arr.astype(dtype)
+        if issubclass(dtype, np.integer) and issubclass(self._data.dtype.type,np.integer):
+            return self._data.astype(dtype)
         elif issubclass(dtype, np.integer):
-            return np.rint(self._arr).astype(dtype)
+            return np.rint(self._data).astype(dtype)
         else:
-            return self._arr.astype(dtype)
+            return self._data.astype(dtype)
 
     def totype(self, dtype):
         """
         Converts the internal data to have data type = dtype, 
         rounding if converting from a non-integer to an integer type
         """
-        if issubclass(dtype, np.integer) and issubclass(self._arr.dtype.type,np.integer):
-            self._arr = self._arr.astype(dtype)
+        if issubclass(dtype, np.integer) and issubclass(self._data.dtype.type,np.integer):
+            self._data = self._data.astype(dtype)
         elif issubclass(dtype, np.integer):
-            self._arr = np.rint(self._arr).astype(dtype)
+            self._data = np.rint(self._data).astype(dtype)
         else:
-            self._arr = self._arr.astype(dtype)
+            self._data = self._data.astype(dtype)
 
     def min(self):
         """
         Returns the minimum value of the Window
         """
-        return self._arr.min()
+        return self._data.min()
 
     def max(self):
         """
         Returns the maximum value of the Window
         """
-        return self._arr.max()
+        return self._data.max()
 
     def mean(self):
         """
         Returns the mean value of the Window
         """
-        return self._arr.mean()
+        return self._data.mean()
 
     def median(self):
         """
         Returns the median value of the Window
         """
-        return np.median(self._arr)
+        return np.median(self._data)
 
     def flatten(self):
         """
         Returns a 1D version of the data of the Window
         """
-        return self._arr.flatten()
+        return self._data.flatten()
 
     def sum(self):
         """
         Returns the sum of the data values of the Window
         """
-        return self._arr.sum()
+        return self._data.sum()
 
     def canCropTo(self, other):
         """
@@ -554,7 +558,7 @@ class Window(object):
             x2 = x1 + other.nx
             y1 = (other.lly-self.lly) // self.ybin
             y2 = y1 + other.ny
-            return Window(self._arr[y1:y2,x1:x2], other.llx, other.lly, other.xbin, other.ybin)
+            return Window(self._data[y1:y2,x1:x2], other.llx, other.lly, other.xbin, other.ybin)
         else:
             raise UltracamError('Window.cropTo: Window cannot be cropped to "other"') 
 
@@ -570,13 +574,13 @@ class Window(object):
         """
         if nleft != 0 or nright != 0 or nbottom != 0 or ntop != 0:
             if ntop and nright:
-                self._arr = self._arr[nbottom:-ntop,nleft:-nright]
+                self._data = self._data[nbottom:-ntop,nleft:-nright]
             elif ntop:
-                self._arr = self._arr[nbottom:-ntop,nleft:]
+                self._data = self._data[nbottom:-ntop,nleft:]
             elif nright:
-                self._arr = self._arr[nbottom:,nleft:-nright]
+                self._data = self._data[nbottom:,nleft:-nright]
             else:
-                self._arr = self._arr[nbottom:,nleft:]
+                self._data = self._data[nbottom:,nleft:]
             self.llx += nleft*self.xbin
             self.lly += nbottom*self.ybin
 
@@ -593,15 +597,15 @@ class Window(object):
         """
         if mpl:
             limits = self.llx-0.5,self.llx+self.xbin*self.nx-0.5,self.lly-0.5,self.lly+self.ybin*self.ny-0.5
-            plt.imshow(self._arr, cmap=cmap, interpolation='nearest', \
+            plt.imshow(self._data, cmap=cmap, interpolation='nearest', \
                            vmin=vmin, vmax=vmax, origin='lower', extent=limits)
         else:
             tr = np.array([self.llx-self.xbin,self.xbin,0,self.lly-self.ybin,0,self.ybin])
-            pg.pggray(self._arr,0,self.nx-1,0,self.ny-1,vmax,vmin,tr)
+            pg.pggray(self._data,0,self.nx-1,0,self.ny-1,vmax,vmin,tr)
 
     def __getitem__(self, i):
         """
-        Returns arr[i] where arr is the internal ndarray data.
+        Returns data[i] where data is the internal ndarray data.
 
         Example:
 
@@ -610,13 +614,13 @@ class Window(object):
 
         Will print the specified slice of the stored data.
         """
-        return self._arr[i]
+        return self._data[i]
 
     def __str__(self):
         ret  = '  llx, lly = ' + str(self.llx) + ', ' + str(self.lly) + \
             '; nx, ny = ' + str(self.nx) + ', ' + str(self.ny) + \
             '; xbin, ybin = ' + str(self.xbin) + ', ' + str(self.ybin) + '\n'
-        ret += str(self._arr) + ', dtype = ' + str(self._arr.dtype)
+        ret += str(self._data) + ', dtype = ' + str(self._data.dtype)
         return ret
 
     def __eq__(self, other):
@@ -638,51 +642,55 @@ class Window(object):
 
     def __iadd__(self, other):
         if isinstance(other, Window):
-            self._arr += other._arr
+            self._data += other._data
         else:
-            self._arr += other
+            self._data += other
+        return self
 
     def __isub__(self, other):
         if isinstance(other, Window):
-            self._arr -= other._arr
+            self._data -= other._data
         else:
-            self._arr -= other
+            self._data -= other
+        return self
 
     def __imul__(self, other):
         if isinstance(other, Window):
-            self._arr *= other._arr
+            self._data *= other._data
         else:
-            self._arr *= other
+            self._data *= other
+        return self
 
     def __idiv__(self, other):
         if isinstance(other, Window):
-            self._arr /= other._arr
+            self._data /= other._data
         else:
-            self._arr /= other
+            self._data /= other
+        return self
 
     def __add__(self, other):
         if isinstance(other, Window):
-            return Window(self._arr + other._arr, self.llx, self.lly, self.xbin, self.ybin)
+            return Window(self._data + other._data, self.llx, self.lly, self.xbin, self.ybin)
         else:
-            return Window(self._arr + other, self.llx, self.lly, self.xbin, self.ybin)
+            return Window(self._data + other, self.llx, self.lly, self.xbin, self.ybin)
 
     def __sub__(self, other):
         if isinstance(other, Window):
-            return Window(self._arr - other._arr, self.llx, self.lly, self.xbin, self.ybin)
+            return Window(self._data - other._data, self.llx, self.lly, self.xbin, self.ybin)
         else:
-            return Window(self._arr - other, self.llx, self.lly, self.xbin, self.ybin)
+            return Window(self._data - other, self.llx, self.lly, self.xbin, self.ybin)
 
     def __mul__(self, other):
         if isinstance(other, Window):
-            return Window(self._arr * other._arr, self.llx, self.lly, self.xbin, self.ybin)
+            return Window(self._data * other._data, self.llx, self.lly, self.xbin, self.ybin)
         else:
-            return Window(self._arr * other, self.llx, self.lly, self.xbin, self.ybin)
+            return Window(self._data * other, self.llx, self.lly, self.xbin, self.ybin)
 
     def __div__(self, other):
         if isinstance(other, Window):
-            return Window(self._arr / other._arr, self.llx, self.lly, self.xbin, self.ybin)
+            return Window(self._data / other._data, self.llx, self.lly, self.xbin, self.ybin)
         else:
-            return Window(self._arr / other, self.llx, self.lly, self.xbin, self.ybin)
+            return Window(self._data / other, self.llx, self.lly, self.xbin, self.ybin)
 
 class Time(object):
     """
@@ -933,12 +941,11 @@ class Uhead(Odict):
                     (final,str(val[0]),'/'+TNAME[val[1]]+'/',val[2]) 
         return ret
 
-class CCD(list):
+class CCD(object):
     """
-    Class to represent a CCD. Sub-class of 'list'. The list in this
-    case is a list of Windows. Added to this are attributes to 
-    represent the maximum unbinned dimensions of the CCD, a time
-    a flag to say whether the data are good, and a header.
+    Class to represent a CCD. Contains a list of Windows representing
+    all the sub-windows of a CCD along with some extra defining
+    attributes.
     """
     def __init__(self, wins, time, nxmax, nymax, good, head):
         """
@@ -960,13 +967,19 @@ class CCD(list):
         if head is not None and not isinstance(head, Uhead):
             raise UltracamError('CCD.__init__: head should be a Uhead (or None).')        
 
-        list.__init__(self, wins)
+        self._data = wins
         self.time  = time
         self.nxmax = nxmax
         self.nymax = nymax
         self.good  = good
         self.head  = head
 
+
+    def __len__(self):
+        """
+        Returns the number of windows in the CCD
+        """
+        return len(self._data)
 
     def __eq__(self, other):
         """
@@ -977,7 +990,7 @@ class CCD(list):
             if self.nxmax != other.nymax or len(self) != len(other): return False
         
             # now test for equal windows
-            for swin,owin in zip(self,other):
+            for swin,owin in zip(self._data,other._data):
                 if swin != owin: return False
             return True
         else:
@@ -992,6 +1005,41 @@ class CCD(list):
             return result
         return not result
 
+    def __getitem__(self, i):
+        """
+        Returns data[i] where data is the internal ndarray data.
+        """
+        return self._data[i]
+
+    def __setitem__(self, i, win):
+        """
+        Sets the i-th Window
+        """
+        if not isinstance(win, Window):
+            raise UltracamError('CCD.__setitem__: win must be a Window')
+        self._data[i] = win
+
+    @property
+    def data(self):
+        """
+        The list of Windows
+        """
+        return self._data
+
+    @data.setter
+    def data(self, wins):
+        for win in wins:
+            if not isinstance(win, Window):
+                raise UltracamError('CCD.data: wins must be a list of Windows.')
+        self._data = wins
+
+    @property
+    def nwin(self):
+        """
+        Returns the number of Windows (alternative to 'len')
+        """
+        return len(self._data)
+
     def anyInt(self):
         """
         Returns True if any of the contributing Windows are based on integers. It can be
@@ -999,7 +1047,7 @@ class CCD(list):
         but cause problems with arithematic operations. This allows you to check. 
         See also 'anyFloat', 'toFloat' and 'toInt'.
         """
-        for win in self:
+        for win in self._data:
             if issubclass(win.dtype.type,np.integer):
                 return True
         return False
@@ -1009,7 +1057,7 @@ class CCD(list):
         Returns True if any of the contributing Windows are based on floats. This is needed
         to evaluate the output type needed when writing to disk.
         """
-        for win in self:
+        for win in self._data:
             if issubclass(win.dtype.type,np.floating):
                 return True
         return False
@@ -1021,7 +1069,7 @@ class CCD(list):
 
         single  -- True to convert to 4-byte floats (else 8-byte)
         """
-        for win in self:
+        for win in self._data:
             if single:
                 win.totype(np.float32)
             else:
@@ -1033,7 +1081,7 @@ class CCD(list):
         to the nearest integer. Warnings will be issued if data lies outside
         the 0 to 65535 range, but the conversion will proceed.
         """
-        for win in self:
+        for win in self._data:
             if win.min() < 0 or win.max() > 65535:
                 warnings.warn('CCD.toInt: input data out of range 0 to 65535')
             win.totype(np.uint16)
@@ -1044,7 +1092,7 @@ class CCD(list):
         """
         nelem = 0
         sum   = 0.
-        for win in self:
+        for win in self._data:
             nelem += win.size
             sum   += win.sum()
         return sum / float(nelem)
@@ -1054,7 +1102,7 @@ class CCD(list):
         Returns the minimum over all Windows of a CCD
         """
         minv = None
-        for win in self:
+        for win in self._data:
             minv = win.min() if minv is None else min(minv, win.min())
         return minv
 
@@ -1063,13 +1111,13 @@ class CCD(list):
         Returns the maximum over all Windows of a CCD
         """
         maxv = None
-        for win in self:
+        for win in self._data:
             maxv = win.max() if maxv is None else max(maxv, win.max())
         return maxv
 
     def npix(self):
         np = 0
-        for win in self:
+        for win in self._data:
             np += win.size
         return np
 
@@ -1080,7 +1128,7 @@ class CCD(list):
 
         # generate combined list of all pixels in CCD called 'arr'
         larr = []
-        for win in self:
+        for win in self._data:
             larr.append(win.flatten())
         arr = np.concatenate(larr)
 
@@ -1106,7 +1154,7 @@ class CCD(list):
 
         # generate combined list of all pixels in CCD called 'arr'
         larr = []
-        for win in self:
+        for win in self._data:
             larr.append(win.flatten())
         arr = np.concatenate(larr)
 
@@ -1118,7 +1166,7 @@ class CCD(list):
         background using a median of each window
         separately.
         """
-        for win in self:
+        for win in self._data:
             win -= np.median(win)
 
     def plot(self, vmin, vmax, mpl=False, cmap=cm.binary):
@@ -1133,11 +1181,8 @@ class CCD(list):
         mpl  -- True for matplotlib, otherwise pgplot
         cmap -- colour map if mpl
         """
-        for win in self:
+        for win in self._data:
             win.plot(vmin,vmax,mpl,cmap)
-
-    def append(self, item):
-        raise NotImplementedError
 
     def canCropTo(self, ccd):
         """
@@ -1148,8 +1193,8 @@ class CCD(list):
         if self.nxmax != ccd.nxmax or self.nymax != ccd.nymax:
             return False
 
-        for wino in ccd:
-            for win in self:
+        for wino in ccd._data:
+            for win in self._data:
                 if win >= wino: break
             else:
                 return False
@@ -1165,8 +1210,8 @@ class CCD(list):
             raise UltracamError('CCD.crop: maximum dimensions did not match')
         
         wins = []
-        for wino in ccd:
-            for win in self:
+        for wino in ccd._data:
+            for win in self._data:
                 if win >= wino:
                     wins.append(win.crop(wino))
                     break
@@ -1177,9 +1222,10 @@ class CCD(list):
     # arithematic
     def __iadd__(self, other):
         """
-        Adds 'other' to the CCD in place (+=)
+        Adds 'other' to the CCD in place (+=). Windows must be ordered
+        in the same sense so that they all match
         """
-        for win,owin in zip(self,other):
+        for win,owin in zip(self._data,other._data):
             win += owin
         return self
 
@@ -1187,7 +1233,7 @@ class CCD(list):
         """
         Subtracts 'other' from the CCD in place (-=)
         """
-        for win,owin in zip(self,other):
+        for win,owin in zip(self._data,other._data):
             win -= owin
         return self
 
@@ -1195,7 +1241,7 @@ class CCD(list):
         """
         Multiplies the CCD by 'other' in place (*=)
         """
-        for win,owin in zip(self,other):
+        for win,owin in zip(self._data,other._data):
             win *= owin
         return self
 
@@ -1203,7 +1249,7 @@ class CCD(list):
         """
         Divides the CCD by 'other' in place (/=)
         """
-        for win,owin in zip(self,other):
+        for win,owin in zip(self._data,other._data):
             win /= owin
         return self
 
@@ -1212,7 +1258,7 @@ class CCD(list):
         Adds 'other' to the CCD (+)
         """
         twins = []
-        for win,owin in zip(self,other):
+        for win,owin in zip(self._data,other._data):
             twins.append(win + owin)
         return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
 
@@ -1221,7 +1267,7 @@ class CCD(list):
         Subtracts 'other' from the CCD (-)
         """
         twins = []
-        for win,owin in zip(self,other):
+        for win,owin in zip(self._data,other._data):
             twins.append(win - owin)
         return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
 
@@ -1230,7 +1276,7 @@ class CCD(list):
         Multiplies CCD by 'other' (*)
         """
         twins = []
-        for win,owin in zip(self,other):
+        for win,owin in zip(self._data,other._data):
             twins.append(win * owin)
         return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
 
@@ -1239,7 +1285,7 @@ class CCD(list):
         Divides CCD by 'other' (/)
         """
         twins = []
-        for win,owin in zip(self,other):
+        for win,owin in zip(self._data,other._data):
             twins.append(win / owin)
         return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
 
@@ -1254,7 +1300,7 @@ class CCD(list):
         ret += '\nDimensions = ' + str(self.nxmax) + ', ' + str(self.nymax) + \
             ', number of windows = ' + str(len(self)) + ', status = ' + str(self.good) + '\n'
 
-        for nwin,win in enumerate(self):
+        for nwin,win in enumerate(self._data):
             ret += '\nWindow number ' + str(nwin+1) + ':\n'
             ret += str(win) + '\n'
         return ret
@@ -2502,7 +2548,7 @@ class Rdata (Rhead):
         tinfo = utimer(tbytes, self, self._nf)
 
         # step to start of next frame
-        if self.server is None:
+        if not self.server:
             self._fobj.seek(self.framesize-2*self.headerwords,1)
 
         # move frame counter on by one
