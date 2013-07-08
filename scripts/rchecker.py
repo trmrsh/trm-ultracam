@@ -228,7 +228,7 @@ if __name__ == '__main__':
     nruns = []
     for run in runs:
         try:
-            rxml  = ultracam.Rhead(os.path.join(night, run + '.xml'))
+            rxml  = ultracam.Rhead(os.path.join(night, run))
             if rxml.isPonoff(): continue
 
             if log.format == 1:
@@ -431,7 +431,8 @@ if __name__ == '__main__':
                     print 'Final frame not displayed.'
 
             else:
-                if nf + mccd.head.value('Data.ntmin') >= nnext: rdat.time(nf)
+                if nf + mccd.head.value('Data.ntmin') >= nnext: 
+                    rdat.time(nf)
                 
         # close plot
         pgclos()
