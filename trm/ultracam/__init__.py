@@ -692,6 +692,19 @@ class Window(object):
         else:
             return Window(self._data / other, self.llx, self.lly, self.xbin, self.ybin)
 
+    def __radd__(self, other):
+        return Window(other + self._data, self.llx, self.lly, self.xbin, self.ybin)
+
+    def __rsub__(self, other):
+        return Window(other - self._data, self.llx, self.lly, self.xbin, self.ybin)
+
+    def __rmul__(self, other):
+        return Window(other * self._data, self.llx, self.lly, self.xbin, self.ybin)
+
+    def __rdiv__(self, other):
+        return Window(other / self._data + other, self.llx, self.lly, self.xbin, self.ybin)
+
+
 class Time(object):
     """
     Represents a time for a CCD. Three attributes:
@@ -946,6 +959,8 @@ class CCD(object):
     Class to represent a CCD. Contains a list of Windows representing
     all the sub-windows of a CCD along with some extra defining
     attributes.
+
+    Indexed access returns the component Window objects.
     """
     def __init__(self, wins, time, nxmax, nymax, good, head):
         """
@@ -1222,35 +1237,51 @@ class CCD(object):
     # arithematic
     def __iadd__(self, other):
         """
-        Adds 'other' to the CCD in place (+=). Windows must be ordered
-        in the same sense so that they all match
+        Adds 'other' to the CCD in place (+=). 'other' can be a
+        constant or a CCD
         """
-        for win,owin in zip(self._data,other._data):
-            win += owin
+        if isinstance(other, CCD):
+            for win,owin in zip(self._data,other._data):
+                win += owin
+        else:
+            for win in self._data:
+                win += other
         return self
 
     def __isub__(self, other):
         """
         Subtracts 'other' from the CCD in place (-=)
         """
-        for win,owin in zip(self._data,other._data):
-            win -= owin
+        if isinstance(other, CCD):
+            for win,owin in zip(self._data,other._data):
+                win -= owin
+        else:
+            for win in self._data:
+                win -= other
         return self
 
     def __imul__(self, other):
         """
         Multiplies the CCD by 'other' in place (*=)
         """
-        for win,owin in zip(self._data,other._data):
-            win *= owin
+        if isinstance(other, CCD):
+            for win,owin in zip(self._data,other._data):
+                win *= owin
+        else:
+            for win in self._data:
+                win *= other
         return self
 
     def __idiv__(self, other):
         """
         Divides the CCD by 'other' in place (/=)
         """
-        for win,owin in zip(self._data,other._data):
-            win /= owin
+        if isinstance(other, CCD):
+            for win,owin in zip(self._data,other._data):
+                win /= owin
+        else:
+            for win in self._data:
+                win /= other
         return self
 
     def __add__(self, other):
@@ -1258,8 +1289,12 @@ class CCD(object):
         Adds 'other' to the CCD (+)
         """
         twins = []
-        for win,owin in zip(self._data,other._data):
-            twins.append(win + owin)
+        if isinstance(other, CCD):
+            for win,owin in zip(self._data,other._data):
+                twins.append(win + owin)
+        else:
+            for win in self._data:
+                twins.append(win + other)
         return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
 
     def __sub__(self, other):
@@ -1267,8 +1302,12 @@ class CCD(object):
         Subtracts 'other' from the CCD (-)
         """
         twins = []
-        for win,owin in zip(self._data,other._data):
-            twins.append(win - owin)
+        if isinstance(other, CCD):
+            for win,owin in zip(self._data,other._data):
+                twins.append(win - owin)
+        else:
+            for win in self._data:
+                twins.append(win - other)
         return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
 
     def __mul__(self, other):
@@ -1276,8 +1315,12 @@ class CCD(object):
         Multiplies CCD by 'other' (*)
         """
         twins = []
-        for win,owin in zip(self._data,other._data):
-            twins.append(win * owin)
+        if isinstance(other, CCD):
+            for win,owin in zip(self._data,other._data):
+                twins.append(win * owin)
+        else:
+            for win in self._data:
+                twins.append(win * other)
         return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
 
     def __div__(self, other):
@@ -1285,8 +1328,12 @@ class CCD(object):
         Divides CCD by 'other' (/)
         """
         twins = []
-        for win,owin in zip(self._data,other._data):
-            twins.append(win / owin)
+        if isinstance(other, CCD):
+            for win,owin in zip(self._data,other._data):
+                twins.append(win / owin)
+        else:
+            for win in self._data:
+                twins.append(win / other)
         return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
 
     def __str__(self):
@@ -1305,7 +1352,7 @@ class CCD(object):
             ret += str(win) + '\n'
         return ret
 
-class MCCD(list):
+class MCCD(object):
     """
     Represents multiple CCD frame. The idea is that one has an instrument
     which produces multiple CCDs of data that are intrinsically linked, 
@@ -1313,14 +1360,7 @@ class MCCD(list):
     several CCDs. This is to represent ULTRACAM data. There is some common 
     header information, plus the data, represented by a list of CCD objects.
 
-    To allow easy access to the data, like CCD, MCCD is a subclass of list 
-    so that a construction like mccd[1] returns the second CCD, mccd[1][0]
-    returns the first Window of the second CCD and 
-
-    for ccd in mccd:
-      print 'number of windows = ',len(ccd)
-
-    steps through each CCD printing the number of windows.
+    Indexed access returns the component CCD objects.
     """
 
     def __init__(self, data, head):
@@ -1335,9 +1375,6 @@ class MCCD(list):
           
         Sets the equivalent attribute 'head'
         """
-        if not isinstance(data, list):
-            raise UltracamError('MCCC.__init__: data should be a list.')
-
         for ccd in data:
             if not isinstance(ccd, CCD):
                 raise UltracamError('MCCC.__init__: one or more of the elements of data is not a CCD.')
@@ -1345,7 +1382,7 @@ class MCCD(list):
         if head is not None and not isinstance(head, Uhead):
             raise UltracamError('MCCC.__init__: head should be a Uhead (or None).')
 
-        list.__init__(self, data)
+        self._data = data
         self.head  = head
 
     @classmethod
@@ -1445,6 +1482,47 @@ class MCCD(list):
 
         return cls(data, head)
 
+    def __len__(self):
+        """
+        Returns number of CCDs
+        """
+        return len(self._data)
+
+    def __getitem__(self, i):
+        """
+        Returns data[i] where data is the internal ndarray data.
+        """
+        return self._data[i]
+
+    def __setitem__(self, i, ccd):
+        """
+        Sets the i-th Window
+        """
+        if not isinstance(win, CCD):
+            raise UltracamError('MCCD.__setitem__: ccd must be a CCD')
+        self._data[i] = ccd
+
+    @property
+    def data(self):
+        """
+        The list of CCDs
+        """
+        return self._data
+
+    @data.setter
+    def data(self, ccds):
+        for ccd in ccds:
+            if not isinstance(ccd, CCD):
+                raise UltracamError('MCCD.data: ccds must be a list of CCDs.')
+        self._data = ccds
+
+    @property
+    def nccd(self):
+        """
+        The number of CCDs
+        """
+        return len(self._data)
+
     def crop(self, mccd):
         """
         Crops the MCCD to match mccd if possible, returns the cropped
@@ -1454,7 +1532,7 @@ class MCCD(list):
             raise UltracamError('MCCD.crop: number of CCDs did not match')
 
         ccds = []
-        for ccd, ccdo in zip(self, mccd):
+        for ccd, ccdo in zip(self._data, mccd._data):
             ccds.append(ccd.crop(ccdo))
         return MCCD(ccds, self.head)
 
@@ -1467,7 +1545,7 @@ class MCCD(list):
 
             if len(self) != len(other): return False
 
-            for sccd, occd in zip(self,other):
+            for sccd, occd in zip(self._data,other._data):
                 if len(sccd) != len(occd): return False
             return True
         else:
@@ -1549,7 +1627,7 @@ class MCCD(list):
 
         iout = 0 if self.anyFloat() else 1
 
-        for ccd in self:
+        for ccd in self._data:
 
             # number of windows
             nwin = len(ccd)
@@ -1572,10 +1650,10 @@ class MCCD(list):
         nc  -- the CCD to remove the background from. -1 for all.
         """
         if nc == -1:
-            for ccd in self:
+            for ccd in self._data:
                 ccd.rback()
         else:
-            self.data[nc].rback()
+            self._data[nc].rback()
 
     def anyInt(self):
         """
@@ -1584,7 +1662,7 @@ class MCCD(list):
         but cause problems with arithematic operations. This allows you to check. 
         See also 'anyFloat', 'toFloat' and 'toInt'.
         """
-        for ccd in self:
+        for ccd in self._data:
             if ccd.anyInt(): return True
         return False
 
@@ -1593,7 +1671,7 @@ class MCCD(list):
         Returns True if any of the contributing CCDs are based on floats. This is needed
         to evaluate the output type needed when writing to disk.
         """
-        for ccd in self:
+        for ccd in self._data:
             if ccd.anyFloat(): return True
         return False
 
@@ -1604,7 +1682,7 @@ class MCCD(list):
 
         single  -- True to convert to 4-byte floats (else 8-byte)
         """
-        for ccd in self:
+        for ccd in self._data:
             ccd.toFloat(single)
 
     def toInt(self):
@@ -1613,7 +1691,7 @@ class MCCD(list):
         to the nearest integer. Warnings will be issued if data lies outside
         the 0 to 65535 range, but the conversion will proceed.
         """
-        for ccd in self:
+        for ccd in self._data:
             ccd.toInt()
 
     def max(self):
@@ -1621,7 +1699,7 @@ class MCCD(list):
         Returns a tuple of maximum values, 1 per CCD.
         """
         mx = []
-        for ccd in self:
+        for ccd in self._data:
             mx.append(ccd.max())
         return tuple(mx)
 
@@ -1630,7 +1708,7 @@ class MCCD(list):
         Returns a tuple of minimum values, 1 per CCD.
         """
         mn = []
-        for ccd in self:
+        for ccd in self._data:
             mn.append(ccd.min())
         return tuple(mn)
 
@@ -1639,7 +1717,7 @@ class MCCD(list):
         Returns a tuple of mean values, 1 per CCD.
         """
         mn = []
-        for ccd in self:
+        for ccd in self._data:
             mn.append(ccd.mean())
         return tuple(mn)
 
@@ -1648,7 +1726,7 @@ class MCCD(list):
         Returns a tuple of median values, 1 per CCD.
         """
         mn = []
-        for ccd in self:
+        for ccd in self._data:
             mn.append(ccd.median())
         return tuple(mn)
 
@@ -1657,32 +1735,48 @@ class MCCD(list):
         """
         Adds 'other' to the MCCD in place (+=)
         """
-        for ccd,occd in zip(self,other):
-            ccd += occd
+        if isinstance(other, MCCD):
+            for ccd,occd in zip(self._data,other._data):
+                ccd += occd
+        else:
+            for ccd in self._data:
+                ccd += other
         return self
 
     def __isub__(self, other):
         """
         Subtracts 'other' from the MCCD in place (-=)
         """
-        for ccd,occd in zip(self,other):
-            ccd -= occd
+        if isinstance(other, MCCD):
+            for ccd,occd in zip(self._data,other._data):
+                ccd -= occd
+        else:
+            for ccd in self._data:
+                ccd -= other
         return self
 
     def __imul__(self, other):
         """
         Multiplies the MCCD by 'other' in place (*=)
         """
-        for ccd,occd in zip(self,other):
-            ccd *= occd
+        if isinstance(other, MCCD):
+            for ccd,occd in zip(self._data,other._data):
+                ccd *= occd
+        else:
+            for ccd in self._data:
+                ccd *= other
         return self
 
     def __idiv__(self, other):
         """
         Divides the MCCD by 'other' in place (/=)
         """
-        for ccd,occd in zip(self,other):
-            ccd /= occd
+        if isinstance(other, MCCD):
+            for ccd,occd in zip(self._data,other._data):
+                ccd /= occd
+        else:
+            for ccd in self._data:
+                ccd /= other
         return self
 
     def __str__(self):
@@ -1690,7 +1784,7 @@ class MCCD(list):
         if self.head is not None: ret += str(self.head)
         ret += '\n\nNumber of CCDs = ' + str(len(self)) + '\n'
 
-        for nccd,ccd in enumerate(self):
+        for nccd,ccd in enumerate(self._data):
             ret += '\nCCD number ' + str(nccd+1) + ':\n'
             ret += str(ccd)
         return ret
@@ -1700,8 +1794,12 @@ class MCCD(list):
         Adds 'other' to the MCCD (+)
         """
         tccd = []
-        for ccd,occd in zip(self,other):
-            tccd.append(ccd + occd)
+        if isinstance(other, MCCD):
+            for ccd,occd in zip(self._data,other._data):
+                tccd.append(ccd + occd)
+        else:
+            for ccd in self._data:
+                tccd.append(ccd + other)
         return MCCD(tccd, self.head)
 
     def __sub__(self, other):
@@ -1709,8 +1807,12 @@ class MCCD(list):
         Subtract 'other' from the MCCD (-)
         """
         tccd = []
-        for ccd,occd in zip(self,other):
-            tccd.append(ccd - occd)
+        if isinstance(other, MCCD):
+            for ccd,occd in zip(self._data,other._data):
+                tccd.append(ccd - occd)
+        else:
+            for ccd in self._data:
+                tccd.append(ccd - other)
         return MCCD(tccd, self.head)
 
     def __mul__(self, other):
@@ -1718,8 +1820,12 @@ class MCCD(list):
         Multiply 'other' by the MCCD (*)
         """
         tccd = []
-        for ccd,occd in zip(self,other):
-            tccd.append(ccd * occd)
+        if isinstance(other, MCCD):
+            for ccd,occd in zip(self._data,other._data):
+                tccd.append(ccd * occd)
+        else:
+            for ccd in self._data:
+                tccd.append(ccd * other)
         return MCCD(tccd, self.head)
 
     def __div__(self, other):
@@ -1727,8 +1833,12 @@ class MCCD(list):
         Divide MCCD by 'other' from the MCCD (/)
         """
         tccd = []
-        for ccd,occd in zip(self,other):
-            tccd.append(ccd / occd)
+        if isinstance(other, MCCD):
+            for ccd,occd in zip(self._data,other._data):
+                tccd.append(ccd / occd)
+        else:
+            for ccd in self._data:
+                tccd.append(ccd / other)
         return MCCD(tccd, self.head)
 
     def plot(self, vlo=2., vhi=98., nc=-1, method='p', mpl=False, cmap=cm.binary, \
@@ -1766,7 +1876,7 @@ class MCCD(list):
             pg.pgsubp(nc2-nc1,1)
 
         prange = []
-        for nc, ccd in enumerate(self[nc1:nc2]):
+        for nc, ccd in enumerate(self._data[nc1:nc2]):
 
             # Determine intensity range to display
             if method == 'p':
@@ -1832,6 +1942,7 @@ class UCAM(MCCD):
         """
         if len(data) != 3:
             raise UltracamError('UCAM.__init__: require list of 3 CCDs for data')
+
         for ccd in data:
             if len(ccd) % 2 != 0:
                 raise UltracamError('UCAM.__init__: all CCDs must have an even number of Windows')
@@ -1871,7 +1982,7 @@ class UCAM(MCCD):
             raise UltracamError('UCAM.checkData: only works with raw unsigned 16-bit int images')
 
         ret = []
-        for nc, ccd in enumerate(self):
+        for nc, ccd in enumerate(self._data):
            for winl, winr in zip(ccd[::2],ccd[1::2]):
 
                # check the modes
