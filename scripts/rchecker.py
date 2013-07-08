@@ -306,6 +306,7 @@ if __name__ == '__main__':
             if entry.title.text == nsheet:
                 pkey = entry.id.text.split('/')[-1]
                 print 'Found work sheet =',nsheet
+                print '>> You might want to check that ' + nsheet + ' has not already been completed <<'
                 break
         else:
             # have not found the sheet, so create it and set column names
