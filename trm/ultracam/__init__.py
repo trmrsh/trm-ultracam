@@ -1336,6 +1336,42 @@ class CCD(object):
                 twins.append(win / other)
         return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
 
+    def __radd__(self, other):
+        """
+        Defines other + CCD
+        """
+        twins = []
+        for win in self._data:
+            twins.append(other + win)
+        return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
+
+    def __rsub__(self, other):
+        """
+        Defines other - CCD
+        """
+        twins = []
+        for win in self._data:
+            twins.append(other - win)
+        return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
+
+    def __rmul__(self, other):
+        """
+        Defines other * CCD
+        """
+        twins = []
+        for win in self._data:
+            twins.append(other * win)
+        return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
+
+    def __rdiv__(self, other):
+        """
+        Defines other * CCD
+        """
+        twins = []
+        for win in self._data:
+            twins.append(other / win)
+        return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
+
     def __str__(self):
         """
         Generates readable summary of a CCD
@@ -1840,6 +1876,42 @@ class MCCD(object):
             for ccd in self._data:
                 tccd.append(ccd / other)
         return MCCD(tccd, self.head)
+
+    def __radd__(self, other):
+        """
+        Returns other + MCCD (an MCCD)
+        """
+        tccds = []
+        for ccd in self._data:
+            tccds.append(other + ccd)
+        return MCCD(tccds, self.head)
+
+    def __rsub__(self, other):
+        """
+        Returns other - MCCD (an MCCD)
+        """
+        tccds = []
+        for ccd in self._data:
+            tccds.append(other - ccd)
+        return MCCD(tccds, self.head)
+
+    def __rmul__(self, other):
+        """
+        Returns other * MCCD (an MCCD)
+        """
+        tccds = []
+        for ccd in self._data:
+            tccds.append(other * ccd)
+        return MCCD(tccds, self.head)
+
+    def __rdiv__(self, other):
+        """
+        Returns other / MCCD (an MCCD)
+        """
+        tccds = []
+        for ccd in self._data:
+            tccds.append(other / ccd)
+        return MCCD(tccds, self.head)
 
     def plot(self, vlo=2., vhi=98., nc=-1, method='p', mpl=False, cmap=cm.binary, \
                  close=True, x1=None, x2=None, y1=None, y2=None, sepmin=1.):
