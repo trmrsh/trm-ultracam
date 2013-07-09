@@ -4,6 +4,7 @@ A few general utility functions
 
 import struct
 import datetime
+import numpy as np
 
 from Constants import *
 from UErrors import *
