@@ -201,16 +201,13 @@ class MCCD(object):
         """
         Equality operator tests same number of CCDs and that each CCD matches.
         """
+        
+        if len(self) != len(other): return False
 
-        if type(other) is type(self):
-
-            if len(self) != len(other): return False
-
-            for sccd, occd in zip(self._data,other._data):
-                if len(sccd) != len(occd): return False
-            return True
-        else:
-            return NotImplemented
+        for sccd, occd in zip(self._data,other._data):
+            if sccd != occd: 
+                return False
+        return True
 
     def __ne__(self, other):
         """
