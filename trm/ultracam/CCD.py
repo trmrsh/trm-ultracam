@@ -53,15 +53,15 @@ class CCD(object):
         Equality of two CCDs is defined by matching binning factors, 
         maximum dimensions and windows (in order).
         """
-        if type(other) is type(self):
-            if self.nxmax != other.nymax or len(self) != len(other): return False
+
+        if self.nxmax != other.nxmax or self.nymax != other.nymax or len(self) != len(other): 
+            return False
         
-            # now test for equal windows
-            for swin,owin in zip(self._data,other._data):
-                if swin != owin: return False
-            return True
-        else:
-            return NotImplemented
+        # now test for equal windows
+        for swin,owin in zip(self._data,other._data):
+            if swin != owin:
+                return False
+        return True
 
     def __ne__(self, other):
         """
@@ -279,8 +279,8 @@ class CCD(object):
         wins = []
         for nwino, wino in enumerate(ccd._data):
             for win in self._data:
-                if win >= wino:
-                    wins.append(win.crop(wino))
+                if win.canCropTo(wino):
+                    wins.append(win.cropTo(wino))
                     break
             else:
                 raise UltracamError('CCD.crop: could not crop any window of CCD to match window ' + 
