@@ -277,13 +277,14 @@ class CCD(object):
             raise UltracamError('CCD.crop: maximum dimensions did not match')
         
         wins = []
-        for wino in ccd._data:
+        for nwino, wino in enumerate(ccd._data):
             for win in self._data:
                 if win >= wino:
                     wins.append(win.crop(wino))
                     break
             else:
-                raise UltracamError('CCD.crop: could not crop CCD to match argument')
+                raise UltracamError('CCD.crop: could not crop any window of CCD to match window ' + 
+                                    str(nwino+1) + ' of other.')
         return CCD(wins, self.time, self.nxmax, self.nymax, self.good, self.head)
         
     # arithematic
@@ -440,3 +441,11 @@ class CCD(object):
             ret += str(win) + '\n'
         return ret
 
+    def format(self):
+        """
+        Returns a string describing the format of the CCD
+        """
+        ret = ''
+        for nwin, win in enumerate(self._data):
+            ret += 'Window ' + str(nwin+1) + ' = ' + win.format() + '\n'
+        return ret
