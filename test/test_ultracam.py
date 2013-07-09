@@ -6,7 +6,8 @@ Run with 'python test_ultracam.py'
 
 import unittest
 import numpy as np
-from trm import ultracam
+import ppgplot as pg
+from   trm import ultracam
 
 class TestWindow(unittest.TestCase):
 
@@ -122,6 +123,14 @@ class TestCCD(unittest.TestCase):
 
     def test_index(self):
         self.assertEqual(self.ccd[1][4,5],15.)
+
+    def test_plot(self):
+        def ok():
+            pg.pgopen('/null')
+            self.ccd.plot(5,95)
+            pg.pgclos()
+            return True
+        self.assertTrue(ok())
 
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestWindow)
