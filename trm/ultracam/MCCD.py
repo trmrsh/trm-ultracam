@@ -184,7 +184,7 @@ class MCCD(object):
         """
         return len(self._data)
 
-    def crop(self, mccd):
+    def cropTo(self, mccd):
         """
         Crops the MCCD to match mccd if possible, returns the cropped
         MCCD. Raises an UltracamError if it does not succeed.
@@ -194,7 +194,7 @@ class MCCD(object):
 
         ccds = []
         for ccd, ccdo in zip(self._data, mccd._data):
-            ccds.append(ccd.crop(ccdo))
+            ccds.append(ccd.cropTo(ccdo))
         return MCCD(ccds, self.head)
 
     def __eq__(self, other):
@@ -627,6 +627,16 @@ class MCCD(object):
         else:
             return tuple(prange)
 
+    def format(self):
+        """
+        Returns a string describing the format of the MCCD
+        """
+        ret = ''
+        for nccd, ccd in enumerate(self._data):
+            ret += 'CCD ' + str(nccd+1) + ':\n'
+            ret += ccd.format()+'\n'
+        return ret
+
 class UCAM(MCCD):
     """
     Specialised version of an MCCD which represents ULTRACAM frames.
@@ -738,3 +748,4 @@ class UCAM(MCCD):
 
         return ret
         
+
