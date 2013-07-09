@@ -237,9 +237,7 @@ class Window(object):
         return self._data[i]
 
     def __str__(self):
-        ret  = '  llx, lly = ' + str(self.llx) + ', ' + str(self.lly) + \
-            '; nx, ny = ' + str(self.nx) + ', ' + str(self.ny) + \
-            '; xbin, ybin = ' + str(self.xbin) + ', ' + str(self.ybin) + '\n'
+        ret  = self.format() + '\n'
         ret += str(self._data) + ', dtype = ' + str(self._data.dtype)
         return ret
 
@@ -323,4 +321,12 @@ class Window(object):
 
     def __rdiv__(self, other):
         return Window(other / self._data + other, self.llx, self.lly, self.xbin, self.ybin)
+
+    def format(self):
+        """
+        Returns a string defining the format of the Window
+        """
+        return 'llx, lly = ' + str(self.llx) + ', ' + str(self.lly) + \
+            '; nx, ny = ' + str(self.nx) + ', ' + str(self.ny) + \
+            '; xbin, ybin = ' + str(self.xbin) + ', ' + str(self.ybin)
 
