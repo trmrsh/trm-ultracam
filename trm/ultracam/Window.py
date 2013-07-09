@@ -158,8 +158,8 @@ class Window(object):
 
         return (self.xbin == other.xbin and self.ybin == other.ybin and
                 self.llx <= other.llx and self.lly <= other.lly and 
-                self.llx + self.xbin*self.nx >= other.llx + other.xbin*other.nxo and
-                self.lly + self.ybin*self.ny >= other.lly + other.ybin*other.nyo and
+                self.llx + self.xbin*self.nx >= other.llx + other.xbin*other.nx and
+                self.lly + self.ybin*self.ny >= other.lly + other.ybin*other.ny and
                 (self.llx - other.llx) % self.xbin == 0 and
                 (self.lly - other.lly) % self.ybin == 0)
 
@@ -250,13 +250,11 @@ class Window(object):
                 self.xbin == other.xbin and self.ybin == other.ybin and
                 self.nx == other.nx and self.ny == other.ny)
 
-    def __neq__(self, other):
+    def __ne__(self, other):
         """
         Negation of the equality operator.
         """
-        return (self.llx != other.llx or self.lly != other.lly or
-                self.xbin != other.xbin or self.ybin != other.ybin or
-                self.nx != other.nx or self.ny != other.ny)
+        return not self.__eq__(other)
 
     def __iadd__(self, other):
         if isinstance(other, Window):
