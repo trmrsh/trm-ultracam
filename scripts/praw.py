@@ -20,7 +20,8 @@ parser.add_argument('-phi', type=float, default=98., help='Upper percentile for 
 parser.add_argument('-f', dest='first', type=int, default=1, help='first frame to plot (default = 1)')
 parser.add_argument('-l', dest='last', type=int, default=0, help='last frame to plot (0 to go up to last one)')
 parser.add_argument('-s', dest='sleep', type=float, default=0, help='number of seconds to pause between frames')
-parser.add_argument('-b', dest='back', action='store_true', help='subtract median background from each window')
+parser.add_argument('-r', dest='back', action='store_true', help='remove median background from each window')
+parser.add_argument('-b', dest='bias', help='bias frame to subtract (ucm file)')
 parser.add_argument('-u', dest='ucam', action='store_true', help='Get data via the ULTRACAM FileServer')
 parser.add_argument('-x1', type=float, help='left-hand X-limit')
 parser.add_argument('-x2', type=float, help='right-hand X-limit')
@@ -65,11 +66,29 @@ import time
 from trm import ultracam
 from ppgplot import *
 
+if args.bias:
+    bias = ultracam.MCCD.rucm(args.bias)
+
 # Now do something
 pgopen('/xs')
 
-fnum = args.first
-for mccd in ultracam.Rdata(run,args.first,server=args.ucam):
+fnum  = args.first
+first = True
+rdat  = ultracam.Rdata(run,args.first,server=args.ucam)
+
+for mccd in rdat:
+
+    if args.bias:
+        if first and bias != mccd:
+            try:
+                bias = bias.cropTo(mccd)
+            except ultracam.UltracamError, err:
+                print 'UltracamError:',err
+                print 'Bias format:\n',bias.format()
+                print 'Data format (should be subset of the bias):\n',mccd.format()
+                exit(1)
+        first = False
+        mccd -= bias
 
     if args.back:
         mccd.rback(nccd)
