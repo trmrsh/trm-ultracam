@@ -147,6 +147,8 @@ class Rhead (object):
             self.mode    = 'FFCLR'
         elif app == 'appl4_frameover_cfg' or app == 'ap4_frameover':
             self.mode    = 'FFOVER'
+        elif app == 'appl10_frameover_mindead_cfg'
+        	self.mode    = 'FFOVNC'
         elif app == 'ap9_250_fullframe_mindead' or app == 'ap9_fullframe_mindead' or \
                 app == 'appl9_fullframe_mindead_cfg':
             self.mode    = 'FFNCLR'
@@ -192,7 +194,7 @@ class Rhead (object):
             if self.mode == 'FFCLR' or self.mode == 'FFNCLR':
                 self.win.append(Rwin(  1, 1, 512//self.xbin, 1024//self.ybin))
                 self.win.append(Rwin(513, 1, 512//self.xbin, 1024//self.ybin))
-            elif self.mode == 'FFOVER':
+            elif self.mode == 'FFOVER' or self.mode == 'FFOVNC':
                 self.win.append(Rwin(  1, 1, 540//self.xbin, 1032//self.ybin))
                 self.win.append(Rwin(541, 1, 540//self.xbin, 1032//self.ybin))
             else:
@@ -1090,7 +1092,7 @@ def utimer(tbytes, rhead, fnum):
             exposure = rhead.exposeTime
 
     elif rhead.instrument == 'ULTRACAM' and \
-            (rhead.mode == 'FFNCLR' or rhead.mode == '1-PAIR' 
+            (rhead.mode == 'FFNCLR' or rhead.mode == '1-PAIR' or rhead.mode == 'FFOVNC'
              or rhead.mode == '2-PAIR' or rhead.mode == '3-PAIR'):
 
         # never need more than three times
@@ -1103,6 +1105,9 @@ def utimer(tbytes, rhead, fnum):
         if rhead.mode == 'FFNCLR':
             readoutTime = (1024/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin + 
                                               536*HCLOCK + (512/rhead.xbin+2)*VIDEO)/1.e6
+        elif rhead.mode == 'FFOVNC':
+                readoutTime = (1032/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin + 
+                                                  540*HCLOCK + (540/rhead.xbin+2)*VIDEO)/1.e6
         else:
 
             readoutTime = 0.
