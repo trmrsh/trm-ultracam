@@ -147,7 +147,7 @@ class Rhead (object):
             self.mode    = 'FFCLR'
         elif app == 'appl4_frameover_cfg' or app == 'ap4_frameover':
             self.mode    = 'FFOVER'
-        elif app == 'appl10_frameover_mindead_cfg'
+        elif app == 'appl10_frameover_mindead_cfg':
         	self.mode    = 'FFOVNC'
         elif app == 'ap9_250_fullframe_mindead' or app == 'ap9_fullframe_mindead' or \
                 app == 'appl9_fullframe_mindead_cfg':
