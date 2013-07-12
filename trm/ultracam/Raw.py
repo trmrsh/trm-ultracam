@@ -194,12 +194,39 @@ class Rhead (object):
             if self.mode == 'FFCLR' or self.mode == 'FFNCLR':
                 self.win.append(Rwin(  1, 1, 512//self.xbin, 1024//self.ybin))
                 self.win.append(Rwin(513, 1, 512//self.xbin, 1024//self.ybin))
+                fsize += 12*self.win[-1].nx*self.win[-1].ny
+
             elif self.mode == 'FFOVER' or self.mode == 'FFOVNC':
-                self.win.append(Rwin(  1, 1, 540//self.xbin, 1032//self.ybin))
-                self.win.append(Rwin(541, 1, 540//self.xbin, 1032//self.ybin))
-                #self.win.append(Rwin(  1, 1, 512//self.xbin, 1024//self.ybin))
-                #self.win.append(Rwin(513, 1, 512//self.xbin, 1024//self.ybin))
+                # In overscan mode the extra pixels are clocked out after the data has been
+                # read which effectively means they should appear in the centre of the chip. 
+                # However, this would ruin the location of the physical pixels relative to all
+                # other formats (unless they always included a centre gap). Thus the extra sections
+                # are placed off to the right-hand and top sides where they do not affect the pixel
+                # registration. This code requires some corresponding jiggery-pokery in Rdata because
+                # the actual data comes in in just two windows. The 6 windows come in 3 pairs of equal
+                # sizes, hence the single fsize increment line per pair.
+
+                # first set the physical data windows
+                self.win.append(Rwin(  1, 1, 512//self.xbin, 1024//self.ybin))
+                self.win.append(Rwin(513, 1, 512//self.xbin, 1024//self.ybin))
+                fsize += 12*self.win[-1].nx*self.win[-1].ny
+
+                # left overscan (place on right)
+                self.win.append(Rwin(1025, 1, 28//self.xbin, 1032//self.ybin))
+
+                # right overscan
+                self.win.append(Rwin(1053, 1, 28//self.xbin, 1032//self.ybin))
+                fsize += 12*self.win[-1].nx*self.win[-1].ny
+
+                # top left overscan
+                self.win.append(Rwin(1, 1025, 512//self.xbin, 8//self.ybin))
+
+                # top right overscan
+                self.win.append(Rwin(513, 1025, 512//self.xbin, 8//self.ybin))
+                fsize += 12*self.win[-1].nx*self.win[-1].ny
+                
             else:
+
                 ystart = int(param['Y1_START'])
                 xleft  = int(param['X1L_START'])
                 xright = int(param['X1R_START'])
@@ -208,7 +235,7 @@ class Rhead (object):
                 self.win.append(Rwin(xleft, ystart, nx, ny))
                 self.win.append(Rwin(xright, ystart, nx, ny))
             
-            fsize += 12*self.win[-1].nx*self.win[-1].ny
+                fsize += 12*self.win[-1].nx*self.win[-1].ny
 
             if self.mode == '2-PAIR' or self.mode == '3-PAIR':
                 ystart = int(param['Y2_START'])
@@ -230,15 +257,6 @@ class Rhead (object):
                 self.win.append(Rwin(xright,ystart,nx,ny))
                 fsize += 12*self.win[-1].nx*self.win[-1].ny
 
-            #if self.mode == 'FFOVER' or self.mode == 'FFOVNC':
-            #	self.win.append(Rwin(1025, 1, 28//self.xbin, 1032//self.ybin))
-            #	self.win.append(Rwin(1053, 1, 28//self.xbin, 1032//self.ybin))
-            #	fsize += 12*self.win[-1].nx*self.win[-1].ny
-            #	self.win.append(Rwin(1,   1025, 512//self.xbin, 8//self.ybin))
-            #	self.win.append(Rwin(513, 1025, 512//self.xbin, 8//self.ybin))
-            #	fsize += 12*self.win[-1].nx*self.win[-1].ny
-            	
-			
         elif self.instrument == 'ULTRASPEC':
 
             self.exposeTime   = float(param['DWELL'])
@@ -514,16 +532,21 @@ class Rdata (Rhead):
         # build header
         head = Uhead()
         head.add_entry('User','Data entered by user at telescope')
-        head.add_entry('Instrument','Instrument information')
+
+        head.add_entry('Instrument','Instrument setup information')
         head.add_entry('Instrument.instrument',self.instrument,ITYPE_STRING,'Instrument identifier')
         head.add_entry('Instrument.headerwords',self.headerwords,ITYPE_INT,'Number of 2-byte words in timing')
         head.add_entry('Instrument.framesize',self.framesize,ITYPE_INT,'Total number of bytes per frame')
-        head.add_entry('Data', 'data frame information')
-        head.add_entry('Data.run',self._run,ITYPE_STRING,'run the frame came from')
-        head.add_entry('Data.frame',self._nf,ITYPE_INT,'frame number within run')
-        head.add_entry('Data.midnight',info['midnightCorr'],ITYPE_BOOL,'midnight bug correction applied')
-        head.add_entry('Data.ferror',info['frameError'],ITYPE_BOOL,'problem with frame numbers found')
-        head.add_entry('Data.ntmin',info['ntmin'],ITYPE_INT,'number of sequential timestamps needed')
+
+        head.add_entry('Run', 'Run specific information')
+        head.add_entry('Run.run',self._run,ITYPE_STRING,'run the frame came from')
+        head.add_entry('Run.mode',self.mode,ITYPE_STRING,'readout mode used')
+        head.add_entry('Run.ntmin',info['ntmin'],ITYPE_INT,'number of sequential timestamps needed')
+
+        head.add_entry('Frame', 'Frame specific information')
+        head.add_entry('Frame.frame',self._nf,ITYPE_INT,'frame number within run')
+        head.add_entry('Frame.midnight',info['midnightCorr'],ITYPE_BOOL,'midnight bug correction applied')
+        head.add_entry('Frame.ferror',info['frameError'],ITYPE_BOOL,'problem with frame numbers found')
 
         # interpret data
         xbin, ybin = self.xbin, self.ybin
@@ -532,71 +555,140 @@ class Rdata (Rhead):
             # on a pitch of 6. Some further jiggery-pokery is involved to get the
             # orientation of the frames correct.
             wins1, wins2, wins3 = [],[],[]
-            noff = 0
 
-            # flag indicating that outer pixels will be removed. This is because of a readout bug
-            # that affected all data taken prior to the VLT run of May 2007 spotted via the
-            # lack of a version number in the xml file
-            strip_outer = self.version == -1
-            for wl, wr in zip(self.win[::2],self.win[1::2]):
-                npix = 6*wl.nx*wl.ny
+
+            if self.mode != 'FFOVER' and self.mode != 'FFOVNC':
+                # Non-overscan modes: 
+                # flag indicating that outer pixels will be removed. This is because of a readout bug
+                # that affected all data taken prior to the VLT run of May 2007 spotted via the
+                # lack of a version number in the xml file
+                strip_outer = self.version == -1
+                noff = 0
+                for wl, wr in zip(self.win[::2],self.win[1::2]):
+                    npix = 6*wl.nx*wl.ny
+                    if flt:
+                        if strip_outer:
+                            wins1.append(Window(np.reshape(buff[noff:noff+npix:6].astype(np.float32),(wl.ny,wl.nx))[:,1:],
+                                                wl.llx,wl.lly,xbin,ybin))
+                            wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,-2::-1],
+                                                wr.llx+xbin,wr.lly,xbin,ybin))
+                            wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6].astype(np.float32),(wl.ny,wl.nx))[:,1:],
+                                                wl.llx,wl.lly,xbin,ybin))
+                            wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,-2::-1],
+                                                wr.llx+xbin,wr.lly,xbin,ybin))
+                            wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6].astype(np.float32),(wl.ny,wl.nx))[:,1:],
+                                                wl.llx,wl.lly,xbin,ybin))
+                            wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,-2::-1],
+                                                wr.llx+xbin,wr.lly,xbin,ybin))
+                        else:
+                            wins1.append(Window(np.reshape(buff[noff:noff+npix:6].astype(np.float32),(wl.ny,wl.nx)),
+                                                wl.llx,wl.lly,xbin,ybin))
+                            wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,::-1],
+                                                wr.llx,wr.lly,xbin,ybin))
+                            wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6].astype(np.float32),(wl.ny,wl.nx)),
+                                                wl.llx,wl.lly,xbin,ybin))
+                            wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,::-1],
+                                                wr.llx,wr.lly,xbin,ybin))
+                            wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6].astype(np.float32),(wl.ny,wl.nx)),
+                                                wl.llx,wl.lly,xbin,ybin))
+                            wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,::-1],
+                                                wr.llx,wr.lly,xbin,ybin))
+                    else:
+                        if strip_outer:
+                            wins1.append(Window(np.reshape(buff[noff:noff+npix:6],(wl.ny,wl.nx))[:,1:],
+                                                wl.llx,wl.lly,xbin,ybin))
+                            wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6],(wr.ny,wr.nx))[:,-2::-1],
+                                                wr.llx+xbin,wr.lly,xbin,ybin))
+                            wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6],(wl.ny,wl.nx))[:,1:],
+                                                wl.llx,wl.lly,xbin,ybin))
+                            wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6],(wr.ny,wr.nx))[:,-2::-1],
+                                                wr.llx+xbin,wr.lly,xbin,ybin))
+                            wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6],(wl.ny,wl.nx))[:,1:],
+                                                wl.llx,wl.lly,xbin,ybin))
+                            wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6],(wr.ny,wr.nx))[:,-2::-1],
+                                                wr.llx+xbin,wr.lly,xbin,ybin))
+                        else:
+                            wins1.append(Window(np.reshape(buff[noff:noff+npix:6],(wl.ny,wl.nx)),
+                                                wl.llx,wl.lly,xbin,ybin))
+                            wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
+                                                wr.llx,wr.lly,xbin,ybin))
+                            wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6],(wl.ny,wl.nx)),
+                                                wl.llx,wl.lly,xbin,ybin))
+                            wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
+                                                wr.llx,wr.lly,xbin,ybin))
+                            wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6],(wl.ny,wl.nx)),
+                                                wl.llx,wl.lly,xbin,ybin))
+                            wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
+                                                wr.llx,wr.lly,xbin,ybin))
+                    noff += npix
+            else:
+                # Overscan modes need special re-formatting. See the description under Rhead
+                # for more on this. The data come in the form of two windows 540 by 1032
+                # (divided by binning factors). The first thing we do is read these windows
+                # into 6 numpy arrays. 
+                noff = 0
+                nxb  = 540 // xbin
+                nyb  = 1032 // ybin
+                npix = 6*nxb*nyb
                 if flt:
-                    if strip_outer:
-                        wins1.append(Window(np.reshape(buff[noff:noff+npix:6].astype(np.float32),(wl.ny,wl.nx))[:,1:],
-                                            wl.llx,wl.lly,xbin,ybin))
-                        wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,-2::-1],
-                                            wr.llx+xbin,wr.lly,xbin,ybin))
-                        wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6].astype(np.float32),(wl.ny,wl.nx))[:,1:],
-                                            wl.llx,wl.lly,xbin,ybin))
-                        wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,-2::-1],
-                                            wr.llx+xbin,wr.lly,xbin,ybin))
-                        wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6].astype(np.float32),(wl.ny,wl.nx))[:,1:],
-                                            wl.llx,wl.lly,xbin,ybin))
-                        wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,-2::-1],
-                                            wr.llx+xbin,wr.lly,xbin,ybin))
-                    else:
-                        wins1.append(Window(np.reshape(buff[noff:noff+npix:6].astype(np.float32),(wl.ny,wl.nx)),
-                                            wl.llx,wl.lly,xbin,ybin))
-                        wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,::-1],
-                                            wr.llx,wr.lly,xbin,ybin))
-                        wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6].astype(np.float32),(wl.ny,wl.nx)),
-                                            wl.llx,wl.lly,xbin,ybin))
-                        wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,::-1],
-                                            wr.llx,wr.lly,xbin,ybin))
-                        wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6].astype(np.float32),(wl.ny,wl.nx)),
-                                            wl.llx,wl.lly,xbin,ybin))
-                        wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,::-1],
-                                            wr.llx,wr.lly,xbin,ybin))
+                    winl1 = np.reshape(buff[noff:noff+npix:6].astype(np.float32),(nyb,nxb))
+                    winr1 = np.reshape(buff[noff+1:noff+npix:6].astype(np.float32),(nyb,nxb))
+                    winl2 = np.reshape(buff[noff+2:noff+npix:6].astype(np.float32),(nyb,nxb))
+                    winr2 = np.reshape(buff[noff+3:noff+npix:6].astype(np.float32),(nyb,nxb))
+                    winl3 = np.reshape(buff[noff+4:noff+npix:6].astype(np.float32),(nyb,nxb))
+                    winr3 = np.reshape(buff[noff+5:noff+npix:6].astype(np.float32),(nyb,nxb))
                 else:
-                    if strip_outer:
-                        wins1.append(Window(np.reshape(buff[noff:noff+npix:6],(wl.ny,wl.nx))[:,1:],
-                                            wl.llx,wl.lly,xbin,ybin))
-                        wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6],(wr.ny,wr.nx))[:,-2::-1],
-                                            wr.llx+xbin,wr.lly,xbin,ybin))
-                        wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6],(wl.ny,wl.nx))[:,1:],
-                                            wl.llx,wl.lly,xbin,ybin))
-                        wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6],(wr.ny,wr.nx))[:,-2::-1],
-                                            wr.llx+xbin,wr.lly,xbin,ybin))
-                        wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6],(wl.ny,wl.nx))[:,1:],
-                                            wl.llx,wl.lly,xbin,ybin))
-                        wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6],(wr.ny,wr.nx))[:,-2::-1],
-                                            wr.llx+xbin,wr.lly,xbin,ybin))
-                    else:
-                        wins1.append(Window(np.reshape(buff[noff:noff+npix:6],(wl.ny,wl.nx)),
-                                            wl.llx,wl.lly,xbin,ybin))
-                        wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
-                                            wr.llx,wr.lly,xbin,ybin))
-                        wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6],(wl.ny,wl.nx)),
-                                            wl.llx,wl.lly,xbin,ybin))
-                        wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
-                                            wr.llx,wr.lly,xbin,ybin))
-                        wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6],(wl.ny,wl.nx)),
-                                            wl.llx,wl.lly,xbin,ybin))
-                        wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6],(wr.ny,wr.nx))[:,::-1],
-                                            wr.llx,wr.lly,xbin,ybin))
-                noff += npix
+                    winl1 = np.reshape(buff[noff:noff+npix:6],(nyb,nxb))
+                    winr1 = np.reshape(buff[noff+1:noff+npix:6],(nyb,nxb))
+                    winl2 = np.reshape(buff[noff+2:noff+npix:6],(nyb,nxb))
+                    winr2 = np.reshape(buff[noff+3:noff+npix:6],(nyb,nxb))
+                    winl3 = np.reshape(buff[noff+4:noff+npix:6],(nyb,nxb))
+                    winr3 = np.reshape(buff[noff+5:noff+npix:6],(nyb,nxb))
 
-            # Build CCDs
+                # For the reasons outlined in Rhead, we actually want to chop up 
+                # these 2 "data windows" into 6 per CCD. This is what we do next:
+
+                # Window 1 of the six comes from lower-left of left-hand data window
+                w = self.win[0]
+                wins1.append(Window(winl1[:w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
+                wins2.append(Window(winl2[:w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
+                wins3.append(Window(winl3[:w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
+
+                # Window 2 comes from lower-right of right-hand data window
+                w = self.win[1]
+                xoff = 28 // xbin
+                wins1.append(Window(winr1[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
+                wins2.append(Window(winr2[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
+                wins3.append(Window(winr3[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
+
+                # Window 3 comes from right of left-hand data window
+                w = self.win[2]
+                xoff = 512 // xbin
+                wins1.append(Window(winl1[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
+                wins2.append(Window(winl2[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
+                wins3.append(Window(winl3[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
+
+                # Window 4 comes from left of right-hand data window
+                w = self.win[3]
+                wins1.append(Window(winr1[:w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
+                wins2.append(Window(winr2[:w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
+                wins3.append(Window(winr3[:w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
+
+                # Window 5 comes from top of left-hand data window
+                w = self.win[4]
+                yoff = 1024 // ybin
+                wins1.append(Window(winl1[yoff:yoff+w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
+                wins2.append(Window(winl2[yoff:yoff+w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
+                wins3.append(Window(winl3[yoff:yoff+w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
+
+                # Window 6 comes from top of right-hand data window
+                w = self.win[5]
+                yoff = 1024 // ybin
+                wins1.append(Window(winr1[yoff:yoff+w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
+                wins2.append(Window(winr2[yoff:yoff+w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
+                wins3.append(Window(winr3[yoff:yoff+w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
+
+            # Build the CCDs
             ccd1 = CCD(wins1, time, self.nxmax, self.nymax, True, None)
             ccd2 = CCD(wins2, time, self.nxmax, self.nymax, True, None)
             ccd3 = CCD(wins3, blueTime, self.nxmax, self.nymax, not badBlue, None)
