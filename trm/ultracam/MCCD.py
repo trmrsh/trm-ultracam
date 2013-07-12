@@ -498,6 +498,12 @@ class MCCD(object):
             for ccd in self._data:
                 tccd.append(ccd / other)
         return MCCD(tccd, self.head)
+        
+    def __truediv__(self,other):
+    	"""
+    	Divide MCCD by 'other' from the MCCD (/) when future division used
+    	"""
+    	return self.__div__(other)
 
     def __radd__(self, other):
         """
