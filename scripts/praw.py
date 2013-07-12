@@ -94,7 +94,7 @@ for mccd in rdat:
         mccd.rback(nccd)
 
     prange = mccd.plot(plo,phi,nccd,close=False,x1=args.x1,x2=args.x2,y1=args.y1,y2=args.y2)
-    print 'Plotted',mccd.head.value('Data.run'),'frame',mccd.head.value('Data.frame'),'plot range(s):',prange
+    print 'Plotted',mccd.head.value('Run.run'),'frame',mccd.head.value('Frame.frame'),'plot range(s):',prange
     
     fnum += 1
     if args.last > 0 and fnum > args.last:
