@@ -626,24 +626,23 @@ class Rdata (Rhead):
                 # for more on this. The data come in the form of two windows 540 by 1032
                 # (divided by binning factors). The first thing we do is read these windows
                 # into 6 numpy arrays. 
-                noff = 0
                 nxb  = 540 // xbin
                 nyb  = 1032 // ybin
                 npix = 6*nxb*nyb
                 if flt:
-                    winl1 = np.reshape(buff[noff:noff+npix:6].astype(np.float32),(nyb,nxb))
-                    winr1 = np.reshape(buff[noff+1:noff+npix:6].astype(np.float32),(nyb,nxb))
-                    winl2 = np.reshape(buff[noff+2:noff+npix:6].astype(np.float32),(nyb,nxb))
-                    winr2 = np.reshape(buff[noff+3:noff+npix:6].astype(np.float32),(nyb,nxb))
-                    winl3 = np.reshape(buff[noff+4:noff+npix:6].astype(np.float32),(nyb,nxb))
-                    winr3 = np.reshape(buff[noff+5:noff+npix:6].astype(np.float32),(nyb,nxb))
+                    winl1 = np.reshape(buff[:npix:6].astype(np.float32),(nyb,nxb))
+                    winr1 = np.reshape(buff[1:npix:6].astype(np.float32),(nyb,nxb))[:,::-1]
+                    winl2 = np.reshape(buff[2:npix:6].astype(np.float32),(nyb,nxb))
+                    winr2 = np.reshape(buff[3:npix:6].astype(np.float32),(nyb,nxb))[:,::-1]
+                    winl3 = np.reshape(buff[4:npix:6].astype(np.float32),(nyb,nxb))
+                    winr3 = np.reshape(buff[5:npix:6].astype(np.float32),(nyb,nxb))[:,::-1]
                 else:
-                    winl1 = np.reshape(buff[noff:noff+npix:6],(nyb,nxb))
-                    winr1 = np.reshape(buff[noff+1:noff+npix:6],(nyb,nxb))
-                    winl2 = np.reshape(buff[noff+2:noff+npix:6],(nyb,nxb))
-                    winr2 = np.reshape(buff[noff+3:noff+npix:6],(nyb,nxb))
-                    winl3 = np.reshape(buff[noff+4:noff+npix:6],(nyb,nxb))
-                    winr3 = np.reshape(buff[noff+5:noff+npix:6],(nyb,nxb))
+                    winl1 = np.reshape(buff[:npix:6],(nyb,nxb))
+                    winr1 = np.reshape(buff[1:npix:6],(nyb,nxb))[:,::-1]
+                    winl2 = np.reshape(buff[2:npix:6],(nyb,nxb))
+                    winr2 = np.reshape(buff[3:npix:6],(nyb,nxb))[:,::-1]
+                    winl3 = np.reshape(buff[4:npix:6],(nyb,nxb))
+                    winr3 = np.reshape(buff[5:npix:6],(nyb,nxb))[:,::-1]
 
                 # For the reasons outlined in Rhead, we actually want to chop up 
                 # these 2 "data windows" into 6 per CCD. This is what we do next:
