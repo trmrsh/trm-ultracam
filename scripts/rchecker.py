@@ -257,6 +257,7 @@ if __name__ == '__main__':
              'phrlax' : ('mcpb', 'mcpbours@gmail.com'), 
              'phsjaf' : ('eb',   'elme.breedt@gmail.com'), 
              'phsmam' : ('scr',  'scatalanruiz@gmail.com'), 
+             'vsd'    : ('vsd',  'vik.dhillon1@gmail.com'), 
              }
 
     if args.local:
