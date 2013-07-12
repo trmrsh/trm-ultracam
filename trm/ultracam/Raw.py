@@ -195,8 +195,10 @@ class Rhead (object):
                 self.win.append(Rwin(  1, 1, 512//self.xbin, 1024//self.ybin))
                 self.win.append(Rwin(513, 1, 512//self.xbin, 1024//self.ybin))
             elif self.mode == 'FFOVER' or self.mode == 'FFOVNC':
-                self.win.append(Rwin(  1, 1, 512//self.xbin, 1024//self.ybin))
-                self.win.append(Rwin(513, 1, 512//self.xbin, 1024//self.ybin))
+                self.win.append(Rwin(  1, 1, 540//self.xbin, 1032//self.ybin))
+                self.win.append(Rwin(541, 1, 540//self.xbin, 1032//self.ybin))
+                #self.win.append(Rwin(  1, 1, 512//self.xbin, 1024//self.ybin))
+                #self.win.append(Rwin(513, 1, 512//self.xbin, 1024//self.ybin))
             else:
                 ystart = int(param['Y1_START'])
                 xleft  = int(param['X1L_START'])
@@ -228,15 +230,14 @@ class Rhead (object):
                 self.win.append(Rwin(xright,ystart,nx,ny))
                 fsize += 12*self.win[-1].nx*self.win[-1].ny
 
-            if self.mode == 'FFOVER' or self.mode == 'FFOVNC':
-            	self.win.append(Rwin(1025, 1, 28//self.xbin, 1032//self.ybin))
-            	self.win.append(Rwin(1053, 1, 28//self.xbin, 1032//self.ybin))
-            	fsize += 12*self.win[-1].nx*self.win[-1].ny
-            	self.win.append(Rwin(1,   1025, 512//self.xbin, 8//self.ybin))
-            	self.win.append(Rwin(513, 1025, 512//self.xbin, 8//self.ybin))
-            	fsize += 12*self.win[-1].nx*self.win[-1].ny
+            #if self.mode == 'FFOVER' or self.mode == 'FFOVNC':
+            #	self.win.append(Rwin(1025, 1, 28//self.xbin, 1032//self.ybin))
+            #	self.win.append(Rwin(1053, 1, 28//self.xbin, 1032//self.ybin))
+            #	fsize += 12*self.win[-1].nx*self.win[-1].ny
+            #	self.win.append(Rwin(1,   1025, 512//self.xbin, 8//self.ybin))
+            #	self.win.append(Rwin(513, 1025, 512//self.xbin, 8//self.ybin))
+            #	fsize += 12*self.win[-1].nx*self.win[-1].ny
             	
-
 			
         elif self.instrument == 'ULTRASPEC':
 
