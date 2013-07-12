@@ -573,7 +573,7 @@ class MCCD(object):
         
         if not mpl:
             if close: pg.pgopen('/xs')
-            pg.pgsubp(nc2-nc1,1)
+            if nc2-nc1 > 1: pg.pgsubp(nc2-nc1,1)
 
         prange = []
         for nc, ccd in enumerate(self._data[nc1:nc2]):
@@ -605,7 +605,7 @@ class MCCD(object):
                     plt.subplot(1,nc2-nc1,nc+1)
                 plt.axis('equal')
             else:
-                pg.pgpanl(nc-nc1+1,1)
+                if nc2-nc1 > 1: pg.pgpanl(nc-nc1+1,1)
                 pg.pgwnad(x1,x2,y1,y2)
 
             # plot CCD
@@ -644,18 +644,19 @@ class MCCD(object):
 class UCAM(MCCD):
     """
     Specialised version of an MCCD which represents ULTRACAM frames.
-    Basically allows more specialised methods.
+    Essentially this means that it expects some ULTRACAM-specific 
+    features that cannot be assumed for general MCCDs.
     """
     def __init__(self, data, head):
         """
         Imposes some restrictions on the inputs not set by MCCD. There must be
-        3 CCDs, and each must have an even number of Windows
+        3 CCDs, and each must have an even number of Windows. 
         """
         if len(data) != 3:
             raise UltracamError('UCAM.__init__: require list of 3 CCDs for data')
 
         for ccd in data:
-            if len(ccd) % 2 != 0:
+            if ccd.nwin % 2 != 0:
                 raise UltracamError('UCAM.__init__: all CCDs must have an even number of Windows')
 
         MCCD.__init__(self, data, head)
