@@ -204,7 +204,7 @@ class Window(object):
             self.llx += nleft*self.xbin
             self.lly += nbottom*self.ybin
 
-    def plot(self, vmin, vmax, mpl=False, cmap=cm.binary):
+    def plot(self, vmin, vmax, mpl=False, cmap=cm.binary, border=True):
         """
         Elementary intensity plot using either matplotlib's imshow 
         or pgplot's pggray. Typically some setup may be needed 
@@ -214,14 +214,23 @@ class Window(object):
         vmax   -- image value for highest intensity
         mpl    -- True for matplotlib, otherwise pgplot
         cmap   -- colour map if mpl
+        border -- plot a rectangular border around the outermost pixels or not 
         """
+        if border:
+            x1, x2 = self.llx-0.5,self.llx+self.xbin*self.nx-0.5
+            y1, y2 = self.lly-0.5,self.lly+self.ybin*self.ny-0.5
+
         if mpl:
             limits = self.llx-0.5,self.llx+self.xbin*self.nx-0.5,self.lly-0.5,self.lly+self.ybin*self.ny-0.5
             plt.imshow(self._data, cmap=cmap, interpolation='nearest', \
                            vmin=vmin, vmax=vmax, origin='lower', extent=limits)
+            if border:
+                plt.plot([x1,x2,x2,x1,x1],[y1,y1,y2,y2,y1])
         else:
             tr = np.array([self.llx-self.xbin,self.xbin,0,self.lly-self.ybin,0,self.ybin])
             pg.pggray(self._data,0,self.nx-1,0,self.ny-1,vmax,vmin,tr)
+            if border:
+                pg.pgline([x1,x2,x2,x1,x1],[y1,y1,y2,y2,y1])
 
     def __getitem__(self, i):
         """
