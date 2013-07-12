@@ -254,7 +254,7 @@ if __name__ == '__main__':
 
     # list of recognised users
     USERS = {'phsaap' : ('trm', 'tom.r.marsh@gmail.com'), 
-             'phslax' : ('mcpb', 'mcpbours@gmail.com'), 
+             'phrlax' : ('mcpb', 'mcpbours@gmail.com'), 
              'phsjaf' : ('eb',   'elme.breedt@gmail.com'), 
              'phsmam' : ('scr',  'scatalanruiz@gmail.com'), 
              }
@@ -432,7 +432,7 @@ if __name__ == '__main__':
                     print 'Final frame not displayed.'
 
             else:
-                if nf + mccd.head.value('Data.ntmin') >= nnext: 
+                if nf + mccd.head.value('Run.ntmin') >= nnext: 
                     rdat.time(nf)
                 
         # close plot
