@@ -656,7 +656,6 @@ class Rdata (Rhead):
 				
                 # Window 1 of the six comes from lower-left of left-hand data window
                 w = self.win[0]
-                print w.nx
                 xoff = 24 // xbin
                 wins1.append(Window(winl1[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
                 wins2.append(Window(winl2[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
