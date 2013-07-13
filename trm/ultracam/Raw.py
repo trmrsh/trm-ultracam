@@ -647,33 +647,46 @@ class Rdata (Rhead):
                 # For the reasons outlined in Rhead, we actually want to chop up 
                 # these 2 "data windows" into 6 per CCD. This is what we do next:
 
+				# overscan is arranged as 
+				# 24 columns on LH of LH window
+				#  4 columns on RH of LH window
+				#  4 columns on LH of RH window
+				# 24 columns on RH of RH window
+				#  8 rows along top of LH and RH windows
+				
                 # Window 1 of the six comes from lower-left of left-hand data window
                 w = self.win[0]
-                wins1.append(Window(winl1[:w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
-                wins2.append(Window(winl2[:w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
-                wins3.append(Window(winl3[:w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
-
-                # Window 2 comes from lower-right of right-hand data window
-                w = self.win[1]
-                xoff = 28 // xbin
-                wins1.append(Window(winr1[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
-                wins2.append(Window(winr2[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
-                wins3.append(Window(winr3[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
-
-                # Window 3 comes from right of left-hand data window
-                w = self.win[2]
-                xoff = 512 // xbin
+                print w.nx
+                xoff = 24 // xbin
                 wins1.append(Window(winl1[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
                 wins2.append(Window(winl2[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
                 wins3.append(Window(winl3[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
 
-                # Window 4 comes from left of right-hand data window
-                w = self.win[3]
-                wins1.append(Window(winr1[:w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
-                wins2.append(Window(winr2[:w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
-                wins3.append(Window(winr3[:w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
+                # Window 2 comes from lower-right of right-hand data window
+                w = self.win[1]
+                xoff = 4 // xbin
+                wins1.append(Window(winr1[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
+                wins2.append(Window(winr2[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
+                wins3.append(Window(winr3[:w.ny,xoff:xoff+w.nx],w.llx,w.lly,xbin,ybin))
 
-                # Window 5 comes from top of left-hand data window
+                # Window 3 is bias associated with left-hand data window (leftmost 24 and rightmost 4)
+                w = self.win[2]
+                lh = 24 // xbin
+                rh = 4 // xbin
+                wins1.append(Window(np.concatenate( (winl1[:w.ny,:lh], winl1[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
+                wins2.append(Window(np.concatenate( (winl2[:w.ny,:lh], winl1[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
+                wins3.append(Window(np.concatenate( (winl3[:w.ny,:lh], winl1[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
+
+
+                # Window 4 is bias associated with right-hand data window (leftmost 4 and rightmost 24)
+                w = self.win[3]
+                lh = 4 // xbin
+                rh = 24 // xbin
+                wins1.append(Window(np.concatenate( (winr1[:w.ny,:lh], winr1[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
+                wins2.append(Window(np.concatenate( (winr2[:w.ny,:lh], winr1[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
+                wins3.append(Window(np.concatenate( (winr3[:w.ny,:lh], winr1[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
+
+                # Window 5 comes from top strip of left-hand data window
                 w = self.win[4]
                 yoff = 1024 // ybin
                 wins1.append(Window(winl1[yoff:yoff+w.ny,:w.nx],w.llx,w.lly,xbin,ybin))
