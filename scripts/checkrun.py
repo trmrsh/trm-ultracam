@@ -39,7 +39,7 @@ if first < 0:
 from trm import ultracam
 
 fnum = args.first
-rdat = ultracam.Rdata(run,args.first,False):
+rdat = ultracam.Rdata(run,args.first,False)
 
 for mccd in rdat:
     red,green,blue = mccd.checkData()
