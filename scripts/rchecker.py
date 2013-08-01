@@ -253,11 +253,12 @@ if __name__ == '__main__':
     user  = getpass.getuser()
 
     # list of recognised users
-    USERS = {'phsaap' : ('trm', 'tom.r.marsh@gmail.com'), 
-             'phrlax' : ('mcpb', 'mcpbours@gmail.com'), 
-             'phsjaf' : ('eb',   'elme.breedt@gmail.com'), 
-             'phsmam' : ('scr',  'scatalanruiz@gmail.com'), 
-             'vsd'    : ('vsd',  'vik.dhillon1@gmail.com'), 
+    USERS = {'phsaap'   : ('trm', 'tom.r.marsh@gmail.com'), 
+             'phrlax'   : ('mcpb', 'mcpbours@gmail.com'), 
+             'phsjaf'   : ('eb',   'elme.breedt@gmail.com'), 
+             'phsmam'   : ('scr',  'scatalanruiz@gmail.com'), 
+             'vsd'      : ('vsd',  'vik.dhillon1@gmail.com'), 
+             'cmc'      : ('cmc',  'copperwheat@gmail.com'), 
              }
 
     if args.local:
@@ -273,6 +274,26 @@ if __name__ == '__main__':
 
         if args.email:
             email = args.email
+        elif user == 'observer':
+            initials = dict([(USERS[entry][0],USERS[entry][1]) for entry in USERS])
+            keys = initials.keys()
+            keys.sort()
+            print '\nSince you are runing this from the generic account "observer"'
+            print 'you need to specify who you are. Here is the list of recognised'
+            print 'initials / gmail combinations:\n'
+            for i, key in enumerate(keys):
+                print str(i+1) + ') ' + key + ' / ' + initials[key]
+            print
+            while 1:
+                try:
+                    index = int(raw_input('Select integer entry number: '))-1
+                    break
+                except ValueError:
+                    print 'Could not understand input; try again.'
+
+            user  = keys[index]
+            email = initials[user]
+            print 'Selected initials =',user,'and gmail address =',email
         elif user in USERS:
             email = USERS[user][1]
         else:
