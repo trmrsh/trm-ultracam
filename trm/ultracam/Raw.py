@@ -3,6 +3,7 @@ for handling the raw ULTRACAM data and xml files
 """
 
 import struct
+import warnings
 import urllib2
 import xml.dom.minidom
 
