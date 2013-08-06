@@ -42,15 +42,20 @@ def get_nframe_from_server(run):
     else:
         raise UltracamError('get_nframe_from_server: failed to parse server response to ' + full_url)
 
-def get_runs_from_server():
+def get_runs_from_server(dir=None):
     """
     Returns with a list of runs from the server
+
+    dir -- name of sub-directory on server
     """
     if URL is None:
         raise UltracamError('get_runs_from_server: no url for server found.' + 
                             ' Have you set the ULTRACAM_DEFAULT_URL environment variable?')
     # get from FileServer
-    full_url = URL + '?action=dir'
+    if dir is None:
+        full_url = URL + '?action=dir'
+    else:
+        full_url = URL + dir + '?action=dir'
     resp = urllib2.urlopen(full_url).read()
 
     # parse response from server
