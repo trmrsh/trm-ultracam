@@ -126,6 +126,7 @@ if __name__ == '__main__':
                         help='name of local file to save results rather than google spreadsheet')
     parser.add_argument('-e', dest='email', help='gmail address (will be prompted if needed)')
     parser.add_argument('-p', dest='password', help='gmail password (will be prompted if needed)')
+    parser.add_argument('-s', dest='server', action='store_true', help='source data from server rather than local disk')
     parser.add_argument('-r', dest='run', help='specific run to plot, e.g. "run003"')
     parser.add_argument('-b', dest='back', action='store_true', help='switch off auto-bias correction')
     parser.add_argument('-c', dest='chop', action='store_true', help='chop final frame of multi-frame runs')
@@ -175,7 +176,11 @@ if __name__ == '__main__':
             print 'Should be of form "1x2", "2x0" etc.'
             exit(1)
 
-    # load log file
+    # load log file. Note this must be of the form YYYY-MM-DD.dat or
+    # YYYY_MM_DD.dat and live in the night directory. This is the case
+    # whether we are accessing via the server or locally as the ATC
+    # fileserver only serves up the run.dat and xml files, not the 
+    # night logs.
     nlog = os.path.join(night, year + '-' + month + '-' + day + '.dat')
     if os.path.isfile(nlog):
         log = ultracam.Log(nlog)
@@ -208,11 +213,16 @@ if __name__ == '__main__':
         print 'ERROR: phi must lie from 0 to 100'
         exit(1)
 
-    # generate run list -- a few riders here
-    runs = [fname[:-4] for fname in os.listdir(night) if \
-                fname.startswith('run') and \
-                fname.endswith('.xml') and \
-                os.path.isfile(os.path.join(night, fname[:-4] + '.dat'))]
+    # generate run list. Approach adopted depends upon whether
+    # the server is being used or not. If it is, it must point 
+    # at the raw_data directory
+    if args.server:
+        runs = ultracam.get_runs_from_server(night)
+    else:
+        runs = [fname[:-4] for fname in os.listdir(night) if \
+                    fname.startswith('run') and \
+                    fname.endswith('.xml') and \
+                    os.path.isfile(os.path.join(night, fname[:-4] + '.dat'))]
 
     if len(runs) == 0:
         print 'ERROR: found no runs in directory =',night
@@ -384,7 +394,7 @@ if __name__ == '__main__':
         reply = raw_input('<cr> to display ' + fname + ', q(uit): ')
         if reply == 'q': break
 
-        rdat   = ultracam.Rdata(fname)
+        rdat   = ultracam.Rdata(fname, server=args.server)
         nframe = rdat.ntotal()
         nskip  = nframe // args.max + 1
 
