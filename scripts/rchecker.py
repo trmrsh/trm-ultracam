@@ -126,7 +126,8 @@ if __name__ == '__main__':
                         help='name of local file to save results rather than google spreadsheet')
     parser.add_argument('-e', dest='email', help='gmail address (will be prompted if needed)')
     parser.add_argument('-p', dest='password', help='gmail password (will be prompted if needed)')
-    parser.add_argument('-s', dest='server', action='store_true', help='source data from server rather than local disk')
+    parser.add_argument('-u', dest='server', action='store_true', 
+                        help='source data from the ultracam server rather than the local disk')
     parser.add_argument('-r', dest='run', help='specific run to plot, e.g. "run003"')
     parser.add_argument('-b', dest='back', action='store_true', help='switch off auto-bias correction')
     parser.add_argument('-c', dest='chop', action='store_true', help='chop final frame of multi-frame runs')
