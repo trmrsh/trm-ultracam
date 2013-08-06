@@ -91,8 +91,27 @@ for mccd in rdat:
     for nc, ccd in enumerate(mccd):
         for nw, win in enumerate(ccd):
             wheader = fits.Header()
-            wheader['NCCD'] = nc+1
-            wheader['NWIN'] = nw+1
+            wheader['NCCD']   = nc+1
+            wheader['NWIN']   = nw+1
+
+            wheader['CTYPE1'] = ('LINEAR', 'Transformation of X scale')
+            wheader['CTYPE2'] = ('LINEAR', 'Transformation of Y scale')
+            wheader['CUNIT1'] = ('pixels', 'Units of transformed X scale')
+            wheader['CUNIT2'] = ('pixels', 'Units of transformed Y scale')
+
+            fnumber = 1. - float(win.llx - 1)/win.xbin
+            wheader['CRPIX1'] = (fnumber, 'Pixel equivalent in X of reference point')
+            fnumber = 1. - float(win.lly - 1)/win.ybin
+            wheader['CRPIX2'] = (fnumber, 'Pixel equivalent in Y of reference point')
+            fnumber = 1.
+            wheader['CRVAL1'] = (1., 'X value of reference point')
+            wheader['CRVAL2'] = (1., 'Y value of reference point')
+
+            wheader['CD1_1'] = (float(win.xbin),'Binning factor in X')
+            wheader['CD1_2'] = 0.
+            wheader['CD2_1'] = 0.
+            wheader['CD2_2'] = (float(win.ybin),'Binning factor in Y')
+
             ihdu = fits.ImageHDU(win.data, wheader)
             hdus.append(ihdu)
     hdul = fits.HDUList(hdus)
