@@ -54,12 +54,12 @@ class Rhead (object):
           framesize    -- total number of bytes per frame.
           headerwords  -- number of words (2-bytes/word) in timing info at start of a frame.
           instrument   -- instrument name.
+          nccd         -- number of CCDs
           mode         -- a standardised summary of the readout mode derived from the application name.
           user         -- dictionary of user information. Set to None if there was none found.
-          win          -- A list of tuples of the form (llx,lly,nx,ny), one per window. ULTRACAM data is multi-CCD
+          win          -- A list of Rwin objects, one per window. ULTRACAM data is multi-CCD
                           but the windows of each CCD are identical so the information is only stored 
-                          once for all CCDs. Each one contains the corrdinates of the lower-left
-                          pixel of the window and the binned dimensions
+                          once for all CCDs. 
           xbin, ybin   -- pixel binning factors (same for all windows of all CCDs)
           nxmax, nymax -- maximum unbinned dimensions, same for all CCDs.
           exposeTime   -- exposure delay, secs
@@ -100,9 +100,11 @@ class Rhead (object):
         self.instrument  = node.getElementsByTagName('name')[0].childNodes[0].data
         if self.instrument == 'Ultracam':
             self.instrument = 'ULTRACAM'
+            self.nccd       = 3
             self.nxmax, self.nymax = 1080, 1032
         elif self.instrument == 'Ultraspec':
             self.instrument = 'ULTRASPEC'
+            self.nccd       = 1
             self.nxmax, self.nymax = 1056, 1072
         else:
             raise UltracamError('Rhead.__init__: run = ' + self.run + ', failed to identify instrument.')
