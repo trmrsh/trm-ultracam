@@ -9,7 +9,7 @@ first run the script.
 """
 
 # builtin imports
-import sys, argparse, os, time, re
+import sys, argparse, os, time, re, copy
 import getpass, datetime, textwrap
 
 # and some extras
@@ -426,7 +426,6 @@ if __name__ == '__main__':
             # Additional complication is introduced by nblue > 1 where the idea is to 
             # show the last one prior to 
 
-            print rdat.nblue, nf, nskip
             if rdat.nblue > 1 and (nf-1) % nskip > 0:
                 # Work out the next frame to be displayed and whether
                 # it has a good blue frame. If not, and we are on 
@@ -439,15 +438,23 @@ if __name__ == '__main__':
                 elif (nf % rdat.nblue) == 0 and nxf-nf < rdat.nblue:
                     mccd = rdat(nf)
                     saveBlue = mccd[2]
-                    print 'saved a blue frame',nxf
 
             elif (nf-1) % nskip == 0:
                 # time to display a frame
                 mccd  = rdat(nf)
-                if saveBlue:
-                    mccd[2] = saveBlue
 
-                if def_bias is not None:
+                if saveBlue:
+                    # Retrieve copy of the saved blue frame;
+                    # deepcopy used if any modification is made
+                    # since otherwise it propagates back to
+                    # the saved blue frame which may be needed
+                    # again.
+                    if def_bias:
+                        mccd[2] = copy.deepcopy(saveBlue)
+                    else:
+                        mccd[2] = saveBlue
+
+                if def_bias:
                     # subtract default levels
                     for nc, ccd in enumerate(mccd):
                         for nw, win in enumerate(ccd):
