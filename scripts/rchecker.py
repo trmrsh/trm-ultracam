@@ -416,14 +416,36 @@ if __name__ == '__main__':
 
         # Display the exposures
         pgopen('/xs')
+        saveBlue = None
         for nf in xrange(1,nframe+1):
 
             # next bit of code is to try to minimise the number of bytes read for speed
             # read only the full data when needed, and only the times of the frames
             # leading up to a data frame. Note that in the 'else' statement, it
-            # can be assumed that a frame has been read
-            if (nf-1) % nskip == 0:
+            # can be assumed that a frame has been read.
+            # Additional complication is introduced by nblue > 1 where the idea is to 
+            # show the last one prior to 
+
+            print rdat.nblue, nf, nskip
+            if rdat.nblue > 1 and (nf-1) % nskip > 0:
+                # Work out the next frame to be displayed and whether
+                # it has a good blue frame. If not, and we are on 
+                # the nearest fram with a good blue frame, save it 
+                # for later display.
+                nxf = nskip * ((nf-1)//nskip + 1)+1
+                print 'next display frame = ',nxf
+                if (nxf % rdat.nblue) == 0:
+                    saveBlue = None
+                elif (nf % rdat.nblue) == 0 and nxf-nf < rdat.nblue:
+                    mccd = rdat(nf)
+                    saveBlue = mccd[2]
+                    print 'saved a blue frame',nxf
+
+            elif (nf-1) % nskip == 0:
+                # time to display a frame
                 mccd  = rdat(nf)
+                if saveBlue:
+                    mccd[2] = saveBlue
 
                 if def_bias is not None:
                     # subtract default levels
