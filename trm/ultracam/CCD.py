@@ -234,7 +234,7 @@ class CCD(object):
         separately.
         """
         for win in self._data:
-            win -= np.median(win)
+            win -= win.median()
 
     def plot(self, vmin, vmax, mpl=False, cmap=cm.binary):
         """
