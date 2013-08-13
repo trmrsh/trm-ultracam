@@ -159,7 +159,7 @@ class MCCD(object):
         """
         Sets the i-th Window
         """
-        if not isinstance(win, CCD):
+        if not isinstance(ccd, CCD):
             raise UltracamError('MCCD.__setitem__: ccd must be a CCD')
         self._data[i] = ccd
 
