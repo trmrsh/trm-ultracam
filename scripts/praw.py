@@ -23,6 +23,7 @@ parser.add_argument('-s', dest='sleep', type=float, default=0, help='number of s
 parser.add_argument('-r', dest='back', action='store_true', help='remove median background from each window')
 parser.add_argument('-b', dest='bias', help='bias frame to subtract (ucm file)')
 parser.add_argument('-u', dest='ucam', action='store_true', help='Get data via the ULTRACAM FileServer')
+parser.add_argument('-e', dest='every', action='store_true', help='Show every blue frame, not just good ones')
 parser.add_argument('-x1', type=float, help='left-hand X-limit')
 parser.add_argument('-x2', type=float, help='right-hand X-limit')
 parser.add_argument('-y1', type=float, help='lower Y-limit')
@@ -62,7 +63,7 @@ if phi < 0. or phi > 100.:
     exit(1)
 
 # more imports
-import time
+import time, copy
 from trm import ultracam
 from ppgplot import *
 
@@ -75,8 +76,20 @@ pgopen('/xs')
 fnum  = args.first
 first = True
 rdat  = ultracam.Rdata(run,args.first,server=args.ucam)
-
+saveBlue = None
 for mccd in rdat:
+
+    if rdat.nblue > 1 and not args.every:
+        # save the last read blue frame to avoid
+        # plotting the intermediate bias frames
+        # when "nblue" is in operation
+        if fnum % rat.nblue == 0:
+            saveBlue = mccd[2]
+        else:
+            if args.bias or args.back:
+                mccd[2] = copy.deepcopy(saveBLue)
+            else:
+                mccd[2] = saveBLue
 
     if args.bias:
         if first and bias != mccd:
