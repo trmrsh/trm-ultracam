@@ -83,13 +83,13 @@ for mccd in rdat:
         # save the last read blue frame to avoid
         # plotting the intermediate bias frames
         # when "nblue" is in operation
-        if fnum % rat.nblue == 0:
+        if fnum % rdat.nblue == 0:
             saveBlue = mccd[2]
-        else:
+        elif saveBlue:
             if args.bias or args.back:
-                mccd[2] = copy.deepcopy(saveBLue)
+                mccd[2] = copy.deepcopy(saveBlue)
             else:
-                mccd[2] = saveBLue
+                mccd[2] = saveBlue
 
     if args.bias:
         if first and bias != mccd:
