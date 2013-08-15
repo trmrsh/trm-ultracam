@@ -234,31 +234,34 @@ if __name__ == '__main__':
 
     # load up targets, filters and comments from the logs
     # these are used as defaults and to provide some context
-    # also use this to cut out problem runs
+    # also use to auto ID some problem runs and create an
+    # 'ok' field to skip them later.
     oneLiners = []
-    nruns = []
+
     for run in runs:
+        if log.format == 1:
+            oneLiners.append({'run' : run, 
+                              'target'  : log.target[run], 
+                              'filters' : log.filters[run],
+                              'comment' : log.comment[run]})
+        elif log.format == 2:
+            oneLiners.append({'run' : run,
+                              'target'  : rxml.target if rxml.target else None, 
+                              'filters' : rxml.filters if rxml.filters else None, 
+                              'comment' : log.comment[run] if run in log.comment else ''})
+
         try:
             rxml  = ultracam.Rhead(os.path.join(night, run))
-            if rxml.isPonoff(): continue
 
-            if log.format == 1:
-                oneLiners.append({'run' : run, 
-                                  'target'  : log.target[run], 
-                                  'filters' : log.filters[run],
-                                  'comment' : log.comment[run]})
-            elif log.format == 2:
-                oneLiners.append({'run' : run,
-                                  'target'  : rxml.target if rxml.target else None, 
-                                  'filters' : rxml.filters if rxml.filters else None, 
-                                  'comment' : log.comment[run] if run in log.comment else ''})
-            nruns.append(run)
+            if rxml.isPonoff(): 
+                oneLiners[-1]['comment'] = 'AUTO ID: power on/off'
+                oneLiners[-1]['ok'] = False
+            else:
+                oneLiners[-1]['ok'] = True
+ 
         except ultracam.UltracamError, err:
-            print err
-            print 'Run',run,'will be skipped.'
-
-    # Transfer over just the OK runs.
-    runs = nruns
+            oneLiners[-1]['comment'] = 'AUTO ID: xml corrupted'
+            oneLiners[-1]['ok'] = False
 
     # get user name
     user  = getpass.getuser()
@@ -391,234 +394,248 @@ if __name__ == '__main__':
             nr += 1
             continue
 
+        # generate file name 
         fname  = os.path.join(night, run)
-        reply = raw_input('<cr> to display ' + fname + ', q(uit): ')
-        if reply == 'q': break
 
-        rdat   = ultracam.Rdata(fname, server=args.server)
-        nframe = rdat.ntotal()
-        nskip  = nframe // args.max + 1
 
-        # default bias levels
-        if args.back:
-            def_bias = None
-            print 'Will not apply default bias levels.'
-        else:
-            def_bias = ultracam.blevs(mjd_bias, rdat.gainSpeed)
-            if def_bias is None:
-                print 'Failed to determine the default bias levels for night =',\
-                    night,'readout speed =',rdat.gainSpeed
-                print 'Please report to trm'
-                reply = raw_input('<cr> to continue without bias correction, q(uit)')
-                if reply == 'q': break
+        if oneLiners[nr]['ok']:
+            # the usual case
+            reply = raw_input('<cr> to display ' + fname + ', q(uit): ')
+            if reply == 'q': break
+
+            rdat   = ultracam.Rdata(fname, server=args.server)
+            nframe = rdat.ntotal()
+            nskip  = nframe // args.max + 1
+
+            # default bias levels
+            if args.back:
+                def_bias = None
+                print 'Will not apply default bias levels.'
             else:
-                print 'Will apply default bias levels.'
+                def_bias = ultracam.blevs(mjd_bias, rdat.gainSpeed)
+                if def_bias is None:
+                    print 'Failed to determine the default bias levels for night =',\
+                        night,'readout speed =',rdat.gainSpeed
+                    print 'Please report to trm'
+                    reply = raw_input('<cr> to continue without bias correction, q(uit)')
+                    if reply == 'q': break
+                else:
+                    print 'Will apply default bias levels.'
 
-        # Display the exposures
-        pgopen('/xs')
-        saveBlue = None
-        for nf in xrange(1,nframe+1):
+            # Display the exposures
+            pgopen('/xs')
+            saveBlue = None
+            for nf in xrange(1,nframe+1):
 
-            # next bit of code is to try to minimise the number of bytes read for speed
-            # read only the full data when needed, and only the times of the frames
-            # leading up to a data frame. Note that in the 'else' statement, it
-            # can be assumed that a frame has been read.
-            # Additional complication is introduced by nblue > 1 where the idea is to 
-            # show the last one prior to 
+                # next bit of code is to try to minimise the number of bytes read for speed
+                # read only the full data when needed, and only the times of the frames
+                # leading up to a data frame. Note that in the 'else' statement, it
+                # can be assumed that a frame has been read.
+                # Additional complication is introduced by nblue > 1 where the idea is to 
+                # show the last one prior to 
 
-            if rdat.nblue > 1 and (nf-1) % nskip > 0:
-                # Work out the next frame to be displayed and whether
-                # it has a good blue frame. If not, and we are on 
-                # the nearest fram with a good blue frame, save it 
-                # for later display.
-                nxf = nskip * ((nf-1)//nskip + 1)+1
-                print 'next display frame = ',nxf
-                if (nxf % rdat.nblue) == 0:
-                    saveBlue = None
-                elif (nf % rdat.nblue) == 0 and nxf-nf < rdat.nblue:
-                    mccd = rdat(nf)
-                    saveBlue = mccd[2]
+                if rdat.nblue > 1 and (nf-1) % nskip > 0:
+                    # Work out the next frame to be displayed and whether
+                    # it has a good blue frame. If not, and we are on 
+                    # the nearest fram with a good blue frame, save it 
+                    # for later display.
+                    nxf = nskip * ((nf-1)//nskip + 1)+1
+                    print 'next display frame = ',nxf
+                    if (nxf % rdat.nblue) == 0:
+                        saveBlue = None
+                    elif (nf % rdat.nblue) == 0 and nxf-nf < rdat.nblue:
+                        mccd = rdat(nf)
+                        saveBlue = mccd[2]
 
-            elif (nf-1) % nskip == 0:
-                # time to display a frame
-                mccd  = rdat(nf)
+                elif (nf-1) % nskip == 0:
+                    # time to display a frame
+                    mccd  = rdat(nf)
 
-                if saveBlue:
-                    # Retrieve copy of the saved blue frame;
-                    # deepcopy used if any modification is made
-                    # since otherwise it propagates back to
-                    # the saved blue frame which may be needed
-                    # again.
+                    if saveBlue:
+                        # Retrieve copy of the saved blue frame;
+                        # deepcopy used if any modification is made
+                        # since otherwise it propagates back to
+                        # the saved blue frame which may be needed
+                        # again.
+                        if def_bias:
+                            mccd[2] = copy.deepcopy(saveBlue)
+                        else:
+                            mccd[2] = saveBlue
+
                     if def_bias:
-                        mccd[2] = copy.deepcopy(saveBlue)
-                    else:
-                        mccd[2] = saveBlue
+                        # subtract default levels
+                        for nc, ccd in enumerate(mccd):
+                            for nw, win in enumerate(ccd):
+                                win -= def_bias[nc][nw % 2]
 
-                if def_bias:
-                    # subtract default levels
-                    for nc, ccd in enumerate(mccd):
-                        for nw, win in enumerate(ccd):
-                            win -= def_bias[nc][nw % 2]
+                    nnext = nf + nskip
 
-                nnext = nf + nskip
-
-                # The final frame is often an abnormally short exposure and
-                # it is often better not to show it. If the number of frames 
-                # equals the numexp parameter however, it is OK to show.
-                if nf < nframe or rdat.numexp == nframe or nframe == 1:
-                    plot = True
-                elif not args.chop:
-                    if args.noquery:
+                    # The final frame is often an abnormally short exposure and
+                    # it is often better not to show it. If the number of frames 
+                    # equals the numexp parameter however, it is OK to show.
+                    if nf < nframe or rdat.numexp == nframe or nframe == 1:
                         plot = True
+                    elif not args.chop:
+                        if args.noquery:
+                            plot = True
+                        else:
+                            reply = raw_input('plot final frame? [n]: ')
+                            plot  = reply == 'y' or reply == 'Y'
                     else:
-                        reply = raw_input('plot final frame? [n]: ')
-                        plot  = reply == 'y' or reply == 'Y'
+                        plot = False
+
+                    if plot:
+                        # trim CCDs
+                        for ccd in mccd:
+                            for nw, win in enumerate(ccd):
+                                if nw % 2 == 0:
+                                    win.trim(ncol,0,nrow,0)
+                                else:
+                                    win.trim(0,ncol,nrow,0)
+
+                        # determine plot ranges
+                        prange = mccd.plot(plo,phi,close=False)
+                        print fname,', frame ' + str(nf) + ' / ' + str(nframe) + \
+                            ', time = ' + ultracam.mjd2str(mccd[0].time.mjd) + ', exp = ' + \
+                            str(mccd[0].time.expose) + ', ranges:',prange
+                    else:
+                        print 'Final frame not displayed.'
+
                 else:
-                    plot = False
-
-                if plot:
-                    # trim CCDs
-                    for ccd in mccd:
-                        for nw, win in enumerate(ccd):
-                            if nw % 2 == 0:
-                                win.trim(ncol,0,nrow,0)
-                            else:
-                                win.trim(0,ncol,nrow,0)
-
-                    # determine plot ranges
-                    prange = mccd.plot(plo,phi,close=False)
-                    print fname,', frame ' + str(nf) + ' / ' + str(nframe) + \
-                        ', time = ' + ultracam.mjd2str(mccd[0].time.mjd) + ', exp = ' + \
-                        str(mccd[0].time.expose) + ', ranges:',prange
-                else:
-                    print 'Final frame not displayed.'
-
-            else:
-                if nf + mccd.head.value('Run.ntmin') >= nnext: 
-                    rdat.time(nf)
+                    if nf + mccd.head.value('Run.ntmin') >= nnext: 
+                        rdat.time(nf)
                 
-        # close plot
-        pgclos()
+            # close plot
+            pgclos()
 
-        # blank line
-        print
+            # blank line
+            print
 
-        # print out contextual info with the target name, filters from logs
-        # also covering a few preceding and following runs.
-        pLogs(oneLiners, nr, args.width, 2)
+            # print out contextual info with the target name, filters from logs
+            # also covering a few preceding and following runs.
+            pLogs(oneLiners, nr, args.width, 2)
 
-        # blank line
-        print 
+            # blank line
+            print 
 
-        # The data type.
-        reply = 'Z'
-        while reply not in DTYPES: 
-            reply = raw_input('a(qui), b(ias), d(ark), f(lat), s(cie), (flu)x,' + \
-                                  ' j(unk), p(ubl), t(ech), u(nsure), h(elp),' + \
-                                  ' l(ogs), S(tep), N(ext), q(uit): ')
-            ml     = lre.match(reply)
-            ms     = sre.match(reply)
-            if ml:
-                pLogs(oneLiners, nr, args.width, int(ml.group(1)))
-                print
-            elif reply == 'l':
-                pLogs(oneLiners, nr, args.width)
-                print
-            elif ms:
-                nr = max(0, min(nr + int(ms.group(1)), len(runs)-1))
+            # The data type.
+            reply = 'Z'
+            while reply not in DTYPES: 
+                reply = raw_input('a(qui), b(ias), d(ark), f(lat), s(cie), (flu)x,' + \
+                                      ' j(unk), p(ubl), t(ech), u(nsure), h(elp),' + \
+                                      ' l(ogs), S(tep), N(ext), q(uit): ')
+                ml     = lre.match(reply)
+                ms     = sre.match(reply)
+                if ml:
+                    pLogs(oneLiners, nr, args.width, int(ml.group(1)))
+                    print
+                elif reply == 'l':
+                    pLogs(oneLiners, nr, args.width)
+                    print
+                elif ms:
+                    nr = max(0, min(nr + int(ms.group(1)), len(runs)-1))
+                    break
+                elif reply == 'h':
+                    print '\nOptions (case sensitive):\n'
+                    print '  a --- aquisition, possibly moving, rotating'
+                    print '  b --- bias frame. No extraneous light or readout funnies.'
+                    print '  d --- dark frame for calibrating dark count rates.'
+                    print '  f --- twilight sky flat.'
+                    print '  j --- junk. Data of absolutely no conceivable use.'
+                    print '  p --- publicity shots.'
+                    print '  s --- science data. Largely fixed position.'
+                    print '  t --- technical. Internals flats, noise tests, etc.'
+                    print '  u --- unsure, i.e. decide later.'
+                    print '  x --- flux standard.'
+                    print '  h --- print this help.'
+                    print '  l --- print full logs. ("l 3" to get +/- 3 only etc.)'
+                    print '  S --- step the run: e.g. "S -2" to step back 2 runs, "S 0" to repeat.'
+                    print '  N --- move to next run, skipping the current one.'
+                    print '  q --- quit the script\n'
+        
+            # handle some special cases
+            if reply == 'q': 
                 break
-            elif reply == 'h':
-                print '\nOptions (case sensitive):\n'
-                print '  a --- aquisition, possibly moving, rotating'
-                print '  b --- bias frame. No extraneous light or readout funnies.'
-                print '  d --- dark frame for calibrating dark count rates.'
-                print '  f --- twilight sky flat.'
-                print '  j --- junk. Data of absolutely no conceivable use.'
-                print '  p --- publicity shots.'
-                print '  s --- science data. Largely fixed position.'
-                print '  t --- technical. Internals flats, noise tests, etc.'
-                print '  u --- unsure, i.e. decide later.'
-                print '  x --- flux standard.'
-                print '  h --- print this help.'
-                print '  l --- print full logs. ("l 3" to get +/- 3 only etc.)'
-                print '  S --- step the run: e.g. "S -2" to step back 2 runs, "S 0" to repeat.'
-                print '  N --- move to next run, skipping the current one.'
-                print '  q --- quit the script\n'
+            elif reply == 'N':
+                nr += 1
+                continue
+            elif ms:
+                continue
+
+            dtype = DTYPES[reply]
+
+            # The target name
+            target = oneLiners[nr]['target'] if oneLiners[nr]['target'] else lastTarget 
+            reply = 'h'
+            while reply == 'h' or reply == 'H': 
+                if target:
+                    reply = raw_input('Target: h(elp), q(uit) [' + target + ']: ')
+                else:
+                    reply = raw_input('Target: h(elp), q(uit): ')
+
+                if reply == 'h' or reply == 'H':
+                    print '\nPlease specify the target. <cr> to get the default taken'
+                    print 'from the logs. "q" will quit the script.\n'
+
+                if reply == 'q' or reply == 'Q':
+                    break
+                elif reply != '':
+                    target = reply
+            lastTarget = target
         
-        # handle some special cases
-        if reply == 'q': 
-            break
-        elif reply == 'N':
-            nr += 1
-            continue
-        elif ms:
-            continue
+            # The filters
+            filters = oneLiners[nr]['filters'] if oneLiners[nr]['filters'] else lastFilters
+            reply = 'h'
+            while reply == 'h' or reply == 'H':
+                if filters:
+                    reply = raw_input('Filters: h(elp), q(uit) [' + filters + ']: ')
+                else:
+                    reply = raw_input('Filters: h(elp), q(uit): ')
 
-        dtype = DTYPES[reply]
+                if reply == 'h' or reply == 'H':
+                    print '\nPlease specify the filters. <cr> for the default from'
+                    print 'the logs\n'
 
-        # The target name
-        target = oneLiners[nr]['target'] if oneLiners[nr]['target'] else lastTarget 
-        reply = 'h'
-        while reply == 'h' or reply == 'H': 
-            if target:
-                reply = raw_input('Target: h(elp), q(uit) [' + target + ']: ')
-            else:
-                reply = raw_input('Target: h(elp), q(uit): ')
+            if reply == 'q' or reply == 'Q':
+                break
+            elif reply != '':
+                filters = reply
+            lastFilters = filters
 
-            if reply == 'h' or reply == 'H':
-                print '\nPlease specify the target. <cr> to get the default taken'
-                print 'from the logs. "q" will quit the script.\n'
-
-        if reply == 'q' or reply == 'Q':
-            break
-        elif reply != '':
-            target = reply
-        lastTarget = target
-        
-        # The filters
-        filters = oneLiners[nr]['filters'] if oneLiners[nr]['filters'] else lastFilters
-        reply = 'h'
-        while reply == 'h' or reply == 'H':
-            if filters:
-                reply = raw_input('Filters: h(elp), q(uit) [' + filters + ']: ')
-            else:
-                reply = raw_input('Filters: h(elp), q(uit): ')
-
-            if reply == 'h' or reply == 'H':
-                print '\nPlease specify the filters. <cr> for the default from'
-                print 'the logs\n'
-
-        if reply == 'q' or reply == 'Q':
-            break
-        elif reply != '':
-            filters = reply
-        lastFilters = filters
-
-        # The comment
-        comment = 'h'
-        while comment == 'h' or (dtype == 'junk' and comment == ''):
-            if lastComment is None:
-                comment = raw_input('Comment: h(elp), q(uit): ')
-            else:
-                comment = raw_input('Comment: h(elp), q(uit) [' + lastComment + ']: ')
-            if comment == 'h':
-                print '\nPlease type a one-liner comment. It can be blank except in the'
-                print 'case of junk files where you must say _something_ about what is'
-                print 'wrong with the data. The default is your previous comment, if any.'
-                print "If you don't want the default, but want to say nothing then"
-                print "either type a space or '' followed by <cr>\n"
-            elif comment == '':
-                if lastComment is not None: comment = lastComment
-            elif comment == "''":
-                comment = ''
-                lastComment = comment
+            # The comment
+            comment = 'h'
+            while comment == 'h' or (dtype == 'junk' and comment == ''):
+                if lastComment is None:
+                    comment = raw_input('Comment: h(elp), q(uit): ')
+                else:
+                    comment = raw_input('Comment: h(elp), q(uit) [' + lastComment + ']: ')
+                if comment == 'h':
+                    print '\nPlease type a one-liner comment. It can be blank except in the'
+                    print 'case of junk files where you must say _something_ about what is'
+                    print 'wrong with the data. The default is your previous comment, if any.'
+                    print "If you don't want the default, but want to say nothing then"
+                    print "either type a space or '' followed by <cr>\n"
+                elif comment == '':
+                    if lastComment is not None: comment = lastComment
+                elif comment == "''":
+                    comment = ''
+                    lastComment = comment
             
-            if comment != 'q' and comment != 'Q' and comment != 'h' and comment != '':
-                lastComment = comment
+                if comment != 'q' and comment != 'Q' and comment != 'h' and comment != '':
+                    lastComment = comment
 
-        if comment == 'q' or comment == 'Q':
-            break
+            if comment == 'q' or comment == 'Q':
+                break
 
+        else:
+            # bad file ID at the oneLiner stage
+            dtype   = 'junk'
+            target  = oneLiners[nr]['target'] if oneLiners[nr]['target'] else ' '
+            filters = oneLiners[nr]['filters'] if oneLiners[nr]['filters'] else ' '
+            comment = oneLiners[nr]['comment']
+            print fname,'auto ID-ed as junk.'
+
+        # Now save the data
         # Time stamp
         tstamp = time.strftime('%Y.%m.%dT%H.%M.%S', time.gmtime())
 
