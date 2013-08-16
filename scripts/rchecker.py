@@ -239,29 +239,51 @@ if __name__ == '__main__':
     oneLiners = []
 
     for run in runs:
-        if log.format == 1:
-            oneLiners.append({'run' : run, 
-                              'target'  : log.target[run], 
-                              'filters' : log.filters[run],
-                              'comment' : log.comment[run]})
-        elif log.format == 2:
-            oneLiners.append({'run' : run,
-                              'target'  : rxml.target if rxml.target else None, 
-                              'filters' : rxml.filters if rxml.filters else None, 
-                              'comment' : log.comment[run] if run in log.comment else ''})
 
         try:
-            rxml  = ultracam.Rhead(os.path.join(night, run))
+            rxml  = ultracam.Rhead(os.path.join(night, run), server=args.server)
 
             if rxml.isPonoff(): 
-                oneLiners[-1]['comment'] = 'AUTO ID: power on/off'
-                oneLiners[-1]['ok'] = False
+                # no good, power on/off
+                if log.format == 1:
+                    oneLiners.append({'run' : run, 
+                                      'target'  : log.target[run], 
+                                      'filters' : log.filters[run],
+                                      'comment' : 'AUTO ID: power on/off',
+                                      'ok' : False})
+                elif log.format == 2:
+                    oneLiners.append({'run' : run,
+                                      'target'  : None,
+                                      'filters' : None,
+                                      'comment' : 'AUTO ID: power on/off',
+                                      'ok' : False})
             else:
-                oneLiners[-1]['ok'] = True
+                if log.format == 1:
+                    oneLiners.append({'run' : run, 
+                                      'target'  : log.target[run], 
+                                      'filters' : log.filters[run],
+                                      'comment' : log.comment[run],
+                                      'ok' : True})
+                elif log.format == 2:
+                    oneLiners.append({'run' : run,
+                                      'target'  : rxml.target if rxml.target else None, 
+                                      'filters' : rxml.filters if rxml.filters else None, 
+                                      'comment' : log.comment[run] if run in log.comment else '',
+                                      'ok' : True})
  
         except ultracam.UltracamError, err:
-            oneLiners[-1]['comment'] = 'AUTO ID: xml corrupted'
-            oneLiners[-1]['ok'] = False
+            if log.format == 1:
+                oneLiners.append({'run' : run, 
+                                  'target'  : log.target[run], 
+                                  'filters' : log.filters[run],
+                                  'comment' : 'AUTO ID: xml corrupted',
+                                  'ok' : False})
+            elif log.format == 2:
+                oneLiners.append({'run' : run,
+                                  'target'  : None,
+                                  'filters' : None,
+                                  'comment' : 'AUTO ID: xml corrupted',
+                                  'ok' : False})
 
     # get user name
     user  = getpass.getuser()
