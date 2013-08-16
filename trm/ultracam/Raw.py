@@ -1,5 +1,5 @@
 """
-for handling the raw ULTRACAM data and xml files
+Section for handling the raw ULTRACAM data and xml files
 """
 
 import struct
@@ -7,12 +7,12 @@ import warnings
 import urllib2
 import xml.dom.minidom
 
-from Constants import *
-from CCD import *
-from MCCD import *
-from Server import *
-from Time import *
-from UErrors import *
+from .Constants import *
+from .CCD import *
+from .MCCD import *
+from .Server import *
+from .Time import *
+from .UErrors import *
 
 class Rwin(object):
     """
@@ -32,6 +32,70 @@ class Rhead (object):
     """
     Represents essential header info of Ultracam/Ultraspec data read from a
     run###.xml file. 
+
+    :Parameters:
+     run : string
+       run name e.g. 'run002'. Can include path to disk file.
+
+     server : bool
+       True to attempt to access the ATC FileServer. It uses ULTRACAM_DEFAULT_URL
+       in this instance.
+
+    :Attributes set:
+     *run* : run 
+    
+     *server* : True/False to indicate server access
+    
+     *application* : data acqusition application template name.
+    
+     *framesize* : total number of bytes per frame.
+    
+     *headerwords* : number of words (2-bytes/word) in timing info at start of a frame.
+   
+     *instrument* : instrument name.
+   
+     *nccd* : number of CCDs
+   
+     *mode* : a standardised summary of the readout mode derived from the application name.
+    
+     *user* : dictionary of user information. Set to None if there was none found.
+    
+     *win* : A list of Rwin objects, one per window. ULTRACAM data is multi-CCD
+          but the windows of each CCD are identical so the information is only stored 
+          once for all CCDs. 
+    
+     *xbin* : binning factor in X direction
+    
+     *ybin* : binning factor in Y direction
+    
+     *nxmax* : maximum X dimension, unbinned pixels
+    
+     *nymax* : maximum Y dimension, unbinned pixels.
+    
+     *exposeTime* : exposure delay, secs
+    
+     *numexp* : integer exposure number; can be -1 meaning unlimited
+    
+     *gainSpeed* : readout speed (ULTRACAM)
+    
+     *v_ft_clk* :vertical frame transfer parameter
+    
+     *nblue* : how often to read the blue CCD (ULTRACAM)
+    
+     *speed* : readout speed (ULTRASPEC)
+    
+     *en_clr* : enable clear flag (ULTRASPEC)
+    
+     *hv_gain* :HV gain (ULTRASPEC)
+    
+     *output* : which output (ULTRASPEC)
+    
+     *version* : version number
+    
+     *target* : target name (None if not found)
+    
+     *filters* : filter names (None if not found)
+
     """
 
     def __init__(self, run, server=False):
@@ -39,41 +103,6 @@ class Rhead (object):
         Reads a run###.xml file. UltracamErrors are thrown if some items are not found.
         In some case it will carry on and corresponding attributes are returned as None.
 
-        Arguments:
-
-         run     -- run name e.g. 'run002'. Can include path to disk file.
-
-         server  -- True to attempt to access the ATC FileServer. It uses ULTRACAM_DEFAULT_URL
-                    in this instance.
-
-        Following attributes are set:
-
-          run          -- run 
-          server       -- True/False to indicate server access
-          application  -- data acqusition application template name.
-          framesize    -- total number of bytes per frame.
-          headerwords  -- number of words (2-bytes/word) in timing info at start of a frame.
-          instrument   -- instrument name.
-          nccd         -- number of CCDs
-          mode         -- a standardised summary of the readout mode derived from the application name.
-          user         -- dictionary of user information. Set to None if there was none found.
-          win          -- A list of Rwin objects, one per window. ULTRACAM data is multi-CCD
-                          but the windows of each CCD are identical so the information is only stored 
-                          once for all CCDs. 
-          xbin, ybin   -- pixel binning factors (same for all windows of all CCDs)
-          nxmax, nymax -- maximum unbinned dimensions, same for all CCDs.
-          exposeTime   -- exposure delay, secs
-          numexp       -- integer exposure number; can be -1 meaning unlimited
-          gainSpeed    -- readout speed (ULTRACAM)
-          v_ft_clk     -- vertical frame transfer parameter
-          nblue        -- how often to read the blue CCD (ULTRACAM)
-          speed        -- readout speed (ULTRASPEC)
-          en_clr       -- enable clear flag (ULTRASPEC)
-          hv_gain      -- HV gain (ULTRASPEC)
-          output       -- which output (ULTRASPEC)
-          version      -- version number
-          target       -- target name (None if not found)
-          filters      -- filters (None if not found)
         """
 
         self.run    = run
@@ -341,44 +370,49 @@ class Rhead (object):
 
 class Rdata (Rhead):
     """
-    Callable object to represent an Ultracam/spec raw data file. The idea is
-    to open the file, and then the object generated can be used to deliver
-    frames by specifying a frame number. Frames can be read individually e.g.
+    Callable, iterable object to represent ULTRACAM/SPEC raw data files. 
+
+    Args:
+      run (string) : run name, e.g. 'run036'. 
+
+      nframe (int) : frame number for first read, starting at 1 as the first.
+
+      flt (bool ) : True for reading data in as floats. This is the default for
+                    safety, however the data are stored on disk as unsigned 2-byte
+                    ints. If you are not doing much to the data, and wish to keep 
+                    them in this form for speed and efficiency, then set flt=False.  
+                    This parameter is used when iterating through an Rdata. The 
+                    __call__ method can override it.
+
+      server (bool) : True/False for server vs local disk access
+    
+    
+    The idea is to open the file, and then the object generated can be 
+    used to deliver frames by specifying a frame number. Frames can be 
+    read individually e.g.::
 
       rdat = Rdata('run045')
       fr10 = rdat(10)
       fr11 = rdat()
 
-    reads frame numbers 10 and then 11 in from 'run045'. Frames can also read 
-    sequentially. This is in fact a requirement if one wants accurate times when 
-    it is often necessary to have read the timestamps of one or more immediately 
-    preceding frames. One can do so as follows:
-
-      rdat = Rdata('run045')
-      while 1:
-        try:
-          frm = rdat()
-          print 'nccd = ',frm.nccd()
-        except:
-          break
-
-    or, since Rdata is defined as an iterator, more neatly as:
+    reads frame numbers 10 and then 11 in from 'run045', or sequentially::
 
       for frm in Rdata('run045'):
-         print 'nccd = ',dat.nccd()
+         print 'nccd = ',frm.nccd()
 
-    Rdata maintains an internal file object that is always at the start of a frame. 
-    This enables sequential reads to be swift. If an attempt is made to access a 
-    frame that does not exist, this is set to the start of the file (frame 1), and 
-    this is the state at the end of the sequential read above for instance.
+    Rdata maintains an internal file object that is always at the start of a 
+    frame. This enables sequential reads to be swift. If an attempt is made 
+    to access a frame that does not exist, it defaults to the start of the 
+    file.
 
-    The above code returns MCCD objects for ULTRACAM data.
+    The above code returns :class:`trm.ultracam.MCCD` objects for ULTRACAM data.
 
-    The same class also can talk to the ATC FileServer if it is running, e.g.
+    :class:`trm.ultracam.Rdata` can talk to the ATC FileServer if it is running, e.g.::
 
       rdat = Rdata('run045',server=True)
 
     """
+
     def __init__(self, run, nframe=1, flt=True, server=False):
         """
         Connects to a raw data file for reading. The file is kept open. 
@@ -386,21 +420,19 @@ class Rdata (Rhead):
         object can then generate MCCD or CCD objects through being called 
         as a function or iterator.
 
-        Arguments:
+        Args:
+          run (string) : run name, e.g. 'run036'. 
 
-        run     -- as in 'run036'. Will try to access equivalent .xml and .dat
-                   files
+          nframe (int) : frame number for first read, starting at 1 as the first.
 
-        nframe  -- frame to position for next read, starting at 1 as the first.
+          flt (bool ) : True for reading data in as floats. This is the default for
+               safety, however the data are stored on disk as unsigned 2-byte
+               ints. If you are not doing much to the data, and wish to keep them
+               in this form for speed and efficiency, then set flt=False.  This
+               parameter is used when iterating through an Rdata. The __call__
+               method can override it.
 
-        flt     -- True for reading data in as floats. This is the default for 
-                   safety, however the data are stored on disk as unsigned 2-byte 
-                   ints. If you are not doing much to the data, and wish to keep
-                   them in this form for speed and efficiency, then set flt=False.
-                   This parameter is used when iterating through an Rdata. The 
-                   __call__ method can override it.
-
-        server  -- True/False for server vs local disk access
+          server (bool) : True/False for server vs local disk access
         """
 
         Rhead.__init__(self, run, server)
@@ -443,10 +475,13 @@ class Rdata (Rhead):
         """
         Sets the internal file pointer to point at frame nframe.
 
-        nframe  -- frame number to get, starting at 1. 0 for the last (complete) frame. 'None'
-                   will be ignored. A value < 0 will cause an exception. A value greater than
-                   the number of frames in the file will work, but will cause an exception to
-                   be raised on the next attempted read.
+        Args: 
+          nframe (int) : frame number to get, starting at 1. 0 for the
+                         last (complete) frame. A value of 'None' will be 
+                         ignored. A value < 0 will cause an exception. A 
+                         value greater than the number of frames in the 
+                         file will work, but will cause an exception to be
+                         raised on the next attempted read.
         """
 
         # position read pointer
@@ -1600,4 +1635,5 @@ def utimer(tbytes, rhead, fnum):
             'ntmin' : ntmin}
 
     return (time,blueTime,badBlue,info)
+
 

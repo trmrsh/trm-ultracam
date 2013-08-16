@@ -6,8 +6,8 @@ import struct
 import datetime
 import numpy as np
 
-from Constants import *
-from UErrors import *
+from .Constants import *
+from .UErrors import *
 
 def write_string(fobj, strng):
     """

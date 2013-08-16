@@ -7,11 +7,11 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import ppgplot as pg
 
-from Constants import *
-from Uhead import *
-from CCD import *
-from Utils import *
-from UErrors import *
+from .Constants import *
+from .Uhead import *
+from .CCD import *
+from .Utils import *
+from .UErrors import *
 
 class MCCD(object):
     """
@@ -546,22 +546,39 @@ class MCCD(object):
         """
         Plots an MCCD using pgplot or matplotlib if preferred.
 
-         vlo    -- number specifying the lowest level to plot (default as a percentile)
-         vhi    -- number specifying the lowest level to plot (default as a percentile)
-         nc     -- CCD number (starting from 0, -1 for all)
-         method -- how vlo and vhi are to be interpreted. 'p' = percentile, 'a' = automatic (min to max,
-                   vlo and vhi are irrelevant), 'd' = direct, i.e. just take the values given.
-         mpl    -- True to prefer matplotlib over pgplot (which may not even be an option)
-         cmap   -- colour map if using matplotlib
-         close  -- close (pgplot) or 'show' (matplotlib) the plot at the end (or not, to allow 
-                   you to plot something else, use a cursor etc). In the case of pgplot, this also
-                   implies opening the plot at the start, i.e. a self-contained quick plot.
-         x1,x2, -- plot limits. Default to 0.5,nxmax+0.5,0.5,nymax+0.5 if not defined. 
-         y1,y1 
-         sepmin -- minimum separation between intensity limits (> 0 to stop PGPLOT complaining)
+        :Parameters:
+         vlo : float
+            number specifying the lowest level to plot (default as a percentile)
+         vhi : float
+            number specifying the lowest level to plot (default as a percentile)
+         nc : int
+            CCD number (starting from 0, -1 for all)
+         method : string
+            how vlo and vhi are to be interpreted. 'p' = percentile, 'a' = automatic (min to max,
+            vlo and vhi are irrelevant), 'd' = direct, i.e. just take the values given.
+         mpl : bool
+            True to prefer matplotlib over pgplot (which may not even be an option)
+         cmap : matplotlib.cm.binary
+            colour map if using matplotlib
+         close : bool
+            close (pgplot) or 'show' (matplotlib) the plot at the end (or not, to allow 
+            you to plot something else, use a cursor etc). In the case of pgplot, this also
+            implies opening the plot at the start, i.e. a self-contained quick plot.
+         x1 : float
+            left-hand plot limit. Defaults to 0.5
+         x2 : float
+             right-hand plot limit. Defaults to nxmax+0.5
+         y1 : float
+            lower plot limit. Defaults to 0.5
+         y2 : float
+             upper plot limit. Defaults to nymax+0.5
+         sepmin : float
+             minimum separation between intensity limits (> 0 to stop PGPLOT complaining)
 
-        Returns the plot range(s) used either as a single 2-element tuple, or
-        a list of them, one per CCD plotted.
+        :Returns:
+         range(s) : tuple or list
+            the plot range(s) used either as a single 2-element tuple, or
+            a list of them, one per CCD plotted.
         """
 
         if nc == -1:

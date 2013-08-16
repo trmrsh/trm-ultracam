@@ -1,9 +1,9 @@
-"""
-Gets loaded by trm.ultracam
-"""
+#
+# Gets loaded by trm.ultracam
+#
 
 import re
-from UErrors import *
+from .UErrors import *
 
 class Log(object):
     """

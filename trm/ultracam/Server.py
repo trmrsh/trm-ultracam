@@ -5,7 +5,7 @@ ATC server access code extra. See Raw.py for more.
 import os
 import urllib2
 
-from UErrors import *
+from .UErrors import *
 
 # The ATC FileServer recognises various GET requests
 # (look for 'action=' in the code) which are accessed 

@@ -2,9 +2,9 @@
 Header class for ucm files
 """
 
-from Odict import *
-from Constants import *
-from UErrors import *
+from .Odict import *
+from .Constants import *
+from .UErrors import *
 
 class Uhead(Odict):
     """

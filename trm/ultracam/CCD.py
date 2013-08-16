@@ -1,10 +1,11 @@
-"""
-Class to represent a CCD
-"""
+#
+# Class to represent a CCD
+#
+
 import matplotlib.cm as cm
-from Window import *
-from Uhead import *
-from UErrors import *
+from .Window import *
+from .Uhead import *
+from .UErrors import *
 
 class CCD(object):
     """

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm     as cm
 import ppgplot as pg
 
-from UErrors import *
+from .UErrors import *
 
 class Window(object):
     """
