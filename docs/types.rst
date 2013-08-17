@@ -11,8 +11,8 @@ this is essentially impossible at the moment because we do not have a reliable
 classifcation of the various types of runs. I have come to the conclusion that
 the only way forward is a classification by eye of all the runs. This
 represents a considerable amount of effort, so the more people who carry it
-out the better. The purpose of this document is to help relatively
-inexperienced classifiers get started.
+out the better. The purpose of this document is to try to establish a
+consistency in this process.
 
 Key principles
 --------------

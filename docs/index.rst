@@ -20,8 +20,9 @@ Contents:
 
    intro
    data
-   api
    types
+   scripts
+   api
 
 Indices and tables
 ==================
