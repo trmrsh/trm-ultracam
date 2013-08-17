@@ -6,8 +6,8 @@ import struct
 import datetime
 import numpy as np
 
-from .Constants import *
-from .UErrors import *
+from trm.ultracam.Constants import MJD0, RUN_DATES, RUN_TELS
+from trm.ultracam.UErrors import UltracamError
 
 def write_string(fobj, strng):
     """
@@ -53,7 +53,6 @@ def check_ucm(fobj):
     else:
         endian = '<'
     return endian
-
 
 def str2mjd(date):
     """
@@ -122,3 +121,10 @@ def blevs(mjd, mode):
     BMJDS = np.array(BIAS_CHANGES)
     ind   = np.searchsorted(BMJDS, mjd)
     return BIAS_LEVELS[mode][ind]
+
+if __name__ == '__main__':
+
+    mjd2str(56402)
+    runID(56402)
+
+    print 'test passed'

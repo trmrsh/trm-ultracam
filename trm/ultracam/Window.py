@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm     as cm
 import ppgplot as pg
 
-from .UErrors import *
+from trm.ultracam.UErrors import UltracamError
 
 class Window(object):
     """
@@ -337,3 +337,8 @@ class Window(object):
             '; nx, ny = ' + str(self.nx) + ', ' + str(self.ny) + \
             '; xbin, ybin = ' + str(self.xbin) + ', ' + str(self.ybin)
 
+if __name__ == '__main__':
+    win = Window(np.zeros((10,10)),10,15,2,2)
+    win.min()
+    win.max()
+    print 'test passed'

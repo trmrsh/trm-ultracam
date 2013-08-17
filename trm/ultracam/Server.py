@@ -5,7 +5,7 @@ ATC server access code extra. See Raw.py for more.
 import os
 import urllib2
 
-from .UErrors import *
+from trm.ultracam.UErrors import UltracamError
 
 # The ATC FileServer recognises various GET requests
 # (look for 'action=' in the code) which are accessed 
@@ -60,7 +60,11 @@ def get_runs_from_server(dir=None):
 
     # parse response from server
     ldir = resp.split('<li>')
-    runs = [entry[entry.find('>run')+1:entry.find('>run')+7] for entry in ldir if entry.find('getdata">run') > -1]
+    runs = [entry[entry.find('>run')+1:entry.find('>run')+7] for entry in ldir 
+            if entry.find('getdata">run') > -1]
     runs.sort()
     return runs
 
+if __name__ == '__main__':
+    print get_runs_from_server()
+    print 'test passed'

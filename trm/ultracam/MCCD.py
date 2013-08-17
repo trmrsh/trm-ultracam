@@ -7,11 +7,12 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import ppgplot as pg
 
-from .Constants import *
-from .Uhead import *
-from .CCD import *
-from .Utils import *
-from .UErrors import *
+from trm.ultracam.Constants import *
+from trm.ultracam.Uhead import Uhead
+from trm.ultracam.Window import Window
+from trm.ultracam.CCD import CCD
+from trm.ultracam.Utils import write_string, read_string, check_ucm
+from trm.ultracam.UErrors import UltracamError
 
 class MCCD(object):
     """
@@ -415,7 +416,7 @@ class MCCD(object):
 
     def __imul__(self, other):
         """
-        Multiplies the MCCD by 'other' in place (*=)
+        Multiplies the MCCD by 'other' in place (\*=)
         """
         if isinstance(other, MCCD):
             for ccd,occd in zip(self._data,other._data):
@@ -769,5 +770,20 @@ class UCAM(MCCD):
                ret.append((False,''))
 
         return ret
-        
+
+if __name__ == '__main__':
+    import trm.ultracam.Time as Time
+    uhead = Uhead()
+    uhead.add_entry('User','User information')    
+    uhead.add_entry('User.Filters','ugi', ITYPE_STRING, 'The filters')
+
+    win1 = Window(np.zeros((2,2)),1,2,2,2)    
+    win2 = Window(np.zeros((3,3)),100,2,2,2)
+
+    time = Time(55000.2, 20., True, '')
+
+    ccd1 = CCD([win1,win2], time, 1024, 1024, True, uhead)
+    ccd2 = CCD([win1+20.,win2+100.], time, 1024, 1024, True, uhead)
+    mccd = MCCD([ccd1,ccd2], uhead)
+    print 'test passed'
 

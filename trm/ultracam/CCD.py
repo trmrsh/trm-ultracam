@@ -2,10 +2,14 @@
 # Class to represent a CCD
 #
 
+import numpy as np
 import matplotlib.cm as cm
-from .Window import *
-from .Uhead import *
-from .UErrors import *
+
+from trm.ultracam.Constants import *
+from trm.ultracam.Window import Window
+from trm.ultracam.Uhead import Uhead
+from trm.ultracam.Time import Time
+from trm.ultracam.UErrors import UltracamError
 
 class CCD(object):
     """
@@ -35,13 +39,15 @@ class CCD(object):
         if head is not None and not isinstance(head, Uhead):
             raise UltracamError('CCD.__init__: head should be a Uhead (or None).')        
 
+        if not isinstance(time, Time):
+            raise UltracamError('CCD.__init__: time should be a Time.')        
+
         self._data = wins
         self.time  = time
         self.nxmax = nxmax
         self.nymax = nymax
         self.good  = good
         self.head  = head
-
 
     def __len__(self):
         """
@@ -316,7 +322,7 @@ class CCD(object):
 
     def __imul__(self, other):
         """
-        Multiplies the CCD by 'other' in place (*=)
+        Multiplies the CCD by 'other' in place (\*=)
         """
         if isinstance(other, CCD):
             for win,owin in zip(self._data,other._data):
@@ -450,3 +456,19 @@ class CCD(object):
         for nwin, win in enumerate(self._data):
             ret += 'Window ' + str(nwin+1) + ' = ' + win.format() + '\n'
         return ret
+
+if __name__ == '__main__':
+
+    uhead = Uhead()
+    uhead.add_entry('User','User information')    
+    uhead.add_entry('User.Filters','ugi', ITYPE_STRING, 'The filters')
+
+    win1 = Window(np.zeros((2,2)),1,2,2,2)    
+    win2 = Window(np.zeros((3,3)),100,2,2,2)
+
+    time = Time(55000.2, 20., True, '')
+
+    ccd  = CCD([win1,win2], time, 1024, 1024, True, uhead)
+    ccd += 100.
+    print 'test passed'
+

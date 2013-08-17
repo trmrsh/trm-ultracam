@@ -7,12 +7,12 @@ import warnings
 import urllib2
 import xml.dom.minidom
 
-from .Constants import *
-from .CCD import *
-from .MCCD import *
-from .Server import *
-from .Time import *
-from .UErrors import *
+from trm.ultracam.Constants import *
+from trm.ultracam.CCD import CCD
+from trm.ultracam.MCCD import MCCD, UCAM
+from trm.ultracam.Server import get_nframe_from_server
+from trm.ultracam.Time import Time
+from trm.ultracam.UErrors import PowerOnOffError, UendError, UltracamError
 
 class Rwin(object):
     """
@@ -366,7 +366,6 @@ class Rhead (object):
         Is the run a power on / off? (no data)
         """
         return self.mode == 'PONOFF'
-
 
 class Rdata (Rhead):
     """

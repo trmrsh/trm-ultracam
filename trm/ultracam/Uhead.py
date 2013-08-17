@@ -2,9 +2,9 @@
 Header class for ucm files
 """
 
-from .Odict import *
-from .Constants import *
-from .UErrors import *
+from trm.ultracam.Odict import Odict
+from trm.ultracam.Constants import *
+from trm.ultracam.UErrors import UltracamError
 
 class Uhead(Odict):
     """
@@ -17,10 +17,10 @@ class Uhead(Odict):
     Uhead consists of a tuple containing a value, a type and a comment, in
     that order. The type corresponds to data types used in ucm files. You can
     simply extract the value from the tuple with index [0], or possibly easier
-    to remember, use its 'value' method:
+    to remember, use its 'value' method::
 
-    print uhead['User.Filter'][0]
-    print uhead.value('User.Filter')
+     print uhead['User.Filter'][0]
+     print uhead.value('User.Filter')
     
     The class is subclassed from Odict, a general ordered dictionary class
     supplied as part of the ultracam module. The purpose of subclassing this
@@ -36,9 +36,11 @@ class Uhead(Odict):
         'add_entry' statements. Whatever you supply will be passed to
         add_entry within a loop iterating over the elements of head.
 
-        head -- a dictionary of key, value pairs, with keys having a
-                hierarchical structure with '.'  separators and values each a
-                tuple of (value,type,comment) -- see add_entry for more.
+        Args:
+          head : a dictionary of key, value pairs, with keys having a
+                 hierarchical structure with '.' separators and values 
+                 each a tuple of (value,type,comment). See add_entry 
+                 for more.
         """
         Odict.__init__(self)
 
@@ -51,35 +53,37 @@ class Uhead(Odict):
         chances of problems.  This can have either 2 or 4 arguments. The 4
         argument case is as follows:
         
-        key   -- hierarchical string of the form 'User.Filter' where 'User' is a
-                 directory or folder of grouped entries. It cannot have blanks
-                 and any implied directories must already exists. Thus to set
-                 a key 'User.Filter.Wheel', 'User.Filter' would need to exist
-                 and be a directory. The existence of the implied 'User' would
-                 not be checked in this case, on the assumption that it was
-                 checked when 'User.Filter' was created.
+        Args: 
+          key : hierarchical string of the form 'User.Filter' where 'User'
+                is a directory or folder of grouped entries. It cannot have 
+                blanks and any implied directories must already exists. 
+                Thus to set a key 'User.Filter.Wheel', 'User.Filter' would 
+                need to exist and be a directory. The existence of the 
+                implied 'User' would not be checked in this case, on the 
+                assumption that it was checked when 'User.Filter' was created.
 
-        value -- value to associate (will be ignored in the case of
-                 directories, but see the 2 argument case below). The nature
-                 of the value varies with the itype; see next.
+          value : value to associate (will be ignored in the case of
+                  directories, but see the 2 argument case below). The nature
+                  of the value varies with the itype; see next.
 
-        itype -- one of a range of possible data types. This rather
-                 'unpythonic' argument is to address the need to match up with
-                 data files and the C++ ULTRACAM pipeline when it comes to
-                 writing to disk. Look for integers called 'ITYPE_*' to see
-                 the set of potential types. The meaning of most data types is
-                 obvious. e.g.  ITYPE_DOUBLE or ITYPE_FLOAT expect floating
-                 point numbers. In this case both will be stored as a Python
-                 float in memory, but will be saved to disk with different
-                 numbers of bytes. Less obvious ones are:
+          itype : one of a range of possible data types. This rather
+                  'unpythonic' argument is to address the need to match up 
+                  with data files and the C++ ULTRACAM pipeline when it 
+                  comes to writing to disk. Look for integers called 
+                  'ITYPE_*' to see the set of potential types. The meaning 
+                  of most data types is obvious. e.g.  ITYPE_DOUBLE or 
+                  ITYPE_FLOAT expect floating point numbers. In this case 
+                  both will be stored as a Python float in memory, but 
+                  will be saved to disk with different numbers of bytes. 
+                  Less obvious ones are:
 
-                 ITYPE_TIME -- the corresponding value should be a two-element
-                               tuple or list with first an integer for the
-                               number of days and then a float for the
-                               fraction of a day.
+                   ITYPE_TIME : the corresponding value should be a two-element
+                                tuple or list with first an integer for the
+                                number of days and then a float for the
+                                fraction of a day.
 
 
-        comment -- comment string with details of the variable.
+          comment : comment string with details of the variable.
 
         If just 2 arguments are given, they will be interpreted as just a key
         and comment for a directory.
@@ -193,3 +197,8 @@ class Uhead(Odict):
                     (final,str(val[0]),'/'+TNAME[val[1]]+'/',val[2]) 
         return ret
 
+if __name__ == '__main__':
+    uhead = Uhead()
+    uhead.add_entry('User','User information')    
+    uhead.add_entry('User.Filters','ugi', ITYPE_STRING, 'The filters')
+    print 'test passed'

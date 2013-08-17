@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Exception classes
 """
@@ -32,3 +34,12 @@ class PowerOnOffError(UltracamError):
             
     def __str__(self):
         return repr(self.value)
+
+if __name__ == '__main__':
+    
+    UltracamError('a test')
+    UendError('a test')
+    PowerOnOffError('a test')
+    
+    print 'test passed'
+

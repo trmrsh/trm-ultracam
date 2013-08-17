@@ -3,7 +3,7 @@
 #
 
 import re
-from .UErrors import *
+from trm.ultracam.UErrors import UltracamError
 
 class Log(object):
     """
@@ -60,3 +60,4 @@ class Log(object):
                         self.filters[run] = 'UNKNOWN'
                         self.comment[run] = ''
 
+    

@@ -9,6 +9,7 @@ and is easily good enough for quick scripts.
 Good starting points are the :class:`trm.ultracam.Rdata` and :class:`trm.ultracam.MCCD` 
 classes.
 """
+
 from __future__ import absolute_import
 
 from .Constants import *
@@ -24,6 +25,10 @@ from .Raw import *
 from .Log import *
 from .UErrors import *
 
-__all__ = ['Rhead', 'Rdata', 'Rtime', 'Rwin', 'CCD', 'MCCD', 'utimer']
+# list of classes and members to document at top level
 
-
+__all__ = ['str2mjd', 'mjd2str', 'runID', 'blevs', \
+               'get_nframe_from_server', 'get_runs_from_server', \
+               'Odict', 'Window', 'Time', 'Uhead', 'CCD', 'MCCD', \
+               'UCAM', 'Rwin', 'Rdata', 'Rhead', 'utimer', 'Log', \
+               'UltracamError', 'UendError', 'PowerOnOffError']

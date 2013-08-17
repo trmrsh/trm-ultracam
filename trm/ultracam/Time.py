@@ -32,3 +32,8 @@ class Time(object):
         else:
             ret += ']'
         return ret
+
+if __name__ == '__main__':
+    time = Time(55000.2, 20., True, '')
+    str(time)
+    print 'test passed'

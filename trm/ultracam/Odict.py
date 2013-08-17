@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Ordered dictionary class for trm.ultracam
 """
@@ -105,3 +107,8 @@ class Odict(dict):
         except AttributeError:
             self._keys = [key]
 
+if __name__ == '__main__':
+    od = Odict()
+    od['B'] = 1.2
+    od['A'] = 2.2
+    print 'test passed'
