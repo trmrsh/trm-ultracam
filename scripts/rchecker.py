@@ -462,7 +462,6 @@ if __name__ == '__main__':
                     # the nearest fram with a good blue frame, save it 
                     # for later display.
                     nxf = nskip * ((nf-1)//nskip + 1)+1
-                    print 'next display frame = ',nxf
                     if (nxf % rdat.nblue) == 0:
                         saveBlue = None
                     elif (nf % rdat.nblue) == 0 and nxf-nf < rdat.nblue:
