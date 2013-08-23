@@ -2,6 +2,7 @@
 Classes to represent multiple CCDs
 """
 
+import struct
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -11,6 +12,7 @@ from trm.ultracam.Constants import *
 from trm.ultracam.Uhead import Uhead
 from trm.ultracam.Window import Window
 from trm.ultracam.CCD import CCD
+from trm.ultracam.Odict import Odict
 from trm.ultracam.Utils import write_string, read_string, check_ucm
 from trm.ultracam.UErrors import UltracamError
 
