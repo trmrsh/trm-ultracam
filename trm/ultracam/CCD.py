@@ -2,8 +2,12 @@
 # Class to represent a CCD
 #
 
+from __future__ import division
+
+import tempfile
 import numpy as np
 import matplotlib.cm as cm
+import pyfits as fits
 
 from trm.ultracam.Constants import *
 from trm.ultracam.Window import Window
@@ -26,7 +30,7 @@ class CCD(object):
         Arguments:
 
         wins    -- list of non-overlapping Window objects.
-        time    -- a Time representing the central time of the CCD.
+        time    -- a Time representing the central time of the CCD (can be None)
         nxmax   -- maximum dimension in X, unbinned pixels.
         nymax   -- maximum dimension in Y, unbinned pixels.
         good    -- True if data are not junk.
@@ -39,7 +43,7 @@ class CCD(object):
         if head is not None and not isinstance(head, Uhead):
             raise UltracamError('CCD.__init__: head should be a Uhead (or None).')        
 
-        if not isinstance(time, Time):
+        if time and not isinstance(time, Time):
             raise UltracamError('CCD.__init__: time should be a Time.')        
 
         self._data = wins
@@ -471,4 +475,77 @@ if __name__ == '__main__':
     ccd  = CCD([win1,win2], time, 1024, 1024, True, uhead)
     ccd += 100.
     print 'test passed'
+
+def ccd2fits(ccd, name, fname=None):
+    """
+    Writes a CCD to a FITS file in iraf mosaic format returning the associated
+    file object for reference. This allows display, e.g. within ds9 with
+    correct relative offsets between windows. See u2ds9.py for an example
+    using this. 
+
+      ccd : CCD object
+
+      name : name, e.g. 'Red CCD'
+
+      fname : file name. If None, a temporary file will be created that
+              can be referred to using the file object returned while
+              a reference to it exists (might need to save into a list
+              if creating multiple temporary files)              
+    """
+    
+    # Create a temporary FITS file to communicate with ds9
+    header = fits.header.Header()
+    header['DETECTOR'] = ('ULTRACAM', 'Detector name')
+    header['DETSIZE']  = ('[1:' + str(ccd.nxmax) + ',1:' + str(ccd.nymax) + ']', 'Full size')
+    header['NCCDS']    = (1, 'Number of CCDs')
+    header['NAMPS']    = (2, 'Number of amplifiers')
+    header['PIXSIZE1'] = (13., 'Pixel size, microns')
+    header['PIXSIZE2'] = (13., 'Pixel size, microns')
+    header.add_comment('File created by trm.ultracam.ccd2fits')
+    phdu = fits.PrimaryHDU(header=header)
+    hdus = [phdu,]
+
+    for nw, win in enumerate(ccd):
+        wheader = fits.Header()
+    
+        # fix up for IRAF mosaicing format
+        wheader['INHERIT'] = True
+        wheader['CCDNAME'] = name
+        if nw % 2 == 0:
+            wheader['AMPNAME'] = 1
+        else:
+            wheader['AMPNAME'] = 2
+
+        wheader['CCDSIZE'] = header['DETSIZE']
+        wheader['CCDSUM']  = str(win.xbin) + ' ' + str(win.ybin)
+        wheader['CCDSEC']  = '[1:' + str(ccd.nxmax/2) + ',1:' + str(ccd.nymax) + ']'
+        wheader['AMPSEC']  = '[1:' + str(ccd.nxmax/2) + ',1:' + str(ccd.nymax) + ']'
+        wheader['DATASEC'] = '[1:' + str(ccd.nxmax/2) + ',1:' + str(ccd.nymax) + ']'
+        wheader['DETSEC'] = '[' + str(win.llx) + ':' + str(win.llx+win.nx-1) + \
+            ',' + str(win.lly) + ':' + str(win.lly+win.ny-1) + ']'
+
+        wheader['ATM1_1']  = 1.
+        wheader['ATM2_2']  = 1.
+        wheader['ATV1']    = 0.
+        wheader['ATV2']    = 0.
+        wheader['LTM1_1']  = 1/win.xbin
+        wheader['LTM2_2']  = 1/win.ybin
+        wheader['LTV1']    = (1-win.llx)/win.xbin
+        wheader['LTV2']    = (1-win.lly)/win.ybin
+        wheader['DTM1_1']  = 1.
+        wheader['DTM2_2']  = 1.
+        wheader['DTV1']    = 0.
+        wheader['DTV2']    = 0.
+                    
+        ihdu = fits.ImageHDU(win.data, wheader)
+        hdus.append(ihdu)
+    hdul = fits.HDUList(hdus)
+
+    # create filename and write out data
+    if fname:
+        fobj = open(fname,'ab+')
+    else:
+        fobj = tempfile.NamedTemporaryFile(mode='ab+')
+    hdul.writeto(fobj)
+    return fobj
 
