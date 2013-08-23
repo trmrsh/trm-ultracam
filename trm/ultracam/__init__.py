@@ -31,4 +31,4 @@ __all__ = ['str2mjd', 'mjd2str', 'runID', 'blevs', \
                'get_nframe_from_server', 'get_runs_from_server', \
                'Odict', 'Window', 'Time', 'Uhead', 'CCD', 'MCCD', \
                'UCAM', 'Rwin', 'Rdata', 'Rhead', 'utimer', 'Log', \
-               'UltracamError', 'UendError', 'PowerOnOffError']
+               'UltracamError', 'UendError', 'PowerOnOffError', 'ccd2fits']
