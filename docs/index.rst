@@ -23,6 +23,7 @@ Contents:
    types
    scripts
    api
+   README
 
 Indices and tables
 ==================

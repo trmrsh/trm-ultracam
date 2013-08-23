@@ -13,6 +13,8 @@ operation are best found by calling them with the flag '-h'.
     streamlines checking of files of a given night for data typing
  *tofits.py*
     converts raw data to FITS
+ *u2ds9.py*
+    displays ULTRACAM files with ds9
  *ualert.py*
     checks for problems during observing (bad bias levels etc)
  *utimes.py*
