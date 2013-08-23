@@ -6,12 +6,15 @@ import struct
 import warnings
 import urllib2
 import xml.dom.minidom
+import numpy as np
 
 from trm.ultracam.Constants import *
 from trm.ultracam.CCD import CCD
 from trm.ultracam.MCCD import MCCD, UCAM
-from trm.ultracam.Server import get_nframe_from_server
+from trm.ultracam.Server import get_nframe_from_server, URL
 from trm.ultracam.Time import Time
+from trm.ultracam.Window import Window
+from trm.ultracam.Uhead import Uhead
 from trm.ultracam.UErrors import PowerOnOffError, UendError, UltracamError
 
 class Rwin(object):
