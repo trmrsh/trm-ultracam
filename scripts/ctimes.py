@@ -74,7 +74,7 @@ for rpath, rnames, fnames in os.walk('.'):
                 rtime = ultracam.Rtime(run)
 
                 for time in rtime:
-                    tim,blueTime,badBlue,info = time
+                    tim,info = time[:2]
                     gps.append(info['gps'])
                     mjd.append(tim.mjd)
                     expose.append(tim.expose)

@@ -36,7 +36,7 @@ first = True
 for nf, time in enumerate(tdat):
     if not args.suppress or (first and not time[0].good):
         print 'Frame %d, mid-time = %s, GPS = %s, exposure = %7.4f, status = %s' % \
-            (nf+1,ultracam.mjd2str(time[0].mjd,True),ultracam.mjd2str(time[3]['gps'],True),\
+            (nf+1,ultracam.mjd2str(time[0].mjd,True),ultracam.mjd2str(time[1]['gps'],True),\
                  time[0].expose, 'T' if time[0].good else 'F'),
         if not time[0].good:
             print ', reason =',time[0].reason
