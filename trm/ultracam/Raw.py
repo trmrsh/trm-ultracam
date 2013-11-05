@@ -296,10 +296,10 @@ class Rhead (object):
 
             self.exposeTime   = float(param['DWELL'])
             self.numexp   = int(param['NUM_EXPS'])
-            self.speed    = ('F' if param['SPEED'] == '0' else \
-                                 ('M' if param['SPEED'] == '1' else 'S')) if 'SPEED' in param else None
+            self.speed    = ('S' if param['SPEED'] == '0' else \
+                                 ('M' if param['SPEED'] == '1' else 'F')) if 'SPEED' in param else None
             self.en_clr   = ('Y' if param['EN_CLR'] == '1' else 'N') if 'EN_CLR' in param else None
-            self.hv_gain  = param['HV_GAIN'] if 'HV_GAIN' in param else None
+            self.hv_gain  = int(param['HV_GAIN']) if 'HV_GAIN' in param else None
             self.output   = ('N' if param['OUTPUT'] == '0' else 'A') if 'OUTPUT' in param else None
 
             xstart = int(param['X1_START'])
