@@ -331,7 +331,7 @@ class Rhead (object):
                 raise UltracamError('Rhead.__init__: clashing version numbers: ' + str(self.version) + ' vs ' + str(vcheck))
 
         if self.headerwords == 16:
-            VERSIONS = [100222, 111205, 120716, 120813, 130307]
+            VERSIONS = [100222, 111205, 120716, 120813, 130307, 130317]
             if self.version not in VERSIONS:
                 raise UltracamError('Rhead.__init__: could not recognise version = ' + str(self.version))
 
