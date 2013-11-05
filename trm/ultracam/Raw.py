@@ -777,25 +777,73 @@ class Rdata (Rhead):
 
             wins = []
             noff = 0
-            for w in self.win:
+            if self.mode.startswith('USPEC'):
+                for w in self.win:
 
-                # normal output, multi windows. 
-                npix = w.nx*w.ny
+                    npix = w.nx*w.ny
+
+                    # chop at left edge
+                    nchop = max(0,17-w.llx)
+                    nchop = nchop // xbin if nchop % xbin == 0 else nchop // xbin + 1
+
+                    llx = max(1, w.llx + nchop*xbin - 16) if self.output == 'N' else \
+                        max(1, 1074 - w.llx - w.nx*xbin)
+
+                    if self.output == 'N':
+                        # normal output, multi windows. 
+                        if flt:
+                            wins.append(Window(np.reshape(buff[noff:noff+npix].astype(np.float32),(w.ny,w.nx))[:,nchop:],
+                                               llx,w.lly,xbin,ybin))        
+                        else:
+                            wins.append(Window(np.reshape(buff[noff:noff+npix],(w.ny,w.nx))[:,nchop:],
+                                               llx,w.lly,xbin,ybin))
+
+                    elif self.output == 'A':
+                        # avalanche output, multi windows. 
+                        if flt:
+                            wins.append(Window(np.reshape(buff[noff:noff+npix].astype(np.float32),(w.ny,w.nx))[:,nchop::-1],
+                                               llx,w.lly,xbin,ybin))        
+                        else:
+                            wins.append(Window(np.reshape(buff[noff:noff+npix],(w.ny,w.nx))[:,nchop::-1],
+                                               llx,w.lly,xbin,ybin))
+
+                    noff += npix
+            
+            elif self.mode == 'UDRIFT':
+
+                # drift mode Need to compute for left and right windows
+                wl, wr = self.win
+                npixl = wl.nx*wl.ny
+                npixr = wr.nx*wr.ny
 
                 # chop at left edge
-                nchop = max(0,17-w.llx)
-                nchop = nchop // xbin if nchop % xbin == 0 else nchop // xbin + 1
+                nchopl = max(0,17-wl.llx)
+                nchopl = nchop // xbin if nchop % xbin == 0 else nchop // xbin + 1
 
-                llx = max(1, w.llx + nchop*xbin - 16) if self.output == 'N' else \
-                    max(1, 1074 - w.llx - w.nx*xbin)
+                nchopr = max(0,17-wr.llx)
+                nchopr = nchop // xbin if nchop % xbin == 0 else nchop // xbin + 1
 
-                if flt:
-                    wins.append(Window(np.reshape(buff[noff:noff+npix].astype(np.float32),(w.ny,w.nx))[:,nchop:],
-                                       llx,w.lly,xbin,ybin))        
-                else:
-                    wins.append(Window(np.reshape(buff[noff:noff+npix],(w.ny,w.nx))[:,nchop:],
-                                       llx,w.lly,xbin,ybin))
-                noff += npix
+                llxl = max(1, wl.llx + nchopl*xbin - 16) if self.output == 'N' else \
+                    max(1, 1074 - wl.llx - wl.nx*xbin)
+                llxr = max(1, wr.llx + nchopr*xbin - 16) if self.output == 'N' else \
+                    max(1, 1074 - wr.llx - wr.nx*xbin)
+
+                if self.output == 'N':
+                    # normal output, drift
+                    if flt:
+                        comb = np.reshape(buff[:npix].astype(np.float32),(wl.ny,wl.nx+wr.nx))
+                    else:
+                        comb = np.reshape(buff[:npix],(wl.ny,wl.nx+wr.nx))
+
+                elif self.output == 'A':
+                    # avalanche output, drift
+                    if flt:
+                        comb = np.reshape(buff[:npix].astype(np.float32)[:,::-1],(wl.ny,wl.nx+wr.nx))
+                    else:
+                        comb = np.reshape(buff[:npix],(wl.ny,wl.nx+wr.nx)[:,::-1])
+
+                wins.append(Window(comb[:,nchopl:wl.nx],llxl,wl.lly,xbin,ybin))        
+                wins.append(Window(comb[:,wl.nx+nchopr:],llxr,wl.lly,xbin,ybin))        
 
             return CCD(wins, time, self.nxmax, self.nymax, True, head)
 
