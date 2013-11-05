@@ -30,7 +30,10 @@ class Rwin(object):
         self.lly = lly
         self.nx  = nx
         self.ny  = ny
-
+    
+    def __str__(self):
+        return str(self.llx) + ',' + str(self.lly) + ',' + str(self.nx) + ',' + str(self.ny)
+    
 class Rhead (object):
     """
     Represents essential header info of Ultracam/Ultraspec data read from a
@@ -189,9 +192,13 @@ class Rhead (object):
             self.mode    = 'FFNCLR'
         elif app == 'ccd201_winbin_con' or app == 'ccd201_winbin_cfg':
             if int(param['X2_SIZE']) == 0:
-                self.mode    = '1-USPEC'
+                self.mode    = 'USPEC-1'
+            elif int(param['X3_SIZE']) == 0:
+                self.mode    = 'USPEC-2'
+            elif int(param['X4_SIZE']) == 0:
+                self.mode    = 'USPEC-3'
             else:
-                self.mode    = '2-USPEC'
+                self.mode    = 'USPEC-4'
         elif app == 'ccd201_driftscan_cfg':
             self.mode    = 'UDRIFT'
         elif app == 'ap1_poweron' or app == 'ap1_250_poweron' or app == 'ap2_250_poweroff' \
@@ -309,11 +316,27 @@ class Rhead (object):
             self.win.append(Rwin(xstart,ystart,nx,ny))
             fsize += 2*self.win[-1].nx*self.win[-1].ny
 
-            if self.mode == '2-USPEC':
+            if self.mode == 'USPEC-2' or self.mode == 'USPEC-3' or self.mode == 'USPEC-4':
                 xstart = int(param['X2_START'])
                 ystart = int(param['Y2_START'])
                 nx     = int(param['X2_SIZE']) // self.xbin
                 ny     = int(param['Y2_SIZE']) // self.ybin
+                self.win.append(Rwin(xstart,ystart,nx,ny))
+                fsize += 2*self.win[-1].nx*self.win[-1].ny
+
+            if self.mode == 'USPEC-3' or self.mode == 'USPEC-4':
+                xstart = int(param['X3_START'])
+                ystart = int(param['Y3_START'])
+                nx     = int(param['X3_SIZE']) // self.xbin
+                ny     = int(param['Y3_SIZE']) // self.ybin
+                self.win.append(Rwin(xstart,ystart,nx,ny))
+                fsize += 2*self.win[-1].nx*self.win[-1].ny
+
+            if self.mode == 'USPEC-4':
+                xstart = int(param['X4_START'])
+                ystart = int(param['Y4_START'])
+                nx     = int(param['X4_SIZE']) // self.xbin
+                ny     = int(param['Y4_SIZE']) // self.ybin
                 self.win.append(Rwin(xstart,ystart,nx,ny))
                 fsize += 2*self.win[-1].nx*self.win[-1].ny
 
@@ -564,7 +587,10 @@ class Rdata (Rhead):
                                     + str(len(buff)) + ' vs ' + str(self.framesize/2-self.headerwords))
 
         # OK from this point, both server and local disk methods are the same
-        time,blueTime,badBlue,info = utimer(tbytes, self, self._nf)
+        if self.instrument == 'ULTRACAM':
+            time,info,blueTime,badBlue = utimer(tbytes, self, self._nf)
+        elif self.instrument == 'ULTRASPEC':
+            time,info = utimer(tbytes, self, self._nf)
 
         # move frame counter on by one
         self._nf += 1
@@ -595,7 +621,6 @@ class Rdata (Rhead):
             # on a pitch of 6. Some further jiggery-pokery is involved to get the
             # orientation of the frames correct.
             wins1, wins2, wins3 = [],[],[]
-
 
             if self.mode != 'FFOVER' and self.mode != 'FFOVNC':
                 # Non-overscan modes: 
@@ -747,8 +772,35 @@ class Rdata (Rhead):
 
             # Return a UCAM object
             return UCAM([ccd1,ccd2,ccd3], head)
+
+        elif self.instrument == 'ULTRASPEC':
+
+            wins = []
+            noff = 0
+            for w in self.win:
+
+                # normal output, multi windows. 
+                npix = w.nx*w.ny
+
+                # chop at left edge
+                nchop = max(0,17-w.llx)
+                nchop = nchop // xbin if nchop % xbin == 0 else nchop // xbin + 1
+
+                llx = max(1, w.llx + nchop*xbin - 16) if self.output == 'N' else \
+                    max(1, 1074 - w.llx - w.nx*xbin)
+
+                if flt:
+                    wins.append(Window(np.reshape(buff[noff:noff+npix].astype(np.float32),(w.ny,w.nx))[:,nchop:],
+                                       llx,w.lly,xbin,ybin))        
+                else:
+                    wins.append(Window(np.reshape(buff[noff:noff+npix],(w.ny,w.nx))[:,nchop:],
+                                       llx,w.lly,xbin,ybin))
+                noff += npix
+
+            return CCD(wins, time, self.nxmax, self.nymax, True, head)
+
         else:
-            raise UltracamError('Rdata.__init__: have yet to implement anything for ' + self.instrument)
+            raise UltracamError('Rdata.__init__: have not implemented anything for ' + self.instrument)
 
     def ntotal(self):
         """
@@ -950,28 +1002,28 @@ def utimer(tbytes, rhead, fnum):
 
      fnum    -- frame number we think we are on.
 
+    Returns (time,info,blueTime,badBlue) for ULTRACAM or (time,info) for ULTRASPEC
 
+     time         : the Time as best as can be determined
 
-    Returns (time,blueTime,badBlue,info)
-
-     time         -- the Time as best as can be determined
-
-     blueTime     -- different time for the blue frames of ULTRACAM for nblue > 1
-
-     badBlue      -- blue frame is bad for nblue > 1 (nblue-1 out nblue are bad)
-
-     info         -- a dictionary of optional extra to allow for possible future 
-                     updates without breaking code. Currently returns values for the 
-                     following keys:
+     info         : a dictionary of extras to allow for possible future 
+                    updates without breaking code. Currently returns values for the 
+                    following keys:
 
          nsat         -- number of satellites (if set)
          format       -- the format integer used to translate the timing bytes
-         vclock_frame -- vertical clocking time for a whole frame
+         vclock_frame -- vertical clocking time for a whole frame [ULTRACAM only]
          whichRun     -- special case run identifier. MAY2002 or nothing
          defTstamp    -- whether the "default" time stamping cycle was thought to apply
          gps          -- the raw GPS time associated with the frame, no corrections applied
          frameError   -- was there a frame numbering clash
          midnightCorr -- was the midnight bug correction applied
+
+     ULTRACAM only:
+
+     blueTime     : different time for the blue frames of ULTRACAM for nblue > 1
+
+     badBlue      : blue frame is bad for nblue > 1 (nblue-1 out nblue are bad)
 
     """
     
@@ -1024,7 +1076,6 @@ def utimer(tbytes, rhead, fnum):
 
     utimer.previousFrameNumber = frameNumber
 
-
     if format == 1:
         nsec, nnsec = struct.unpack('<II', tbytes[9:17])
         nsat = struct.unpack('<h', tbytes[21:23])[0]
@@ -1064,12 +1115,6 @@ def utimer(tbytes, rhead, fnum):
     else:
         raise UltracamError('Rdata.time: format = ' + str(format) + ' not recognised.')
 
-    # One of the bits in the first byte is set if the blue frame is junk. 
-    # Unfortunately which bit was set changed hence the check of the format
-    fbyte   = struct.unpack('<B',tbytes[0])[0]
-    badBlue = rhead.nblue > 1 and \
-        ((format == 1 and bool(fbyte & 1<<3)) or (format == 2 and bool(fbyte & 1<<4)))
-
     def tcon1(offset, nsec, nnsec):
         """
         Convert to MJD
@@ -1082,14 +1127,22 @@ def utimer(tbytes, rhead, fnum):
         """
         return (datetime.date(year,month,day).toordinal() - MJD0) + float(nsec+nnsec/1.e9)/DSEC
 
+    if rhead.instrument == 'ULTRACAM':
+        # One of the bits in the first byte is set if the blue frame is junk. 
+        # Unfortunately which bit was set changed hence the check of the format
+        fbyte   = struct.unpack('<B',tbytes[0])[0]
+        badBlue = rhead.nblue > 1 and \
+            ((format == 1 and bool(fbyte & 1<<3)) or (format == 2 and bool(fbyte & 1<<4)))
+
     if format == 1 and nsat == -1:
         goodTime = False
         reason = 'no satellites.'
         mjd = tcon1(DEFDAT, nsec, nnsec)
-        if rhead.v_ft_clk > 127:
-            vclock_frame = 6.e-9*(40+320*(rhead.v_ft_clk - 128))
-	else:
-	    vclock_frame = 6.e-9*(40+40*rhead.v_ft_clk)
+        if rhead.instrument == 'ULTRACAM':
+            if rhead.v_ft_clk > 127:
+                vclock_frame = 6.e-9*(40+320*(rhead.v_ft_clk - 128))
+            else:
+                vclock_frame = 6.e-9*(40+40*rhead.v_ft_clk)
         day, month, year = struct.unpack('<BBH',tbytes[17:21])
 
     else:
@@ -1140,17 +1193,18 @@ def utimer(tbytes, rhead, fnum):
             elif format == 2:
                 mjd = tcon1(UNIX, nsec, nnsec)
 
-            if mjd > TSTAMP_CHANGE1:
-                if rhead.v_ft_clk > 127:
-                    vclock_frame = 6.e-9*(40+320*(rhead.v_ft_clk - 128))
-                else:
-                    vclock_frame = 6.e-9*(40+40*rhead.v_ft_clk)
+            if rhead.instrument == 'ULTRACAM':
+                if mjd > TSTAMP_CHANGE1:
+                    if rhead.v_ft_clk > 127:
+                        vclock_frame = 6.e-9*(40+320*(rhead.v_ft_clk - 128))
+                    else:
+                        vclock_frame = 6.e-9*(40+40*rhead.v_ft_clk)
 
-            else:
-                if rhead.v_ft_clk > 127:
-                    vclock_frame = 6.e-9*(80+160*(rhead.v_ft_clk - 128))
                 else:
-                    vclock_frame = 6.e-9*(80+20*rhead.v_ft_clk)
+                    if rhead.v_ft_clk > 127:
+                        vclock_frame = 6.e-9*(80+160*(rhead.v_ft_clk - 128))
+                    else:
+                        vclock_frame = 6.e-9*(80+20*rhead.v_ft_clk)
 
     # 'midnight bug' correction
     if (int(mjd-3) % 7) == ((nsec // DSEC) % 7):
@@ -1170,11 +1224,8 @@ def utimer(tbytes, rhead, fnum):
     # Push time to front of tstamp list
     utimer.tstamp.insert(0,mjd)
 
-    # one extra parameter in addition to those from Vik's
-    VCLOCK_STORAGE = vclock_frame
-    USPEC_FT_TIME  = 0.0067196 if mjd < USPEC_CHANGE else 0.0149818
-    
     if rhead.instrument == 'ULTRACAM':
+        VCLOCK_STORAGE = vclock_frame
         if rhead.gainSpeed == 'cdd':
             cds_time = CDS_TIME_CDD
         elif rhead.gainSpeed == 'fbb':
@@ -1183,10 +1234,13 @@ def utimer(tbytes, rhead, fnum):
             cds_time = CDS_TIME_FDD
         else:
             raise UltracamError('ultracam.utimer: did not recognize gain speed setting = ' + rhead.gainSpeed)
+        VIDEO = SWITCH_TIME + cds_time
+
     elif rhead.instrument == 'ULTRASPEC':
         cdsTime = 0.
+        # one extra parameter in addition to those from Vik's
+        USPEC_FT_TIME  = 0.0067196 if mjd < USPEC_CHANGE else 0.0149818
         
-    VIDEO = SWITCH_TIME + cds_time
 
     if rhead.instrument == 'ULTRACAM' and \
             (rhead.mode == 'FFCLR' or rhead.mode == 'FFOVER' or rhead.mode == '1-PCLR'):
@@ -1463,8 +1517,7 @@ def utimer(tbytes, rhead, fnum):
                     goodTime = False
 		    reason = 'too few stored timestamps for drift mode'
 
-    elif rhead.instrument == 'ULTRASPEC' and \
-            (rhead.mode == '1-USPEC' or rhead.mode == '1-USPEC'):
+    elif rhead.instrument == 'ULTRASPEC' and rhead.mode.startswith('USPEC'):
  
 	# Avoid excessive accumulation of timestamps.
 	if len(utimer.tstamp) > 3: utimer.tstamp.pop()
@@ -1587,56 +1640,64 @@ def utimer(tbytes, rhead, fnum):
     # Return some data
     time = Time(mjdCentre, exposure, goodTime, reason)
 
-    if rhead.nblue > 1:
+    if rhead.instrument == 'ULTRACAM':
 
-	# The mid-exposure time for the OK blue frames in this case is computed by averaging the 
-	# mid-exposure times of all the contributing frames, if they are available.
-	utimer.blueTimes.insert(0,time)
+        if rhead.nblue > 1:
 
-	if badBlue:
+            # The mid-exposure time for the OK blue frames in this case is computed by averaging the 
+            # mid-exposure times of all the contributing frames, if they are available.
+            utimer.blueTimes.insert(0,time)
 
-	    # just pass through the standard time for the junk frames
-            blueTime = time
+            if badBlue:
 
-        else:
+                # just pass through the standard time for the junk frames
+                blueTime = time
 
-	    # if any of the contributing times is flagged as unreliable, then
-	    # so is the final time. This is also unreliable if any
-	    # contributing frame times are missing. Time is calculated as
-	    # half-way point between start of first and end of last
-	    # contributing exposure.  Corrections are made if there are too
-	    # few contributing exposures (even though the final value will
-	    # still be flagged as unreliable
-	    ncont  = min(rhead.nblue, len(utimer.blueTimes))
-	    start  = utimer.blueTimes[ncont-1].mjd - utimer.blueTimes[ncont-1].expose/2./DSEC
-	    end    = utimer.blueTimes[0].mjd       + utimer.blueTimes[0].expose/2./DSEC
-	    expose = DSEC*(end - start)
+            else:
 
-	    # correct the times
-	    ok = ncont == rhead.nblue
-            reason = ''
-	    if not ok:
-		expose *= rhead.nblue/float(ncont)
-		start   = end - expose/DSEC
-                reason  = 'not all contributing frames found'
-	    else:
-		ok = utimer.blueTimes[0].good and utimer.blueTimes[ncont-1].good
-                if not ok: reason  = 'time of start or end frame was unreliable'
+                # if any of the contributing times is flagged as unreliable, then
+                # so is the final time. This is also unreliable if any
+                # contributing frame times are missing. Time is calculated as
+                # half-way point between start of first and end of last
+                # contributing exposure.  Corrections are made if there are too
+                # few contributing exposures (even though the final value will
+                # still be flagged as unreliable
+                ncont  = min(rhead.nblue, len(utimer.blueTimes))
+                start  = utimer.blueTimes[ncont-1].mjd - utimer.blueTimes[ncont-1].expose/2./DSEC
+                end    = utimer.blueTimes[0].mjd       + utimer.blueTimes[0].expose/2./DSEC
+                expose = DSEC*(end - start)
+
+                # correct the times
+                ok = ncont == rhead.nblue
+                reason = ''
+                if not ok:
+                    expose *= rhead.nblue/float(ncont)
+                    start   = end - expose/DSEC
+                    reason  = 'not all contributing frames found'
+                else:
+                    ok = utimer.blueTimes[0].good and utimer.blueTimes[ncont-1].good
+                    if not ok: reason  = 'time of start or end frame was unreliable'
 
             blueTime = Time((start+end)/2., expose, ok, reason)
 
-        # Avoid wasting memory storing past times
-	if len(utimer.blueTimes) > rhead.nblue: utimer.blueTimes.pop()
+            # Avoid wasting memory storing past times
+            if len(utimer.blueTimes) > rhead.nblue: utimer.blueTimes.pop()
 	    
-    else:
-        blueTime = time
+        else:
+            blueTime = time
 
     # return lots of potentially useful extras in a dictionary
-    info = {'nsat' : nsat, 'format' : format, 'vclock_frame' : vclock_frame, 
-            'whichRun' : rhead.whichRun, 'defTstamp' : defTstamp, 'gps' : gps,
-            'frameError' : frameError, 'midnightCorr' : midnightCorr, 
-            'ntmin' : ntmin}
+    info = {'nsat' : nsat, 'format' : format, 'whichRun' : rhead.whichRun, 
+            'defTstamp' : defTstamp, 'gps' : gps, 'frameError' : frameError, 
+            'midnightCorr' : midnightCorr, 'ntmin' : ntmin}
 
-    return (time,blueTime,badBlue,info)
+    if rhead.instrument == 'ULTRACAM':
+        info['vclock_frame'] = vclock_frame
+        return (time,info,blueTime,badBlue,info)
 
+    elif rhead.instrument == 'ULTRASPEC':
+        return (time,info)
+
+    else:
+        raise UltracamError('ultracam.utimer: did not recognize instrument = ' + rhead.instrument)
 
