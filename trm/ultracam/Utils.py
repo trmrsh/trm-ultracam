@@ -6,7 +6,8 @@ import struct
 import datetime
 import numpy as np
 
-from trm.ultracam.Constants import MAGIC, MJD0, RUN_DATES, RUN_TELS
+from trm.ultracam.Constants import MAGIC, MJD0, RUN_DATES, \
+    RUN_TELS, BIAS_CHANGES, BIAS_LEVELS
 from trm.ultracam.UErrors import UltracamError
 
 def write_string(fobj, strng):
