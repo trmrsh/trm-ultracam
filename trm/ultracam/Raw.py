@@ -992,7 +992,8 @@ def utimer(tbytes, rhead, fnum):
     elif rhead.version == -1 or rhead.version == 70514 or rhead.version == 80127:
         format = 1
     elif rhead.version == 100222 or rhead.version == 110921 or rhead.version == 111205 or \
-            rhead.version == 120716 or rhead.version == 120813:
+            rhead.version == 120716 or rhead.version == 120813 or rhead.version == 130303 or \
+            rhead.version == 130317:
         format = 2
     else:
         raise UltracamError('Rdata._timing: version = ' + str(rhead.version) + ' unrecognised.')
