@@ -102,10 +102,13 @@ if __name__ == '__main__':
         ccd.rback()
 
     # Determine indices of CCDs to plot
-    if args.nccd:
-        nccds = [nccd,]
+    if mccd.head.value('Instrument.instrument') == 'ULTRACAM':
+        if args.nccd:
+            nccds = [nccd,]
+        else:
+            nccds = range(len(mccd))
     else:
-        nccds = range(len(mccd))
+        nccds = [0,]
 
     # Set display dimensions, pixels
     if args.height:
@@ -126,7 +129,10 @@ if __name__ == '__main__':
     ds.set('height %d' % (height))
     for i, nccd in enumerate(nccds):
 
-        ccd = mccd[nccd]
+        if mccd.head.value('Instrument.instrument') == 'ULTRACAM':
+            ccd = mccd[nccd]
+        else:
+            ccd = mccd
 
         if nccd == 0:
             ccdname = 'Red CCD'
