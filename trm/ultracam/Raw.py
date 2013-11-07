@@ -311,32 +311,32 @@ class Rhead (object):
 
             xstart = int(param['X1_START'])
             ystart = int(param['Y1_START'])
-            nx     = int(param['X1_SIZE']) // self.xbin
-            ny     = int(param['Y1_SIZE']) // self.ybin
+            nx     = int(param['X1_SIZE']) 
+            ny     = int(param['Y1_SIZE']) 
             self.win.append(Rwin(xstart,ystart,nx,ny))
             fsize += 2*self.win[-1].nx*self.win[-1].ny
 
-            if self.mode == 'USPEC-2' or self.mode == 'USPEC-3' or self.mode == 'USPEC-4':
+            if self.mode == 'USPEC-2' or self.mode == 'USPEC-3' or self.mode == 'USPEC-4' or self.mode == 'UDRIFT':
                 xstart = int(param['X2_START'])
-                ystart = int(param['Y2_START'])
-                nx     = int(param['X2_SIZE']) // self.xbin
-                ny     = int(param['Y2_SIZE']) // self.ybin
+                ystart = ystart if self.mode == 'UDRIFT' else int(param['Y2_START']) 
+                nx     = int(param['X2_SIZE'])
+                ny     = ny if self.mode == 'UDRIFT' else int(param['Y2_SIZE'])
                 self.win.append(Rwin(xstart,ystart,nx,ny))
                 fsize += 2*self.win[-1].nx*self.win[-1].ny
 
             if self.mode == 'USPEC-3' or self.mode == 'USPEC-4':
                 xstart = int(param['X3_START'])
                 ystart = int(param['Y3_START'])
-                nx     = int(param['X3_SIZE']) // self.xbin
-                ny     = int(param['Y3_SIZE']) // self.ybin
+                nx     = int(param['X3_SIZE'])
+                ny     = int(param['Y3_SIZE'])
                 self.win.append(Rwin(xstart,ystart,nx,ny))
                 fsize += 2*self.win[-1].nx*self.win[-1].ny
 
             if self.mode == 'USPEC-4':
                 xstart = int(param['X4_START'])
-                ystart = int(param['Y4_START'])
-                nx     = int(param['X4_SIZE']) // self.xbin
-                ny     = int(param['Y4_SIZE']) // self.ybin
+                ystart = int(param['Y4_START']) 
+                nx     = int(param['X4_SIZE'])
+                ny     = int(param['Y4_SIZE'])
                 self.win.append(Rwin(xstart,ystart,nx,ny))
                 fsize += 2*self.win[-1].nx*self.win[-1].ny
 
@@ -813,15 +813,14 @@ class Rdata (Rhead):
 
                 # drift mode Need to compute for left and right windows
                 wl, wr = self.win
-                npixl = wl.nx*wl.ny
-                npixr = wr.nx*wr.ny
+                npix = wl.nx*wl.ny + wr.nx*wr.ny
 
                 # chop at left edge
                 nchopl = max(0,17-wl.llx)
-                nchopl = nchop // xbin if nchop % xbin == 0 else nchop // xbin + 1
+                nchopl = nchopl // xbin if nchopl % xbin == 0 else nchopl // xbin + 1
 
                 nchopr = max(0,17-wr.llx)
-                nchopr = nchop // xbin if nchop % xbin == 0 else nchop // xbin + 1
+                nchopr = nchopr // xbin if nchopr % xbin == 0 else nchopr // xbin + 1
 
                 llxl = max(1, wl.llx + nchopl*xbin - 16) if self.output == 'N' else \
                     max(1, 1074 - wl.llx - wl.nx*xbin)
@@ -1649,9 +1648,9 @@ def utimer(tbytes, rhead, fnum):
 
         ybin   = rhead.ybin
         nyu    = ybin*rhead.win[0].ny
-        ystart = rhead.win[0].lly;
+        ystart = rhead.win[0].lly
         nwins  = int(((1037. / nyu) + 1.)/2.)
-        frameTransfer = USPEC_FT_ROW*(ystart+ny-1.)+USPEC_FT_OFF
+        frameTransfer = USPEC_FT_ROW*(ystart+nyu-1.)+USPEC_FT_OFF
 
 	# Never need more than nwins+2 times
 	if len(utimer.tstamp) > nwins+2: utimer.tstamp.pop() 
