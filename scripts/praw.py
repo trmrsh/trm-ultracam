@@ -76,43 +76,81 @@ pgopen('/xs')
 fnum  = args.first
 first = True
 rdat  = ultracam.Rdata(run,args.first,server=args.ucam)
-saveBlue = None
-for mccd in rdat:
 
-    if rdat.nblue > 1 and not args.every:
-        # save the last read blue frame to avoid
-        # plotting the intermediate bias frames
-        # when "nblue" is in operation
-        if fnum % rdat.nblue == 0:
-            saveBlue = mccd[2]
-        elif saveBlue:
-            if args.bias or args.back:
-                mccd[2] = copy.deepcopy(saveBlue)
-            else:
-                mccd[2] = saveBlue
+if rdat.instrument == 'ULTRACAM':
+    saveBlue = None
+    for mccd in rdat:
 
-    if args.bias:
-        if first and bias != mccd:
-            try:
-                bias = bias.cropTo(mccd)
-            except ultracam.UltracamError, err:
-                print 'UltracamError:',err
-                print 'Bias format:\n',bias.format()
-                print 'Data format (should be subset of the bias):\n',mccd.format()
-                exit(1)
-        first = False
-        mccd -= bias
+        if rdat.nblue > 1 and not args.every:
+            # save the last read blue frame to avoid
+            # plotting the intermediate bias frames
+            # when "nblue" is in operation
+            if fnum % rdat.nblue == 0:
+                saveBlue = mccd[2]
+            elif saveBlue:
+                if args.bias or args.back:
+                    mccd[2] = copy.deepcopy(saveBlue)
+                else:
+                    mccd[2] = saveBlue
 
-    if args.back:
-        mccd.rback(nccd)
+        if args.bias:
+            if first and bias != mccd:
+                try:
+                    bias = bias.cropTo(mccd)
+                except ultracam.UltracamError, err:
+                    print 'UltracamError:',err
+                    print 'Bias format:\n',bias.format()
+                    print 'Data format (should be subset of the bias):\n',mccd.format()
+                    exit(1)
+            first = False
+            mccd -= bias
 
-    prange = mccd.plot(plo,phi,nccd,close=False,x1=args.x1,x2=args.x2,y1=args.y1,y2=args.y2)
-    print 'Plotted',mccd.head.value('Run.run'),'frame',mccd.head.value('Frame.frame'),'plot range(s):',prange
+        if args.back:
+            mccd.rback(nccd)
+
+        prange = mccd.plot(plo,phi,nccd,close=False,x1=args.x1,x2=args.x2,y1=args.y1,y2=args.y2)
+        print 'Plotted',mccd.head.value('Run.run'),'frame',mccd.head.value('Frame.frame'),'plot range(s):',prange
     
-    fnum += 1
-    if args.last > 0 and fnum > args.last:
-        break
-    time.sleep(args.sleep)
+        fnum += 1
+        if args.last > 0 and fnum > args.last:
+            break
+        time.sleep(args.sleep)
+
+elif rdat.instrument == 'ULTRASPEC':
+
+    x1    = 0.5 if args.x1 is None else args.x1
+    x2    = rdat.nxmax+0.5 if args.x2 is None else args.x2
+    y1    = 0.5 if args.y1 is None else args.y1
+    y2    = rdat.nymax+0.5 if args.y2 is None else args.y2
+    
+    pgenv(x1,x2,y1,y2,1,0)
+
+    for ccd in rdat:
+
+        if args.bias:
+            if first and bias != ccd:
+                try:
+                    bias = bias.cropTo(ccd)
+                except ultracam.UltracamError, err:
+                    print 'UltracamError:',err
+                    print 'Bias format:\n',bias.format()
+                    print 'Data format (should be subset of the bias):\n',ccd.format()
+                    exit(1)
+            first = False
+            ccd -= bias
+
+        if args.back:
+            ccd.rback(nccd)
+
+        vmin, vmax = ccd.centile((plo,phi))
+
+        ccd.plot(vmin,vmax)
+        print 'Plotted',ccd.head.value('Run.run'),'frame',ccd.head.value('Frame.frame'),'plot range:',vmin,'to',vmax
+    
+        fnum += 1
+        if args.last > 0 and fnum > args.last:
+            break
+        time.sleep(args.sleep)
 
 pgclos()
 
