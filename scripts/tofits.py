@@ -2,9 +2,9 @@
 
 usage = \
 """
-Reads in ULTRACAM raw data files and writes out to FITS files. The output
-files can be one per exposure, or in the case of multi-CCD formats, one
-per CCD per exposure.
+Reads in ULTRACAM/SPEC raw data files and writes out to FITS files. The output
+files can be one per exposure, or in the case of multi-CCD formats, one per
+CCD per exposure.
 """
 
 # just import these for speed. After arguments are OK-ed, some more imports
@@ -76,10 +76,6 @@ else:
 
 for mccd in rdat:
 
-    # kludge to make a CCD behave like an MCCD
-    if isinstance(mccd, ultracam.CCD):
-        mccd = [mccd,]
-
     if args.bias:
         if first and bias != mccd:
             try:
@@ -108,8 +104,16 @@ for mccd in rdat:
                 header['BSUB'] = (True,'Was a bias subtracted or not?')
             else:
                 header['BSUB'] = (False,'Was a bias subtracted or not?')
-            header['NCCD'] = (nc+1,'CCD number')
+            header['NCCD']   = (nc+1,'CCD number')
+            header['RUNNUM'] = (mccd.head.value('Run.run'),'Run number')
+            header['FILTER'] = (mccd.head.value('Run.filters'),'Filter name')
+            header['OUTPUT'] = (mccd.head.value('Run.output'),'CCD output used')
+            header['SPEED']  = (mccd.head.value('Run.speed'),'Readout speed')
+            header['MJDUTC'] = (mccd[nc].time.mjd,'MJD(UTC) at centre of exposure')
+            header['EXPOSE'] = (mccd[nc].time.expose,'Exposure time, secs')
+            header['TIMEOK'] = (mccd[nc].time.good,'Is time reliable?')
             header.add_comment('File created by tofits.py')
+
             phdu = fits.PrimaryHDU(header=header)
             hdus = [phdu,]
 
@@ -151,6 +155,16 @@ for mccd in rdat:
             header['BSUB'] = (True,'Was a bias subtracted or not?')
         else:
             header['BSUB'] = (False,'Was a bias subtracted or not?')
+        if rdat.nccd > 1:
+            header['NCCD']   = (nc+1,'CCD number')
+        header['RUNNUM'] = (mccd.head.value('Run.run'),'Run number')
+        header['FILTER'] = (mccd.head.value('Run.filters'),'Filter name')
+        header['OUTPUT'] = (mccd.head.value('Run.output'),'CCD output used')
+        header['SPEED']  = (mccd.head.value('Run.speed'),'Readout speed')
+        if rdat.nccd == 1:
+            header['MJDUTC'] = (mccd[0].time.mjd,'MJD(UTC) at centre of exposure')
+            header['EXPOSE'] = (mccd[0].time.expose,'Exposure time, secs')
+            header['TIMEOK'] = (mccd[0].time.good,'Is time reliable?')
         header.add_comment('File created by tofits.py')
         phdu = fits.PrimaryHDU(header=header)
         hdus = [phdu,]
@@ -160,6 +174,10 @@ for mccd in rdat:
             ccd = mccd[nc]
             for nw, win in enumerate(ccd):
                 wheader = fits.Header()
+                if rdat.nccd > 1:
+                    header['MJDUTC'] = (mccd[nc].time.mjd,'MJD(UTC) at centre of exposure')
+                    header['EXPOSE'] = (mccd[nc].time.expose,'Exposure time, secs')
+                    header['TIMEOK'] = (mccd[nc].time.good,'Is time reliable?')
                 wheader['NCCD']   = nc+1
                 wheader['NWIN']   = nw+1
 
