@@ -397,21 +397,6 @@ class Rdata (Rhead):
     """
     Callable, iterable object to represent ULTRACAM/SPEC raw data files. 
 
-    Args:
-      run (string) : run name, e.g. 'run036'. 
-
-      nframe (int) : frame number for first read, starting at 1 as the first.
-
-      flt (bool ) : True for reading data in as floats. This is the default for
-                    safety, however the data are stored on disk as unsigned 2-byte
-                    ints. If you are not doing much to the data, and wish to keep 
-                    them in this form for speed and efficiency, then set flt=False.  
-                    This parameter is used when iterating through an Rdata. The 
-                    __call__ method can override it.
-
-      server (bool) : True/False for server vs local disk access
-    
-    
     The idea is to open the file, and then the object generated can be 
     used to deliver frames by specifying a frame number. Frames can be 
     read individually e.g.::
@@ -430,7 +415,9 @@ class Rdata (Rhead):
     to access a frame that does not exist, it defaults to the start of the 
     file.
 
-    The above code returns :class:`trm.ultracam.MCCD` objects for ULTRACAM data.
+    The above code returns :class:`trm.ultracam.MCCD` objects for ULTRACAM data. By default
+    the frames are always read as :class:`trm.ultracam.MCCD` objects, however there is 
+    always a flag 
 
     :class:`trm.ultracam.Rdata` can talk to the ATC FileServer if it is running, e.g.::
 
@@ -438,13 +425,13 @@ class Rdata (Rhead):
 
     """
 
-    def __init__(self, run, nframe=1, flt=True, server=False):
+    def __init__(self, run, nframe=1, flt=True, server=False, ccd=False):
         """
         Connects to a raw data file for reading. The file is kept open. 
         The file pointer is set to the start of frame nframe. The Rdata
         object can then generate MCCD or CCD objects through being called 
         as a function or iterator.
-
+    
         Args:
           run (string) : run name, e.g. 'run036'. 
 
@@ -458,6 +445,10 @@ class Rdata (Rhead):
                method can override it.
 
           server (bool) : True/False for server vs local disk access
+
+          ccd (bool) : flag to read data as a :class:`trm.ultracam.CCD` rather 
+                       than a :class:`trm.ultracam.MCCD` object if only one CCD
+                       per frame. Default is always to read as an MCCD.
         """
 
         Rhead.__init__(self, run, server)
@@ -480,6 +471,7 @@ class Rdata (Rhead):
         self._run    = run
         self._flt    = flt
         self._tstamp = []
+        self._ccd    = ccd
         if not server and nframe != 1:
             self._fobj.seek(self.framesize*(nframe-1))
     
@@ -608,6 +600,10 @@ class Rdata (Rhead):
         head.add_entry('Run.run',self._run,ITYPE_STRING,'run the frame came from')
         head.add_entry('Run.mode',self.mode,ITYPE_STRING,'readout mode used')
         head.add_entry('Run.ntmin',info['ntmin'],ITYPE_INT,'number of sequential timestamps needed')
+        head.add_entry('Run.filters',self.filters,ITYPE_STRING,'filter or filters')
+        head.add_entry('Run.expose',self.exposeTime,ITYPE_FLOAT,'exposure time')
+        head.add_entry('Run.output',self.output,ITYPE_STRING,'CCD output used')
+        head.add_entry('Run.speed',self.speed,ITYPE_STRING,'Readout speed')
 
         head.add_entry('Frame', 'Frame specific information')
         head.add_entry('Frame.frame',self._nf,ITYPE_INT,'frame number within run')
@@ -633,31 +629,43 @@ class Rdata (Rhead):
                     npix = 6*wl.nx*wl.ny
                     if flt:
                         if strip_outer:
-                            wins1.append(Window(np.reshape(buff[noff:noff+npix:6].astype(np.float32),(wl.ny,wl.nx))[:,1:],
-                                                wl.llx,wl.lly,xbin,ybin))
-                            wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,-2::-1],
-                                                wr.llx+xbin,wr.lly,xbin,ybin))
-                            wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6].astype(np.float32),(wl.ny,wl.nx))[:,1:],
-                                                wl.llx,wl.lly,xbin,ybin))
-                            wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,-2::-1],
-                                                wr.llx+xbin,wr.lly,xbin,ybin))
-                            wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6].astype(np.float32),(wl.ny,wl.nx))[:,1:],
-                                                wl.llx,wl.lly,xbin,ybin))
-                            wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,-2::-1],
-                                                wr.llx+xbin,wr.lly,xbin,ybin))
+                            wins1.append(
+                                Window(np.reshape(buff[noff:noff+npix:6].astype(np.float32),
+                                                  (wl.ny,wl.nx))[:,1:],wl.llx,wl.lly,xbin,ybin))
+                            wins1.append(
+                                Window(np.reshape(buff[noff+1:noff+npix:6].astype(np.float32),
+                                                  (wr.ny,wr.nx))[:,-2::-1],wr.llx+xbin,wr.lly,xbin,ybin))
+                            wins2.append(
+                                Window(np.reshape(buff[noff+2:noff+npix:6].astype(np.float32),
+                                                  (wl.ny,wl.nx))[:,1:],wl.llx,wl.lly,xbin,ybin))
+                            wins2.append(
+                                Window(np.reshape(buff[noff+3:noff+npix:6].astype(np.float32),
+                                                  (wr.ny,wr.nx))[:,-2::-1],wr.llx+xbin,wr.lly,xbin,ybin))
+                            wins3.append(
+                                Window(np.reshape(buff[noff+4:noff+npix:6].astype(np.float32),
+                                                  (wl.ny,wl.nx))[:,1:],wl.llx,wl.lly,xbin,ybin))
+                            wins3.append(
+                                Window(np.reshape(buff[noff+5:noff+npix:6].astype(np.float32),
+                                                  (wr.ny,wr.nx))[:,-2::-1],wr.llx+xbin,wr.lly,xbin,ybin))
                         else:
-                            wins1.append(Window(np.reshape(buff[noff:noff+npix:6].astype(np.float32),(wl.ny,wl.nx)),
-                                                wl.llx,wl.lly,xbin,ybin))
-                            wins1.append(Window(np.reshape(buff[noff+1:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,::-1],
-                                                wr.llx,wr.lly,xbin,ybin))
-                            wins2.append(Window(np.reshape(buff[noff+2:noff+npix:6].astype(np.float32),(wl.ny,wl.nx)),
-                                                wl.llx,wl.lly,xbin,ybin))
-                            wins2.append(Window(np.reshape(buff[noff+3:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,::-1],
-                                                wr.llx,wr.lly,xbin,ybin))
-                            wins3.append(Window(np.reshape(buff[noff+4:noff+npix:6].astype(np.float32),(wl.ny,wl.nx)),
-                                                wl.llx,wl.lly,xbin,ybin))
-                            wins3.append(Window(np.reshape(buff[noff+5:noff+npix:6].astype(np.float32),(wr.ny,wr.nx))[:,::-1],
-                                                wr.llx,wr.lly,xbin,ybin))
+                            wins1.append(
+                                Window(np.reshape(buff[noff:noff+npix:6].astype(np.float32),
+                                                  (wl.ny,wl.nx)),wl.llx,wl.lly,xbin,ybin))
+                            wins1.append(
+                                Window(np.reshape(buff[noff+1:noff+npix:6].astype(np.float32),
+                                                  (wr.ny,wr.nx))[:,::-1],wr.llx,wr.lly,xbin,ybin))
+                            wins2.append(
+                                Window(np.reshape(buff[noff+2:noff+npix:6].astype(np.float32),
+                                                  (wl.ny,wl.nx)),wl.llx,wl.lly,xbin,ybin))
+                            wins2.append(
+                                Window(np.reshape(buff[noff+3:noff+npix:6].astype(np.float32),
+                                                  (wr.ny,wr.nx))[:,::-1],wr.llx,wr.lly,xbin,ybin))
+                            wins3.append(
+                                Window(np.reshape(buff[noff+4:noff+npix:6].astype(np.float32),
+                                                  (wl.ny,wl.nx)),wl.llx,wl.lly,xbin,ybin))
+                            wins3.append(
+                                Window(np.reshape(buff[noff+5:noff+npix:6].astype(np.float32),
+                                                  (wr.ny,wr.nx))[:,::-1],wr.llx,wr.lly,xbin,ybin))
                     else:
                         if strip_outer:
                             wins1.append(Window(np.reshape(buff[noff:noff+npix:6],(wl.ny,wl.nx))[:,1:],
@@ -737,17 +745,23 @@ class Rdata (Rhead):
                 w = self.win[2]
                 lh = 24 // xbin
                 rh = 4 // xbin
-                wins1.append(Window(np.concatenate( (winl1[:w.ny,:lh], winl1[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
-                wins2.append(Window(np.concatenate( (winl2[:w.ny,:lh], winl2[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
-                wins3.append(Window(np.concatenate( (winl3[:w.ny,:lh], winl3[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
+                wins1.append(Window(np.concatenate( (winl1[:w.ny,:lh], 
+                                                     winl1[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
+                wins2.append(Window(np.concatenate( (winl2[:w.ny,:lh], 
+                                                     winl2[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
+                wins3.append(Window(np.concatenate( (winl3[:w.ny,:lh], 
+                                                     winl3[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
 
                 # Window 4 is bias associated with right-hand data window (leftmost 4 and rightmost 24)
                 w = self.win[3]
                 lh = 4 // xbin
                 rh = 24 // xbin
-                wins1.append(Window(np.concatenate( (winr1[:w.ny,:lh], winr1[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
-                wins2.append(Window(np.concatenate( (winr2[:w.ny,:lh], winr2[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
-                wins3.append(Window(np.concatenate( (winr3[:w.ny,:lh], winr3[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
+                wins1.append(Window(np.concatenate( (winr1[:w.ny,:lh], 
+                                                     winr1[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
+                wins2.append(Window(np.concatenate( (winr2[:w.ny,:lh], 
+                                                     winr2[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
+                wins3.append(Window(np.concatenate( (winr3[:w.ny,:lh], 
+                                                     winr3[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
 
                 # Window 5 comes from top strip of left-hand data window
                 w = self.win[4]
@@ -775,6 +789,7 @@ class Rdata (Rhead):
 
         elif self.instrument == 'ULTRASPEC':
 
+            head.add_entry('User.target',self.target,ITYPE_STRING,'Object name')
             wins = []
             noff = 0
             if self.mode.startswith('USPEC'):
@@ -792,20 +807,24 @@ class Rdata (Rhead):
                     if self.output == 'N':
                         # normal output, multi windows. 
                         if flt:
-                            wins.append(Window(np.reshape(buff[noff:noff+npix].astype(np.float32),(w.ny,w.nx))[:,nchop:],
-                                               llx,w.lly,xbin,ybin))        
+                            wins.append(
+                                Window(np.reshape(buff[noff:noff+npix].astype(np.float32),
+                                                  (w.ny,w.nx))[:,nchop:],llx,w.lly,xbin,ybin))        
                         else:
-                            wins.append(Window(np.reshape(buff[noff:noff+npix],(w.ny,w.nx))[:,nchop:],
-                                               llx,w.lly,xbin,ybin))
+                            wins.append(
+                                Window(np.reshape(buff[noff:noff+npix],(w.ny,w.nx))[:,nchop:],
+                                       llx,w.lly,xbin,ybin))
 
                     elif self.output == 'A':
                         # avalanche output, multi windows. 
                         if flt:
-                            wins.append(Window(np.reshape(buff[noff:noff+npix].astype(np.float32),(w.ny,w.nx))[:,nchop::-1],
-                                               llx,w.lly,xbin,ybin))        
+                            wins.append(
+                                Window(np.reshape(buff[noff:noff+npix].astype(np.float32),
+                                                  (w.ny,w.nx))[:,nchop::-1],llx,w.lly,xbin,ybin))        
                         else:
-                            wins.append(Window(np.reshape(buff[noff:noff+npix],(w.ny,w.nx))[:,nchop::-1],
-                                               llx,w.lly,xbin,ybin))
+                            wins.append(
+                                Window(np.reshape(buff[noff:noff+npix],
+                                                  (w.ny,w.nx))[:,nchop::-1],llx,w.lly,xbin,ybin))
 
                     noff += npix
             
@@ -844,8 +863,11 @@ class Rdata (Rhead):
                 wins.append(Window(comb[:,nchopl:wl.nx],llxl,wl.lly,xbin,ybin))        
                 wins.append(Window(comb[:,wl.nx+nchopr:],llxr,wl.lly,xbin,ybin))        
 
-            return CCD(wins, time, self.nxmax, self.nymax, True, head)
-
+            if self._ccd:
+                return CCD(wins, time, self.nxmax, self.nymax, True, head)
+            else:
+                return MCCD([CCD(wins, time, self.nxmax, self.nymax, True, head),], head)
+ 
         else:
             raise UltracamError('Rdata.__init__: have not implemented anything for ' + self.instrument)
 
