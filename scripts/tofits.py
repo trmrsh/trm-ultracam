@@ -7,6 +7,7 @@ files can be one per exposure, or in the case of multi-CCD formats, one per
 CCD per exposure.
 """
 
+
 # just import these for speed. After arguments are OK-ed, some more imports
 import argparse, os
 
@@ -44,6 +45,7 @@ if first < 0:
     exit(1)
 
 # more imports
+import os
 import numpy as np
 import pyfits as fits
 from trm import ultracam
@@ -104,14 +106,20 @@ for mccd in rdat:
                 header['BSUB'] = (True,'Was a bias subtracted or not?')
             else:
                 header['BSUB'] = (False,'Was a bias subtracted or not?')
-            header['NCCD']   = (nc+1,'CCD number')
-            header['RUNNUM'] = (mccd.head.value('Run.run'),'Run number')
-            header['FILTER'] = (mccd.head.value('Run.filters'),'Filter name')
-            header['OUTPUT'] = (mccd.head.value('Run.output'),'CCD output used')
-            header['SPEED']  = (mccd.head.value('Run.speed'),'Readout speed')
-            header['MJDUTC'] = (mccd[nc].time.mjd,'MJD(UTC) at centre of exposure')
-            header['EXPOSE'] = (mccd[nc].time.expose,'Exposure time, secs')
-            header['TIMEOK'] = (mccd[nc].time.good,'Is time reliable?')
+            header['NCCD']    = (nc+1,'CCD number')
+            header['OBJECT']  = (mccd.head.value('User.target'),'Object name')
+            header['RUNNUM']  = (os.path.basename(mccd.head.value('Run.run')),'Run number')
+            header['FILTER']  = (mccd.head.value('Run.filters'),'Filter name')
+            header['OUTPUT']  = (mccd.head.value('Run.output'),'CCD output used')
+            header['SPEED']   = (mccd.head.value('Run.speed'),'Readout speed')
+            header['PI']      = (mccd.head.value('User.pi'),'Principal investigator')
+            header['ID']      = (mccd.head.value('User.id'),'Programme ID')
+            header['OBSRVRS'] = (mccd.head.value('User.observers'),'Observers')
+            header['DTYPE']   = (mccd.head.value('User.dtype'),'Data type')
+            header['SLIDE']   = (mccd.head.value('Run.slidePos'),'Slide position, pixels')
+            header['MJDUTC']  = (mccd[nc].time.mjd,'MJD(UTC) at centre of exposure')
+            header['EXPOSE']  = (mccd[nc].time.expose,'Exposure time, secs')
+            header['TIMEOK']  = (mccd[nc].time.good,'Is time reliable?')
             header.add_comment('File created by tofits.py')
 
             phdu = fits.PrimaryHDU(header=header)
@@ -157,10 +165,16 @@ for mccd in rdat:
             header['BSUB'] = (False,'Was a bias subtracted or not?')
         if rdat.nccd > 1:
             header['NCCD']   = (nc+1,'CCD number')
-        header['RUNNUM'] = (mccd.head.value('Run.run'),'Run number')
-        header['FILTER'] = (mccd.head.value('Run.filters'),'Filter name')
-        header['OUTPUT'] = (mccd.head.value('Run.output'),'CCD output used')
-        header['SPEED']  = (mccd.head.value('Run.speed'),'Readout speed')
+        header['OBJECT']  = (mccd.head.value('User.target'),'Object name')
+        header['RUNNUM']  = (os.path.basename(mccd.head.value('Run.run')),'Run number')
+        header['FILTER']  = (mccd.head.value('Run.filters'),'Filter name')
+        header['OUTPUT']  = (mccd.head.value('Run.output'),'CCD output used')
+        header['SPEED']   = (mccd.head.value('Run.speed'),'Readout speed')
+        header['PI']      = (mccd.head.value('User.pi'),'Principal investigator')
+        header['ID']      = (mccd.head.value('User.id'),'Programme ID')
+        header['OBSRVRS'] = (mccd.head.value('User.observers'),'Observers')
+        header['DTYPE']   = (mccd.head.value('User.dtype'),'Data type')
+        header['SLIDE']   = (mccd.head.value('Run.slidePos'),'Slide position, pixels')
         if rdat.nccd == 1:
             header['MJDUTC'] = (mccd[0].time.mjd,'MJD(UTC) at centre of exposure')
             header['EXPOSE'] = (mccd[0].time.expose,'Exposure time, secs')

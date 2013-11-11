@@ -375,9 +375,15 @@ class Rhead (object):
         # convert to seconds
         self.exposeTime *= self.timeUnits
 
-        self.target  = user['target'] if user and 'target' in user else None
-        self.filters = user['filters'] if user and 'filters' in user else None
-
+        self.target    = user['target'] if user and 'target' in user else None
+        self.filters   = user['filters'] if user and 'filters' in user else None
+        self.pi        = user['PI'] if user and 'PI' in user else None
+        self.id        = user['ID'] if user and 'ID' in user else None
+        self.observers = user['Observers'] if user and 'Observers' in user else None
+        self.dtype     = user['flags'] if user and 'flags' in user else None
+        self.ccdTemp   = user['ccd_temp'] if user and 'ccd_temp' in user else None
+        self.slidePos  = user['slidePos'] if user and 'slidePos' in user else None
+        
     def npix(self):
         """
         Returns number of (binned) pixels per CCD
@@ -590,6 +596,11 @@ class Rdata (Rhead):
         # build header
         head = Uhead()
         head.add_entry('User','Data entered by user at telescope')
+        head.add_entry('User.target',self.target,ITYPE_STRING,'Object name')
+        head.add_entry('User.pi',self.pi,ITYPE_STRING,'PI name')
+        head.add_entry('User.id',self.id,ITYPE_STRING,'Program ID')
+        head.add_entry('User.observers',self.observers,ITYPE_STRING,'Observers')
+        head.add_entry('User.dtype',self.dtype,ITYPE_STRING,'Data type')
 
         head.add_entry('Instrument','Instrument setup information')
         head.add_entry('Instrument.instrument',self.instrument,ITYPE_STRING,'Instrument identifier')
@@ -604,6 +615,8 @@ class Rdata (Rhead):
         head.add_entry('Run.expose',self.exposeTime,ITYPE_FLOAT,'exposure time')
         head.add_entry('Run.output',self.output,ITYPE_STRING,'CCD output used')
         head.add_entry('Run.speed',self.speed,ITYPE_STRING,'Readout speed')
+        head.add_entry('Run.ccdTemp',self.ccdTemp,ITYPE_STRING,'Readout speed')
+        head.add_entry('Run.slidePos',self.slidePos,ITYPE_STRING,'Slide position')
 
         head.add_entry('Frame', 'Frame specific information')
         head.add_entry('Frame.frame',self._nf,ITYPE_INT,'frame number within run')
@@ -789,7 +802,6 @@ class Rdata (Rhead):
 
         elif self.instrument == 'ULTRASPEC':
 
-            head.add_entry('User.target',self.target,ITYPE_STRING,'Object name')
             wins = []
             noff = 0
             if self.mode.startswith('USPEC'):
@@ -1592,8 +1604,11 @@ def utimer(tbytes, rhead, fnum):
 	if len(utimer.tstamp) > 3: utimer.tstamp.pop()
         ntmin = 3
 
-        if utimer.tstamp[0] < USPEC_CHANGE:  
-            
+        if utimer.tstamp[0] < USPEC_CHANGE:
+            print "Time stamp seems too early; time unreliable."
+            goodTime = False
+            reason = 'timestamp too early'
+            readoutTime = 0.
             texp = readoutTime + rhead.exposeTime
             mjdCentre = utimer.tstamp[0]
             if rhead.en_clr or frameNumber == 1:

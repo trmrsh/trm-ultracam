@@ -106,7 +106,17 @@ for nc in ccds:
         head['NAXIS3']   = nz
         npix = nz*rwin.ny*nx
 
-        # generate the name. Include the CCD number if the instrument
+        head['OBJECT']   = (rdat.target,'Object name')
+        head['PI']       = (rdat.pi,'Principal investigator')
+        head['ID']       = (rdat.id,'Program ID')
+        head['OBSRVRS']  = (rdat.observers,'Observers')
+        head['FILTER']   = (rdat.filters,'Filter')
+        head['FILTER']   = (rdat.filters,'Filter')
+        head['SPEED']    = (rdat.speed,'Readout speed')
+        head['DTYPE']    = (rdat.dtype,'Data type')
+        header['SLIDE']  = (rdat.slidePos,'Slide position, pixels')
+
+        # generate the file name. Include the CCD number if the instrument
         # has more than 1:
         if rdat.nccd == 1:
             fname = os.path.basename(run) + '_' + str(nw+1) + '.fits'
