@@ -202,7 +202,7 @@ class Rhead (object):
         elif app == 'ccd201_driftscan_cfg':
             self.mode    = 'UDRIFT'
         elif app == 'ap1_poweron' or app == 'ap1_250_poweron' or app == 'ap2_250_poweroff' \
-                or app == 'appl1_pon_cfg' or app == 'appl2_pof_cfg':
+                or app == 'appl1_pon_cfg' or app == 'appl2_pof_cfg' or app == 'ccd201_pon_cfg':
             self.mode = 'PONOFF'
             return
         else:
