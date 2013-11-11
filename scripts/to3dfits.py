@@ -114,7 +114,7 @@ for nc in ccds:
         head['FILTER']   = (rdat.filters,'Filter')
         head['SPEED']    = (rdat.speed,'Readout speed')
         head['DTYPE']    = (rdat.dtype,'Data type')
-        header['SLIDE']  = (rdat.slidePos,'Slide position, pixels')
+        head['SLIDE']  = (rdat.slidePos,'Slide position, pixels')
 
         # generate the file name. Include the CCD number if the instrument
         # has more than 1:
