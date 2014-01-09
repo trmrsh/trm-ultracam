@@ -3,9 +3,17 @@ Class to represent a sub-window of a CCD
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.cm     as cm
-import ppgplot as pg
+
+try:
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as cm
+except ImportError:
+    print 'Failed to import matplotlib; plotting based on it will fail'
+
+try:
+    import ppgplot as pg
+except ImportError:
+    print 'Failed to import ppgplot; plotting based on it will fail'
 
 from trm.ultracam.UErrors import UltracamError
 

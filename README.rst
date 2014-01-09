@@ -20,19 +20,21 @@ been clever about importing these conditionally or anything.
 
 In increasing likelihood that you don't have them they are:
 
-  numpy      :
+  numpy      :  (required)
                 numerical Python. If you don't have this already, you
-                probably should not be here!
+                probably should not be here! Most linux distributions
+                have it in their standard pset of packages, but you may
+                need to explicitly get it installed.
 
-  matplotlib :
+  matplotlib :  (only needed for some plots)
                 fairly widespread plotting package for Python.
 
 
-  pyfits     :
-                Python FITS module; I expect to replace this in future
-                with astropy
+  pyfits     :  (required)
+                Python FITS module available from STScI; I expect to
+                replace this in future with astropy.io.fits
 
-  ppgplot    :
+  ppgplot    :  (only needed for some plots)
                 (my version.) Get via:
 
                 git clone https://github.com/trmrsh/ppgplot.git
@@ -53,6 +55,9 @@ main API:
                 You won't need this unless you use this script, and if you
                 don't know what I am talking about, don't bother.
 
+
+If you simply want to read in data and then handle in your own way, only numpy
+and pyfits from above are essential.
 
 Once you have these then its the usual::
 
