@@ -60,7 +60,7 @@ def get_runs_from_server(dir=None):
 
     # parse response from server
     ldir = resp.split('<li>')
-    runs = [entry[entry.find('>run')+1:entry.find('>run')+7] for entry in ldir 
+    runs = [entry[entry.find('>run')+1:entry.find('>run')+7] for entry in ldir
             if entry.find('getdata">run') > -1]
     runs.sort()
     return runs
