@@ -47,7 +47,7 @@ if first < 0:
 
 # more imports
 import numpy as np
-import pyfits as fits
+import astropy.io.fits as fits
 from trm import ultracam
 
 if args.bias:
