@@ -7,7 +7,7 @@ from __future__ import division
 import tempfile
 import numpy as np
 import matplotlib.cm as cm
-import pyfits as fits
+import astropy.io.fits as fits
 
 from trm.ultracam.Constants import *
 from trm.ultracam.Window import Window
