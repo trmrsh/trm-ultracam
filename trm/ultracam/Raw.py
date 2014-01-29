@@ -30,14 +30,14 @@ class Rwin(object):
         self.lly = lly
         self.nx  = nx
         self.ny  = ny
-    
+
     def __str__(self):
         return str(self.llx) + ',' + str(self.lly) + ',' + str(self.nx) + ',' + str(self.ny)
-    
+
 class Rhead (object):
     """
     Represents essential header info of Ultracam/Ultraspec data read from a
-    run###.xml file. 
+    run###.xml file.
 
     :Parameters:
      run : string
@@ -48,58 +48,58 @@ class Rhead (object):
        in this instance.
 
     :Attributes set:
-     *run* : run 
-    
+     *run* : run
+
      *server* : True/False to indicate server access
-    
+
      *application* : data acqusition application template name.
-    
+
      *framesize* : total number of bytes per frame.
-    
+
      *headerwords* : number of words (2-bytes/word) in timing info at start of a frame.
-   
+
      *instrument* : instrument name.
-   
+
      *nccd* : number of CCDs
-   
+
      *mode* : a standardised summary of the readout mode derived from the application name.
-    
+
      *user* : dictionary of user information. Set to None if there was none found.
-    
+
      *win* : A list of Rwin objects, one per window. ULTRACAM data is multi-CCD
-          but the windows of each CCD are identical so the information is only stored 
-          once for all CCDs. 
-    
+          but the windows of each CCD are identical so the information is only stored
+          once for all CCDs.
+
      *xbin* : binning factor in X direction
-    
+
      *ybin* : binning factor in Y direction
-    
+
      *nxmax* : maximum X dimension, unbinned pixels
-    
+
      *nymax* : maximum Y dimension, unbinned pixels.
-    
+
      *exposeTime* : exposure delay, secs
-    
+
      *numexp* : integer exposure number; can be -1 meaning unlimited
-    
+
      *gainSpeed* : readout speed (ULTRACAM)
-    
+
      *v_ft_clk* :vertical frame transfer parameter
-    
+
      *nblue* : how often to read the blue CCD (ULTRACAM)
-    
+
      *speed* : readout speed (ULTRASPEC)
-    
+
      *en_clr* : enable clear flag (ULTRASPEC)
-    
+
      *hv_gain* :HV gain (ULTRASPEC)
-    
+
      *output* : which output (ULTRASPEC)
-    
+
      *version* : version number
-    
+
      *target* : target name (None if not found)
-    
+
      *filters* : filter names (None if not found)
 
     """
@@ -115,7 +115,7 @@ class Rhead (object):
         self.server = server
         if server:
             if URL is None:
-                raise UltracamError('Rhead.__init__: no url for server found.' + 
+                raise UltracamError('Rhead.__init__: no url for server found.' +
                                     ' Have you set the ULTRACAM_DEFAULT_URL environment variable?')
             # get from server
             full_url = URL + run + '?action=get_xml'
@@ -186,7 +186,7 @@ class Rhead (object):
         elif app == 'appl4_frameover_cfg' or app == 'ap4_frameover':
             self.mode    = 'FFOVER'
         elif app == 'appl10_frameover_mindead_cfg':
-        	self.mode    = 'FFOVNC'
+            self.mode    = 'FFOVNC'
         elif app == 'ap9_250_fullframe_mindead' or app == 'ap9_fullframe_mindead' or \
                 app == 'appl9_fullframe_mindead_cfg':
             self.mode    = 'FFNCLR'
@@ -240,7 +240,7 @@ class Rhead (object):
 
             elif self.mode == 'FFOVER' or self.mode == 'FFOVNC':
                 # In overscan mode the extra pixels are clocked out after the data has been
-                # read which effectively means they should appear in the centre of the chip. 
+                # read which effectively means they should appear in the centre of the chip.
                 # However, this would ruin the location of the physical pixels relative to all
                 # other formats (unless they always included a centre gap). Thus the extra sections
                 # are placed off to the right-hand and top sides where they do not affect the pixel
@@ -266,7 +266,7 @@ class Rhead (object):
                 # top right overscan
                 self.win.append(Rwin(513, 1025, 512//self.xbin, 8//self.ybin))
                 fsize += 12*self.win[-1].nx*self.win[-1].ny
-                
+
             else:
 
                 ystart = int(param['Y1_START'])
@@ -276,7 +276,7 @@ class Rhead (object):
                 ny     = int(param['Y1_SIZE']) // self.ybin
                 self.win.append(Rwin(xleft, ystart, nx, ny))
                 self.win.append(Rwin(xright, ystart, nx, ny))
-            
+
                 fsize += 12*self.win[-1].nx*self.win[-1].ny
 
             if self.mode == '2-PAIR' or self.mode == '3-PAIR':
@@ -311,14 +311,14 @@ class Rhead (object):
 
             xstart = int(param['X1_START'])
             ystart = int(param['Y1_START'])
-            nx     = int(param['X1_SIZE']) 
-            ny     = int(param['Y1_SIZE']) 
+            nx     = int(param['X1_SIZE'])
+            ny     = int(param['Y1_SIZE'])
             self.win.append(Rwin(xstart,ystart,nx,ny))
             fsize += 2*self.win[-1].nx*self.win[-1].ny
 
             if self.mode == 'USPEC-2' or self.mode == 'USPEC-3' or self.mode == 'USPEC-4' or self.mode == 'UDRIFT':
                 xstart = int(param['X2_START'])
-                ystart = ystart if self.mode == 'UDRIFT' else int(param['Y2_START']) 
+                ystart = ystart if self.mode == 'UDRIFT' else int(param['Y2_START'])
                 nx     = int(param['X2_SIZE'])
                 ny     = ny if self.mode == 'UDRIFT' else int(param['Y2_SIZE'])
                 self.win.append(Rwin(xstart,ystart,nx,ny))
@@ -334,14 +334,14 @@ class Rhead (object):
 
             if self.mode == 'USPEC-4':
                 xstart = int(param['X4_START'])
-                ystart = int(param['Y4_START']) 
+                ystart = int(param['Y4_START'])
                 nx     = int(param['X4_SIZE'])
                 ny     = int(param['Y4_SIZE'])
                 self.win.append(Rwin(xstart,ystart,nx,ny))
                 fsize += 2*self.win[-1].nx*self.win[-1].ny
 
         if fsize != self.framesize:
-            raise UltracamError('Rhead.__init__: file = ' + self.run + '. Framesize = ' 
+            raise UltracamError('Rhead.__init__: file = ' + self.run + '. Framesize = '
                                 + str(self.framesize) + ' clashes with calculated value = ' +  str(fsize))
 
         # nasty stuff coming up ...
@@ -383,7 +383,7 @@ class Rhead (object):
         self.dtype     = user['flags'] if user and 'flags' in user else None
         self.ccdTemp   = user['ccd_temp'] if user and 'ccd_temp' in user else None
         self.slidePos  = user['slidePos'] if user and 'slidePos' in user else None
-        
+
     def npix(self):
         """
         Returns number of (binned) pixels per CCD
@@ -401,10 +401,10 @@ class Rhead (object):
 
 class Rdata (Rhead):
     """
-    Callable, iterable object to represent ULTRACAM/SPEC raw data files. 
+    Callable, iterable object to represent ULTRACAM/SPEC raw data files.
 
-    The idea is to open the file, and then the object generated can be 
-    used to deliver frames by specifying a frame number. Frames can be 
+    The idea is to open the file, and then the object generated can be
+    used to deliver frames by specifying a frame number. Frames can be
     read individually e.g.::
 
       rdat = Rdata('run045')
@@ -416,14 +416,14 @@ class Rdata (Rhead):
       for frm in Rdata('run045'):
          print 'nccd = ',frm.nccd()
 
-    Rdata maintains an internal file object that is always at the start of a 
-    frame. This enables sequential reads to be swift. If an attempt is made 
-    to access a frame that does not exist, it defaults to the start of the 
+    Rdata maintains an internal file object that is always at the start of a
+    frame. This enables sequential reads to be swift. If an attempt is made
+    to access a frame that does not exist, it defaults to the start of the
     file.
 
     The above code returns :class:`trm.ultracam.MCCD` objects for ULTRACAM data. By default
-    the frames are always read as :class:`trm.ultracam.MCCD` objects, however there is 
-    always a flag 
+    the frames are always read as :class:`trm.ultracam.MCCD` objects, however there is
+    always a flag
 
     :class:`trm.ultracam.Rdata` can talk to the ATC FileServer if it is running, e.g.::
 
@@ -433,13 +433,13 @@ class Rdata (Rhead):
 
     def __init__(self, run, nframe=1, flt=True, server=False, ccd=False):
         """
-        Connects to a raw data file for reading. The file is kept open. 
+        Connects to a raw data file for reading. The file is kept open.
         The file pointer is set to the start of frame nframe. The Rdata
-        object can then generate MCCD or CCD objects through being called 
+        object can then generate MCCD or CCD objects through being called
         as a function or iterator.
-    
+
         Args:
-          run (string) : run name, e.g. 'run036'. 
+          run (string) : run name, e.g. 'run036'.
 
           nframe (int) : frame number for first read, starting at 1 as the first.
 
@@ -452,7 +452,7 @@ class Rdata (Rhead):
 
           server (bool) : True/False for server vs local disk access
 
-          ccd (bool) : flag to read data as a :class:`trm.ultracam.CCD` rather 
+          ccd (bool) : flag to read data as a :class:`trm.ultracam.CCD` rather
                        than a :class:`trm.ultracam.MCCD` object if only one CCD
                        per frame. Default is always to read as an MCCD.
         """
@@ -460,7 +460,7 @@ class Rdata (Rhead):
         Rhead.__init__(self, run, server)
         if self.isPonoff():
             raise PowerOnOffError('Rdata.__init__: attempted to read a power on/off')
- 
+
         # Attributes set are:
         #
         # _fobj   -- file object opened on data file (set to None if using server)
@@ -480,7 +480,7 @@ class Rdata (Rhead):
         self._ccd    = ccd
         if not server and nframe != 1:
             self._fobj.seek(self.framesize*(nframe-1))
-    
+
     def __iter__(self):
         """
         Generator to allow Rdata to function as an iterator.
@@ -498,11 +498,11 @@ class Rdata (Rhead):
         """
         Sets the internal file pointer to point at frame nframe.
 
-        Args: 
+        Args:
           nframe (int) : frame number to get, starting at 1. 0 for the
-                         last (complete) frame. A value of 'None' will be 
-                         ignored. A value < 0 will cause an exception. A 
-                         value greater than the number of frames in the 
+                         last (complete) frame. A value of 'None' will be
+                         ignored. A value < 0 will cause an exception. A
+                         value greater than the number of frames in the
                          file will work, but will cause an exception to be
                          raised on the next attempted read.
         """
@@ -518,7 +518,7 @@ class Rdata (Rhead):
                     # wind to end of file, work out where we are
                     # to deduce number of frames
                     self._fobj.seek(0,2)
-                    fp = self._fobj.tell() 
+                    fp = self._fobj.tell()
                     nf = fp // self.framesize
                     self._fobj.seek(self.framesize*(nf-1)-fp,2)
                     self._nf = nf
@@ -560,7 +560,7 @@ class Rdata (Rhead):
             buff     = urllib2.urlopen(full_url).read()
             if len(buff) != self.framesize:
                 self._nf = 1
-                raise UltracamError('Rdata.__call__: failed to read frame ' + str(self._nf) + 
+                raise UltracamError('Rdata.__call__: failed to read frame ' + str(self._nf) +
                                     ' from FileServer. Buffer length vs expected = '
                                     + str(len(buff)) + ' vs ' + str(self.framesize) + ' bytes.')
 
@@ -580,7 +580,7 @@ class Rdata (Rhead):
             if len(buff) != self.framesize/2-self.headerwords:
                 self._fobj.seek(0)
                 self._nf = 1
-                raise UltracamError('Rdata.__call__: failed to read frame ' + str(self._nf) + 
+                raise UltracamError('Rdata.__call__: failed to read frame ' + str(self._nf) +
                                     '. Buffer length vs attempted = '
                                     + str(len(buff)) + ' vs ' + str(self.framesize/2-self.headerwords))
 
@@ -632,7 +632,7 @@ class Rdata (Rhead):
             wins1, wins2, wins3 = [],[],[]
 
             if self.mode != 'FFOVER' and self.mode != 'FFOVNC':
-                # Non-overscan modes: 
+                # Non-overscan modes:
                 # flag indicating that outer pixels will be removed. This is because of a readout bug
                 # that affected all data taken prior to the VLT run of May 2007 spotted via the
                 # lack of a version number in the xml file
@@ -733,13 +733,13 @@ class Rdata (Rhead):
                 # For the reasons outlined in Rhead, we actually want to chop up 
                 # these 2 "data windows" into 6 per CCD. This is what we do next:
 
-                # overscan is arranged as 
+                # overscan is arranged as
                 # 24 columns on LH of LH window
                 #  4 columns on RH of LH window
                 #  4 columns on LH of RH window
                 # 24 columns on RH of RH window
                 #  8 rows along top of LH and RH windows
-				
+
                 # Window 1 of the six comes from lower-left of left-hand data window
                 w = self.win[0]
                 xoff = 24 // xbin
@@ -758,22 +758,22 @@ class Rdata (Rhead):
                 w = self.win[2]
                 lh = 24 // xbin
                 rh = 4 // xbin
-                wins1.append(Window(np.concatenate( (winl1[:w.ny,:lh], 
+                wins1.append(Window(np.concatenate( (winl1[:w.ny,:lh],
                                                      winl1[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
-                wins2.append(Window(np.concatenate( (winl2[:w.ny,:lh], 
+                wins2.append(Window(np.concatenate( (winl2[:w.ny,:lh],
                                                      winl2[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
-                wins3.append(Window(np.concatenate( (winl3[:w.ny,:lh], 
+                wins3.append(Window(np.concatenate( (winl3[:w.ny,:lh],
                                                      winl3[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
 
                 # Window 4 is bias associated with right-hand data window (leftmost 4 and rightmost 24)
                 w = self.win[3]
                 lh = 4 // xbin
                 rh = 24 // xbin
-                wins1.append(Window(np.concatenate( (winr1[:w.ny,:lh], 
+                wins1.append(Window(np.concatenate( (winr1[:w.ny,:lh],
                                                      winr1[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
-                wins2.append(Window(np.concatenate( (winr2[:w.ny,:lh], 
+                wins2.append(Window(np.concatenate( (winr2[:w.ny,:lh],
                                                      winr2[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
-                wins3.append(Window(np.concatenate( (winr3[:w.ny,:lh], 
+                wins3.append(Window(np.concatenate( (winr3[:w.ny,:lh],
                                                      winr3[:w.ny,-rh:]),axis=1),w.llx,w.lly,xbin,ybin))
 
                 # Window 5 comes from top strip of left-hand data window
@@ -817,29 +817,29 @@ class Rdata (Rhead):
                         max(1, 1074 - w.llx - w.nx*xbin)
 
                     if self.output == 'N':
-                        # normal output, multi windows. 
+                        # normal output, multi windows.
                         if flt:
                             wins.append(
                                 Window(np.reshape(buff[noff:noff+npix].astype(np.float32),
-                                                  (w.ny,w.nx))[:,nchop:],llx,w.lly,xbin,ybin))        
+                                                  (w.ny,w.nx))[:,nchop:],llx,w.lly,xbin,ybin))
                         else:
                             wins.append(
                                 Window(np.reshape(buff[noff:noff+npix],(w.ny,w.nx))[:,nchop:],
                                        llx,w.lly,xbin,ybin))
 
                     elif self.output == 'A':
-                        # avalanche output, multi windows. 
+                        # avalanche output, multi windows.
                         if flt:
                             wins.append(
                                 Window(np.reshape(buff[noff:noff+npix].astype(np.float32),
-                                                  (w.ny,w.nx))[:,nchop::-1],llx,w.lly,xbin,ybin))        
+                                                  (w.ny,w.nx))[:,nchop::-1],llx,w.lly,xbin,ybin))
                         else:
                             wins.append(
                                 Window(np.reshape(buff[noff:noff+npix],
                                                   (w.ny,w.nx))[:,nchop::-1],llx,w.lly,xbin,ybin))
 
                     noff += npix
-            
+
             elif self.mode == 'UDRIFT':
 
                 # drift mode Need to compute for left and right windows
@@ -872,14 +872,14 @@ class Rdata (Rhead):
                     else:
                         comb = np.reshape(buff[:npix],(wl.ny,wl.nx+wr.nx)[:,::-1])
 
-                wins.append(Window(comb[:,nchopl:wl.nx],llxl,wl.lly,xbin,ybin))        
-                wins.append(Window(comb[:,wl.nx+nchopr:],llxr,wl.lly,xbin,ybin))        
+                wins.append(Window(comb[:,nchopl:wl.nx],llxl,wl.lly,xbin,ybin))
+                wins.append(Window(comb[:,wl.nx+nchopr:],llxr,wl.lly,xbin,ybin))
 
             if self._ccd:
                 return CCD(wins, time, self.nxmax, self.nymax, True, head)
             else:
                 return MCCD([CCD(wins, time, self.nxmax, self.nymax, True, head),], head)
- 
+
         else:
             raise UltracamError('Rdata.__init__: have not implemented anything for ' + self.instrument)
 
@@ -920,14 +920,14 @@ class Rdata (Rhead):
         self.set(nframe)
 
         if self.server:
-            # somewhat inefficiently in the server case, we have to read the whole 
+            # somewhat inefficiently in the server case, we have to read the whole
             # frame because there are no options for timing data alone, although
             # at least no data re-formatting is required.
             full_url = URL + self.run + '?action=get_frame&frame=' + str(self._nf-1)
             buff     = urllib2.urlopen(full_url).read()
             if len(buff) != self.framesize:
                 self._nf = 1
-                raise UltracamError('Rdata.time: failed to read frame ' + str(self._nf) + 
+                raise UltracamError('Rdata.time: failed to read frame ' + str(self._nf) +
                                     ' from FileServer. Buffer length vs expected = '
                                     + str(len(buff)) + ' vs ' + str(self.framesize) + ' bytes.')
             tbytes = buff[:2*self.headerwords]
@@ -956,7 +956,7 @@ class Rtime (Rhead):
     """
     def __init__(self, run, nframe=1, server=False):
         """
-        Connects to a raw data file for reading. The file is kept open. 
+        Connects to a raw data file for reading. The file is kept open.
         The file pointer is set to the start of frame nframe.
 
         Arguments:
@@ -971,7 +971,7 @@ class Rtime (Rhead):
         Rhead.__init__(self, run, server)
         if self.isPonoff():
             raise PowerOnOffError('Rtime.__init__: attempted to read a power on/off')
- 
+
         # Attributes set are:
         #
         # _fobj   -- file object opened on data file
@@ -985,7 +985,7 @@ class Rtime (Rhead):
         self._run    = run
         if not server and nframe != 1:
             self._fobj.seek(self.framesize*(nframe-1))
-    
+
     def __iter__(self):
         """
         Generator to allow Rtime to function as an iterator
@@ -1017,7 +1017,7 @@ class Rtime (Rhead):
                     self._nf = get_nframe_from_server(self.run)
                 else:
                     self._fobj.seek(0,2)
-                    fp = self._fobj.tell() 
+                    fp = self._fobj.tell()
                     nf = fp // self.framesize
                     self._fobj.seek(self.framesize*(nf-1)-fp,2)
                     self._nf = nf
@@ -1046,7 +1046,7 @@ class Rtime (Rhead):
             buff     = urllib2.urlopen(full_url).read()
             if len(buff) != self.framesize:
                 self._nf = 1
-                raise UltracamError('Rtime.__call__: failed to read frame ' + str(self._nf) + 
+                raise UltracamError('Rtime.__call__: failed to read frame ' + str(self._nf) +
                                     ' from FileServer. Buffer length vs expected = '
                                     + str(len(buff)) + ' vs ' + str(self.framesize) + ' bytes.')
 
@@ -1070,10 +1070,17 @@ class Rtime (Rhead):
 
         return tinfo
 
+    def close_file(self):
+        """
+        Closes the file connected to the Rtime object to allow
+        other reads to go ahead
+        """
+        self._fobj.close()
+
 def utimer(tbytes, rhead, fnum):
     """
-    Computes the Time corresponding of the most recently read frame, 
-    None if no frame has been read. For the Time to be reliable 
+    Computes the Time corresponding of the most recently read frame,
+    None if no frame has been read. For the Time to be reliable
     (Time.good == True), several frames might have needed to
     be read and their times passed through tstamp.
 
@@ -1087,8 +1094,8 @@ def utimer(tbytes, rhead, fnum):
 
      time         : the Time as best as can be determined
 
-     info         : a dictionary of extras to allow for possible future 
-                    updates without breaking code. Currently returns values for the 
+     info         : a dictionary of extras to allow for possible future
+                    updates without breaking code. Currently returns values for the
                     following keys:
 
          nsat         -- number of satellites (if set)
@@ -1107,11 +1114,11 @@ def utimer(tbytes, rhead, fnum):
      badBlue      : blue frame is bad for nblue > 1 (nblue-1 out nblue are bad)
 
     """
-    
+
     # This is an involved routine owing to the various hardware
-    # changes and bugs that have cropped up over the years. The 
+    # changes and bugs that have cropped up over the years. The
     # pipeline equivalent routine is read_header.cc
-    
+
     # return immediately if no bytes have been read.
     if tbytes is None: return None
 
@@ -1130,10 +1137,11 @@ def utimer(tbytes, rhead, fnum):
         format = 2
     else:
         raise UltracamError('Rdata._timing: version = ' + str(rhead.version) + ' unrecognised.')
-        
+
     frameNumber = struct.unpack('<I', tbytes[4:8])[0]
     if frameNumber != fnum:
-        warnings.warn('ultracam.utimer: run ' + rhead._run + ' expected frame number = ' + 
+        warnings.warn('ultracam.utimer: run ' + rhead._run +
+                      ' expected frame number = ' +
                       str(fnum) + ' but found ' + str(frameNumber))
         frameError = True
     else:
@@ -1176,7 +1184,7 @@ def utimer(tbytes, rhead, fnum):
         nnsec *= 100
         nsat   = None
         tstamp = struct.unpack('<H', tbytes[24:26])[0]
-        
+
         if goodTime and (tstamp & PCPS_ANT_FAIL):
             goodTime = False
             reason   = 'GPS antenna failed'
@@ -1227,7 +1235,7 @@ def utimer(tbytes, rhead, fnum):
         day, month, year = struct.unpack('<BBH',tbytes[17:21])
 
     else:
-        
+
         if rhead.whichRun == 'MAY2002' and format == 1:
             # Had no date info in the timestamps of this run
             # nsec was offset from 12 May 2002
@@ -1427,23 +1435,25 @@ def utimer(tbytes, rhead, fnum):
                 ystart_old = ystart
                 nyu_old    = nyu
 			
-                # Number of columns to shift whichever window is further 
-                # from the edge of the readout to get ready for simultaneous 
+                # Number of columns to shift whichever window is further from
+                # the edge of the readout to get ready for simultaneous
                 # readout.
                 diff_shift = abs(xleft - 1 - (1024 - xright) )
 
-                # Time taken to dump any pixels in a row that come after the ones we want.
-                # The '8' is the number of HCLOCKs needed to open the serial register dump gates
-                # If the left window is further from the left edge than the right window is from the
-                # right edge, then the diffshift will move it to be the same as the right window, and
-                # so we use the right window parameters to determine the number of hclocks needed, and
+                # Time taken to dump any pixels in a row that come after the
+                # ones we want.  The '8' is the number of HCLOCKs needed to
+                # open the serial register dump gates If the left window is
+                # further from the left edge than the right window is from the
+                # right edge, then the diffshift will move it to be the same
+                # as the right window, and so we use the right window
+                # parameters to determine the number of hclocks needed, and
                 # vice versa.
                 num_hclocks = nxu + diff_shift + (1024 - xright) + 8 \
                     if (xleft - 1 > 1024 - xright) else nxu + diff_shift + (xleft - 1) + 8
-			
+
                 # Time taken to read one line. The extra 2 is required to fill the video pipeline buffer
                 line_read = VCLOCK_STORAGE*ybin + num_hclocks*HCLOCK + (nxu/xbin+2)*VIDEO
-		
+
                 readoutTime += y_shift + (nyu/ybin)*line_read
 
             readoutTime /= 1.e6
@@ -1480,17 +1490,17 @@ def utimer(tbytes, rhead, fnum):
                 if goodTime:
                     goodTime = False
                     reason = 'cannot establish an accurate time for first frame in this mode'
-                
+
             else:
-                
+
                 if len(utimer.tstamp) > 2:
-                    texp       = DSEC*(utimer.tstamp[1] - utimer.tstamp[2]) - frameTransfer 
+                    texp       = DSEC*(utimer.tstamp[1] - utimer.tstamp[2]) - frameTransfer
                     mjdCentre  = utimer.tstamp[1]
                     mjdCentre += (rhead.exposeTime - texp/2.)/DSEC
                     exposure   = texp
 
                 elif len(utimer.tstamp) == 2:
-                    texp = DSEC*(utimer.tstamp[0] - utimer.tstamp[1]) - frameTransfer 
+                    texp = DSEC*(utimer.tstamp[0] - utimer.tstamp[1]) - frameTransfer
                     mjdCentre  = utimer.tstamp[1]
                     mjdCentre += (rhead.exposeTime - texp/2.)/DSEC
                     exposure   = texp
@@ -1527,7 +1537,7 @@ def utimer(tbytes, rhead, fnum):
 
         # Time taken for (reduced) frame transfer, the main advantage of drift mode
         frameTransfer = (nyu + ystart - 1)*vclock_frame
-	  
+
         # Number of columns to shift whichever window is further from the edge of the readout
         # to get ready for simultaneous readout.
         diff_shift = abs(xleft - 1 - (1024 - xright) )
@@ -1540,90 +1550,89 @@ def utimer(tbytes, rhead, fnum):
         # vice versa.
         num_hclocks  = nxu + diff_shift + (1024 - xright) + 8 \
             if (xleft - 1 > 1024 - xright) else nxu + diff_shift + (xleft - 1) + 8
-			
+
         # Time taken to read one line. The extra 2 is required to fill the video pipeline buffer
         line_read = VCLOCK_STORAGE*ybin + num_hclocks*HCLOCK + (nxu/xbin+2)*VIDEO
-		
+
         readoutTime = ((nyu/ybin)*line_read + pipe_shift*VCLOCK_STORAGE)/1.e6
 
-	# Never need more than nwins+2 times
-	if len(utimer.tstamp) > nwins+2: utimer.tstamp.pop()
+        # Never need more than nwins+2 times
+        if len(utimer.tstamp) > nwins+2: utimer.tstamp.pop()
         ntmin = nwins+2
 
-	if defTstamp:
+        if defTstamp:
 
-	    # Pre board change or post-bug fix
-	    if len(utimer.tstamp) > nwins:
-		texp = DSEC*(utimer.tstamp[nwins-1] - utimer.tstamp[nwins]) - frameTransfer
-		mjdCentre  = utimer.tstamp[nwins]
-		mjdCentre += texp/2./DSEC
-		exposure   = texp
-
-	    else:
-
-		# Set to silly value for easy checking
-		mjdCentre = DEFDAT
-		exposure  = rhead.exposeTime
-		if goodTime:
-                    goodTime = False
-		    reason = 'too few stored timestamps for drift mode'
-
-	else:
-
-	    if len(utimer.tstamp) > nwins+1:
-
-		texp = DSEC*(utimer.tstamp[nwins] - utimer.tstamp[nwins+1]) - frameTransfer
-		mjdCentre  = utimer.tstamp[nwins]
-		mjdCentre += (rhead.exposeTime-texp/2.)/DSEC
-		exposure   = texp
-                
-            elif len(utimer.tstamp) == nwins+1:
-
-		texp       = DSEC*(utimer.tstamp[nwins-1] - utimer.tstamp[nwins]) - frameTransfer
-		mjdCentre  = utimer.tstamp[nwins]
-		mjdCentre += (rhead.exposeTime-texp/2.)/DSEC
-		exposure   = texp
-
-		if goodTime:
-                    goodTime = False
-		    reason = 'too few stored timestamps for drift mode'
+            # Pre board change or post-bug fix
+            if len(utimer.tstamp) > nwins:
+                texp = DSEC*(utimer.tstamp[nwins-1] - utimer.tstamp[nwins]) - frameTransfer
+                mjdCentre  = utimer.tstamp[nwins]
+                mjdCentre += texp/2./DSEC
+                exposure   = texp
 
             else:
-	  
-		# Set to silly value for easy checking
-		mjdCentre = DEFDAT
-		exposure  = rhead.exposeTime
 
-		if goodTime:
+                # Set to silly value for easy checking
+                mjdCentre = DEFDAT
+                exposure  = rhead.exposeTime
+                if goodTime:
                     goodTime = False
-		    reason = 'too few stored timestamps for drift mode'
+                    reason = 'too few stored timestamps for drift mode'
+
+        else:
+
+            if len(utimer.tstamp) > nwins+1:
+
+                texp = DSEC*(utimer.tstamp[nwins] - utimer.tstamp[nwins+1]) - frameTransfer
+                mjdCentre  = utimer.tstamp[nwins]
+                mjdCentre += (rhead.exposeTime-texp/2.)/DSEC
+                exposure   = texp
+
+            elif len(utimer.tstamp) == nwins+1:
+
+                texp       = DSEC*(utimer.tstamp[nwins-1] - utimer.tstamp[nwins]) - frameTransfer
+                mjdCentre  = utimer.tstamp[nwins]
+                mjdCentre += (rhead.exposeTime-texp/2.)/DSEC
+                exposure   = texp
+
+                if goodTime:
+                    goodTime = False
+                    reason = 'too few stored timestamps for drift mode'
+
+            else:
+
+                # Set to silly value for easy checking
+                mjdCentre = DEFDAT
+                exposure  = rhead.exposeTime
+
+                if goodTime:
+                    goodTime = False
+                    reason = 'too few stored timestamps for drift mode'
 
     elif rhead.instrument == 'ULTRASPEC' and rhead.mode.startswith('USPEC'):
- 
-	# Avoid excessive accumulation of timestamps.
-	if len(utimer.tstamp) > 3: utimer.tstamp.pop()
+
+        # Avoid excessive accumulation of timestamps.
+        if len(utimer.tstamp) > 3: utimer.tstamp.pop()
         ntmin = 3
 
         if utimer.tstamp[0] < USPEC_CHANGE:
-            print "Time stamp seems too early; time unreliable."
             goodTime = False
             reason = 'timestamp too early'
             readoutTime = 0.
             texp = readoutTime + rhead.exposeTime
             mjdCentre = utimer.tstamp[0]
             if rhead.en_clr or frameNumber == 1:
-                
+
                 mjdCentre -= rhead.exposeTime/2./DSEC
                 exposure   = rhead.exposeTime
-                
+
             elif len(utimer.tstamp) > 1:
-                
+
                 texp = DSEC*(utimer.tstamp[0] - utimer.tstamp[1]) - USPEC_FT_TIME
                 mjdCentre -= text/2./DSEC
                 exposure   = texp
-                
+
             else:
-                
+
                 # Could be improved with an estimate of the read time
                 mjdCentre -= rhead.exposeTime/2./DSEC
                 exposure   = rhead.exposeTime
@@ -1669,7 +1678,7 @@ def utimer(tbytes, rhead, fnum):
                 if goodTime:
                     reason = 'cannot establish an accurate time without at least 2 prior timestamps'
                     goodTime = False
-	  
+
             else:
 
                 # Only one time
@@ -1689,20 +1698,20 @@ def utimer(tbytes, rhead, fnum):
         nwins  = int(((1037. / nyu) + 1.)/2.)
         frameTransfer = USPEC_FT_ROW*(ystart+nyu-1.)+USPEC_FT_OFF
 
-	# Never need more than nwins+2 times
-	if len(utimer.tstamp) > nwins+2: utimer.tstamp.pop() 
+        # Never need more than nwins+2 times
+        if len(utimer.tstamp) > nwins+2: utimer.tstamp.pop()
         ntmin = nwins+2
 
-	# Non-standard mode
+        # Non-standard mode
 
-	if len(utimer.tstamp) > nwins+1:
+        if len(utimer.tstamp) > nwins+1:
 
-	    texp       = DSEC*(utimer.tstamp[nwins] - utimer.tstamp[nwins+1]) - frameTransfer
-	    mjdCentre  = utimer.tstamp[nwins]
-	    mjdCentre += (rhead.exposeTime-texp/2.)/DSEC
-	    exposure   = texp
-	    
-	elif len(utimer.tstamp) == nwins+1:
+            texp       = DSEC*(utimer.tstamp[nwins] - utimer.tstamp[nwins+1]) - frameTransfer
+            mjdCentre  = utimer.tstamp[nwins]
+            mjdCentre += (rhead.exposeTime-texp/2.)/DSEC
+            exposure   = texp
+
+        elif len(utimer.tstamp) == nwins+1:
 	    
 	    texp          = DSEC*(utimer.tstamp[nwins-1] - utimer.tstamp[nwins]) - frameTransfer
 	    mjdCentre     = utimer.tstamp[nwins]
