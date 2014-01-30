@@ -67,7 +67,7 @@ for rpath, rnames, fnames in os.walk('.'):
 
                             # Transfer the timing bytes back by a frame and
                             # write the corrected frame out
-                            frame1[8:32] = frame2[8:32]
+                            frame1[12:32] = frame2[12:32]
                             fout.write(frame1)
                             frame1 = frame2
 
