@@ -11,8 +11,10 @@ except ImportError:
 try:
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
+    CMDEF = cm.binary
 except ImportError:
     print 'Failed to import matplotlib; plotting based on it will fail'
+    CMDEF = None
 
 try:
     import ppgplot as pg
@@ -555,7 +557,7 @@ class MCCD(object):
             tccds.append(other / ccd)
         return MCCD(tccds, self.head)
 
-    def plot(self, vlo=2., vhi=98., nc=-1, method='p', mpl=False, cmap=cm.binary, \
+    def plot(self, vlo=2., vhi=98., nc=-1, method='p', mpl=False, cmap=CMDEF, \
                  close=True, x1=None, x2=None, y1=None, y2=None, sepmin=1.):
         """
         Plots an MCCD using pgplot or matplotlib if preferred.

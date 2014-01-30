@@ -12,8 +12,10 @@ except ImportError:
 
 try:
     import matplotlib.cm as cm
+    CMDEF = cm.binary
 except ImportError:
     print 'Failed to import matplotlib.cm; some plotting will fail'
+    CMDEF = None
 
 try:
     import astropy.io.fits as fits
@@ -258,10 +260,10 @@ class CCD(object):
         for win in self._data:
             win -= win.median()
 
-    def plot(self, vmin, vmax, mpl=False, cmap=cm.binary):
+    def plot(self, vmin, vmax, mpl=False, cmap=CMDEF):
         """
-        Elementary intensity plot using either matplotlib's imshow 
-        or pgplot's pggray. Typically some setup may be needed 
+        Elementary intensity plot using either matplotlib's imshow
+        or pgplot's pggray. Typically some setup may be needed
         before and after this. This one simply plots all windows
         using the Window.plot method
 

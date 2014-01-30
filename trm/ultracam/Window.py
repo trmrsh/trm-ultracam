@@ -10,8 +10,10 @@ except ImportError:
 try:
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
+    CMDEF = cm.binary
 except ImportError:
     print 'Failed to import matplotlib; plotting based on it will fail'
+    CMDEF = None
 
 try:
     import ppgplot as pg
@@ -215,17 +217,17 @@ class Window(object):
             self.llx += nleft*self.xbin
             self.lly += nbottom*self.ybin
 
-    def plot(self, vmin, vmax, mpl=False, cmap=cm.binary, border=True):
+    def plot(self, vmin, vmax, mpl=False, cmap=CMDEF, border=True):
         """
-        Elementary intensity plot using either matplotlib's imshow 
-        or pgplot's pggray. Typically some setup may be needed 
+        Elementary intensity plot using either matplotlib's imshow
+        or pgplot's pggray. Typically some setup may be needed
         before and after this.
 
         vmin   -- image value for lowest intensity
         vmax   -- image value for highest intensity
         mpl    -- True for matplotlib, otherwise pgplot
         cmap   -- colour map if mpl
-        border -- plot a rectangular border around the outermost pixels or not 
+        border -- plot a rectangular border around the outermost pixels or not
         """
         if border:
             x1, x2 = self.llx-0.5,self.llx+self.xbin*self.nx-0.5
