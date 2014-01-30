@@ -354,7 +354,7 @@ class Rhead (object):
                 raise UltracamError('Rhead.__init__: clashing version numbers: ' + str(self.version) + ' vs ' + str(vcheck))
 
         if self.headerwords == 16:
-            VERSIONS = [100222, 111205, 120716, 120813, 130307, 130317]
+            VERSIONS = [100222, 111205, 120716, 120813, 130307, 130317, 130417]
             if self.version not in VERSIONS:
                 raise UltracamError('Rhead.__init__: could not recognise version = ' + str(self.version))
 
@@ -711,7 +711,7 @@ class Rdata (Rhead):
                 # Overscan modes need special re-formatting. See the description under Rhead
                 # for more on this. The data come in the form of two windows 540 by 1032
                 # (divided by binning factors). The first thing we do is read these windows
-                # into 6 numpy arrays. 
+                # into 6 numpy arrays.
                 nxb  = 540 // xbin
                 nyb  = 1032 // ybin
                 npix = 6*nxb*nyb
@@ -730,7 +730,7 @@ class Rdata (Rhead):
                     winl3 = np.reshape(buff[4:npix:6],(nyb,nxb))
                     winr3 = np.reshape(buff[5:npix:6],(nyb,nxb))[:,::-1]
 
-                # For the reasons outlined in Rhead, we actually want to chop up 
+                # For the reasons outlined in Rhead, we actually want to chop up
                 # these 2 "data windows" into 6 per CCD. This is what we do next:
 
                 # overscan is arranged as
@@ -1129,11 +1129,13 @@ def utimer(tbytes, rhead, fnum):
 
     if rhead.instrument == 'ULTRASPEC' and rhead.version == -1:
         format = 2
-    elif rhead.version == -1 or rhead.version == 70514 or rhead.version == 80127:
+    elif rhead.version == -1 or rhead.version == 70514 or \
+            rhead.version == 80127:
         format = 1
-    elif rhead.version == 100222 or rhead.version == 110921 or rhead.version == 111205 or \
-            rhead.version == 120716 or rhead.version == 120813 or rhead.version == 130303 or \
-            rhead.version == 130317:
+    elif rhead.version == 100222 or rhead.version == 110921 or \
+            rhead.version == 111205 or rhead.version == 120716 or \
+            rhead.version == 120813 or rhead.version == 130303 or \
+            rhead.version == 130317 or rhead.version == 130417:
         format = 2
     else:
         raise UltracamError('Rdata._timing: version = ' + str(rhead.version) + ' unrecognised.')
@@ -1217,7 +1219,7 @@ def utimer(tbytes, rhead, fnum):
         return (datetime.date(year,month,day).toordinal() - MJD0) + float(nsec+nnsec/1.e9)/DSEC
 
     if rhead.instrument == 'ULTRACAM':
-        # One of the bits in the first byte is set if the blue frame is junk. 
+        # One of the bits in the first byte is set if the blue frame is junk.
         # Unfortunately which bit was set changed hence the check of the format
         fbyte   = struct.unpack('<B',tbytes[0])[0]
         badBlue = rhead.nblue > 1 and \
@@ -1262,7 +1264,7 @@ def utimer(tbytes, rhead, fnum):
             # need a stack of special case fixes
             if format == 1:
                 day, month, year = struct.unpack('<BBH',tbytes[17:21])
-                
+
                 if month == 9 and year == 263: year = 2002
                 if year < 2002:
                     mjd = tcon1(SEP2002, nsec, nnsec)
@@ -1306,9 +1308,9 @@ def utimer(tbytes, rhead, fnum):
     # save this as the raw GPS time.
     gps = mjd
 
-    # next variable determines when the timestamp is assumed to be taken within the 
+    # next variable determines when the timestamp is assumed to be taken within the
     # read cycle which has changed a few times owing to various small mishaps.
-    defTstamp = mjd < TSTAMP_CHANGE1 or (mjd > TSTAMP_CHANGE2 and mjd < TSTAMP_CHANGE3) 
+    defTstamp = mjd < TSTAMP_CHANGE1 or (mjd > TSTAMP_CHANGE2 and mjd < TSTAMP_CHANGE3)
 
     # Push time to front of tstamp list
     utimer.tstamp.insert(0,mjd)
@@ -1329,7 +1331,7 @@ def utimer(tbytes, rhead, fnum):
         cdsTime = 0.
         # one extra parameter in addition to those from Vik's
         USPEC_FT_TIME  = 0.0067196 if mjd < USPEC_CHANGE else 0.0149818
-        
+
 
     if rhead.instrument == 'ULTRACAM' and \
             (rhead.mode == 'FFCLR' or rhead.mode == 'FFOVER' or rhead.mode == '1-PCLR'):
@@ -1350,10 +1352,10 @@ def utimer(tbytes, rhead, fnum):
 
             # Time taken to read CCD (assuming cdd mode)
             if rhead.mode == 'FFCLR':
-                readoutTime = (1024/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin + 
+                readoutTime = (1024/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin +
                                                   536*HCLOCK + (512/rhead.xbin+2)*VIDEO)/1.e6
             elif rhead.mode == 'FFOVER':
-                readoutTime = (1032/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin + 
+                readoutTime = (1032/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin +
                                                   540*HCLOCK + (540/rhead.xbin+2)*VIDEO)/1.e6
             else:
                 nxb          = rhead.win[1].nx
@@ -1364,7 +1366,7 @@ def utimer(tbytes, rhead, fnum):
                 diff_shift   = abs(xleft - 1 - (1024 - xright) )
                 num_hclocks  =  nxu + diff_shift + (1024 - xright) + 8 \
                     if (xleft - 1 > 1024 - xright) else nxu + diff_shift + (xleft - 1) + 8
-                readoutTime = nyb*(VCLOCK_STORAGE*rhead.ybin + 
+                readoutTime = nyb*(VCLOCK_STORAGE*rhead.ybin +
                                     num_hclocks*HCLOCK + (nxb+2)*VIDEO)/1.e6
 
             # Frame transfer time
@@ -1372,7 +1374,7 @@ def utimer(tbytes, rhead, fnum):
 
             if len(utimer.tstamp) == 1:
 
-                # Case where we have not got a previous timestamp. Hop back over the 
+                # Case where we have not got a previous timestamp. Hop back over the
                 # readout and frame transfer and half the exposure delay
                 mjdCentre  = utimer.tstamp[0]
                 mjdCentre -= (frameTransfer+readoutTime+rhead.exposeTime/2.)/DSEC
@@ -1402,10 +1404,10 @@ def utimer(tbytes, rhead, fnum):
         frameTransfer = 1033.*vclock_frame
 
         if rhead.mode == 'FFNCLR':
-            readoutTime = (1024/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin + 
+            readoutTime = (1024/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin +
                                               536*HCLOCK + (512/rhead.xbin+2)*VIDEO)/1.e6
         elif rhead.mode == 'FFOVNC':
-                readoutTime = (1032/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin + 
+                readoutTime = (1032/rhead.ybin)*(VCLOCK_STORAGE*rhead.ybin +
                                                   540*HCLOCK + (540/rhead.xbin+2)*VIDEO)/1.e6
         else:
 
@@ -1417,11 +1419,11 @@ def utimer(tbytes, rhead, fnum):
 
                 nxu  = xbin*wl.nx
                 nyu  = ybin*wl.ny
-			
+
                 ystart = wl.lly
                 xleft  = wl.llx
                 xright = wr.llx + nxu - 1
-	  
+
                 if ystart_old > -1:
                     ystart_m = ystart_old
                     nyu_m    = nyu_old
@@ -1434,7 +1436,7 @@ def utimer(tbytes, rhead, fnum):
                 # store for next time
                 ystart_old = ystart
                 nyu_old    = nyu
-			
+
                 # Number of columns to shift whichever window is further from
                 # the edge of the readout to get ready for simultaneous
                 # readout.
@@ -1476,7 +1478,7 @@ def utimer(tbytes, rhead, fnum):
                     mjdCentre  = utimer.tstamp[0]
                     mjdCentre -= (frameTransfer+texp/2.)/DSEC
                     exposure   = texp
-                
+
                     if goodTime:
                         goodTime = False
                         reason = 'could not establish an accurate time without previous GPS timestamp'
@@ -1712,24 +1714,24 @@ def utimer(tbytes, rhead, fnum):
             exposure   = texp
 
         elif len(utimer.tstamp) == nwins+1:
-	    
-	    texp          = DSEC*(utimer.tstamp[nwins-1] - utimer.tstamp[nwins]) - frameTransfer
-	    mjdCentre     = utimer.tstamp[nwins]
-	    mjdCentre     = (rhead.exposeTime-texp/2.)/DSEC
-	    exposure      = texp
-	    if goodTime:
-		reason = 'too few stored timestamps'
-		goodTime = False
-	    
-	else:
-	  
-	    # Set to silly value for easy checking
-	    mjdCentre  = DEFDAT
-	    exposure   = rhead.exposeTime
-	    if goodTime:
-		reason = 'too few stored timestamps'
-		goodTime = False
-  
+
+            texp          = DSEC*(utimer.tstamp[nwins-1] - utimer.tstamp[nwins]) - frameTransfer
+            mjdCentre     = utimer.tstamp[nwins]
+            mjdCentre     = (rhead.exposeTime-texp/2.)/DSEC
+            exposure      = texp
+            if goodTime:
+                reason = 'too few stored timestamps'
+                goodTime = False
+
+        else:
+
+            # Set to silly value for easy checking
+            mjdCentre  = DEFDAT
+            exposure   = rhead.exposeTime
+            if goodTime:
+                reason = 'too few stored timestamps'
+                goodTime = False
+
     # Return some data
     time = Time(mjdCentre, exposure, goodTime, reason)
 
@@ -1737,7 +1739,7 @@ def utimer(tbytes, rhead, fnum):
 
         if rhead.nblue > 1:
 
-            # The mid-exposure time for the OK blue frames in this case is computed by averaging the 
+            # The mid-exposure time for the OK blue frames in this case is computed by averaging the
             # mid-exposure times of all the contributing frames, if they are available.
             utimer.blueTimes.insert(0,time)
 
@@ -1775,13 +1777,13 @@ def utimer(tbytes, rhead, fnum):
 
             # Avoid wasting memory storing past times
             if len(utimer.blueTimes) > rhead.nblue: utimer.blueTimes.pop()
-	    
+
         else:
             blueTime = time
 
     # return lots of potentially useful extras in a dictionary
-    info = {'nsat' : nsat, 'format' : format, 'whichRun' : rhead.whichRun, 
-            'defTstamp' : defTstamp, 'gps' : gps, 'frameError' : frameError, 
+    info = {'nsat' : nsat, 'format' : format, 'whichRun' : rhead.whichRun,
+            'defTstamp' : defTstamp, 'gps' : gps, 'frameError' : frameError,
             'midnightCorr' : midnightCorr, 'ntmin' : ntmin}
 
     if rhead.instrument == 'ULTRACAM':
