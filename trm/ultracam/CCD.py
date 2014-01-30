@@ -6,8 +6,15 @@ from __future__ import division
 
 import tempfile
 import numpy as np
-import matplotlib.cm as cm
-import astropy.io.fits as fits
+try:
+    import matplotlib.cm as cm
+except:
+    print 'Failed to import matplotlib.cm; some plotting will fail'
+
+try:
+    import astropy.io.fits as fits
+except:
+    print 'Failed to import astropy.io.fits; FITS access will fail'
 
 from trm.ultracam.Constants import *
 from trm.ultracam.Window import Window
@@ -26,7 +33,7 @@ class CCD(object):
     def __init__(self, wins, time, nxmax, nymax, good, head):
         """
         Creates a new CCD frame.
-        
+
         Arguments:
 
         wins    -- list of non-overlapping Window objects.
@@ -38,13 +45,13 @@ class CCD(object):
         """
         for win in wins:
             if not isinstance(win, Window):
-                raise UltracamError('CCD.__init__: all windows must be Windows.')        
+                raise UltracamError('CCD.__init__: all windows must be Windows.')
 
         if head is not None and not isinstance(head, Uhead):
-            raise UltracamError('CCD.__init__: head should be a Uhead (or None).')        
+            raise UltracamError('CCD.__init__: head should be a Uhead (or None).')
 
         if time and not isinstance(time, Time):
-            raise UltracamError('CCD.__init__: time should be a Time.')        
+            raise UltracamError('CCD.__init__: time should be a Time.')
 
         self._data = wins
         self.time  = time
@@ -61,13 +68,13 @@ class CCD(object):
 
     def __eq__(self, other):
         """
-        Equality of two CCDs is defined by matching binning factors, 
+        Equality of two CCDs is defined by matching binning factors,
         maximum dimensions and windows (in order).
         """
 
-        if self.nxmax != other.nxmax or self.nymax != other.nymax or len(self) != len(other): 
+        if self.nxmax != other.nxmax or self.nymax != other.nymax or len(self) != len(other):
             return False
-        
+
         # now test for equal windows
         for swin,owin in zip(self._data,other._data):
             if swin != owin:
@@ -121,8 +128,8 @@ class CCD(object):
     def anyInt(self):
         """
         Returns True if any of the contributing Windows are based on integers. It can be
-        useful for memory and disk space reasons to keep data as 2-byte unsigned integers 
-        but cause problems with arithematic operations. This allows you to check. 
+        useful for memory and disk space reasons to keep data as 2-byte unsigned integers
+        but cause problems with arithematic operations. This allows you to check.
         See also 'anyFloat', 'toFloat' and 'toInt'.
         """
         for win in self._data:
@@ -163,7 +170,7 @@ class CCD(object):
             if win.min() < 0 or win.max() > 65535:
                 warnings.warn('CCD.toInt: input data out of range 0 to 65535')
             win.totype(np.uint16)
-        
+
     def mean(self):
         """
         Returns the mean over all Windows of a CCD
@@ -222,8 +229,8 @@ class CCD(object):
 
         pcent -- percentile or percentiles (array-like)
 
-        Returns image value or values as a list equivalent to the input 
-        percentiles. 
+        Returns image value or values as a list equivalent to the input
+        percentiles.
         """
 
         # check against a string which can look array-like
@@ -237,7 +244,7 @@ class CCD(object):
         arr = np.concatenate(larr)
 
         return np.percentile(arr,pcent)
-    
+
     def rback(self):
         """
         Removes background from a CCD. Estimates
@@ -281,12 +288,12 @@ class CCD(object):
     def cropTo(self, ccd):
         """
         Crops the CCD to match ccd returning the cropped
-        CCD with the CCD itself unchanged. Raises an UltracamError 
+        CCD with the CCD itself unchanged. Raises an UltracamError
         if it does not succeed.
         """
         if self.nxmax != ccd.nxmax or self.nymax != ccd.nymax:
             raise UltracamError('CCD.crop: maximum dimensions did not match')
-        
+
         wins = []
         for nwino, wino in enumerate(ccd._data):
             for win in self._data:
@@ -294,10 +301,10 @@ class CCD(object):
                     wins.append(win.cropTo(wino))
                     break
             else:
-                raise UltracamError('CCD.crop: could not crop any window of CCD to match window ' + 
+                raise UltracamError('CCD.crop: could not crop any window of CCD to match window ' +
                                     str(nwino+1) + ' of other.')
         return CCD(wins, self.time, self.nxmax, self.nymax, self.good, self.head)
-        
+
     # arithematic
     def __iadd__(self, other):
         """
@@ -464,10 +471,10 @@ class CCD(object):
 if __name__ == '__main__':
 
     uhead = Uhead()
-    uhead.add_entry('User','User information')    
+    uhead.add_entry('User','User information')
     uhead.add_entry('User.Filters','ugi', ITYPE_STRING, 'The filters')
 
-    win1 = Window(np.zeros((2,2)),1,2,2,2)    
+    win1 = Window(np.zeros((2,2)),1,2,2,2)
     win2 = Window(np.zeros((3,3)),100,2,2,2)
 
     time = Time(55000.2, 20., True, '')
@@ -481,7 +488,7 @@ def ccd2fits(ccd, name, fname=None):
     Writes a CCD to a FITS file in iraf mosaic format returning the associated
     file object for reference. This allows display, e.g. within ds9 with
     correct relative offsets between windows. See u2ds9.py for an example
-    using this. 
+    using this.
 
       ccd : CCD object
 
@@ -490,9 +497,9 @@ def ccd2fits(ccd, name, fname=None):
       fname : file name. If None, a temporary file will be created that
               can be referred to using the file object returned while
               a reference to it exists (might need to save into a list
-              if creating multiple temporary files)              
+              if creating multiple temporary files)
     """
-    
+
     # Create a temporary FITS file to communicate with ds9
     header = fits.header.Header()
     header['DETECTOR'] = ('ULTRACAM', 'Detector name')
@@ -507,7 +514,7 @@ def ccd2fits(ccd, name, fname=None):
 
     for nw, win in enumerate(ccd):
         wheader = fits.Header()
-    
+
         # fix up for IRAF mosaicing format
         wheader['INHERIT'] = True
         wheader['CCDNAME'] = name
@@ -536,7 +543,7 @@ def ccd2fits(ccd, name, fname=None):
         wheader['DTM2_2']  = 1.
         wheader['DTV1']    = 0.
         wheader['DTV2']    = 0.
-                    
+
         ihdu = fits.ImageHDU(win.data, wheader)
         hdus.append(ihdu)
     hdul = fits.HDUList(hdus)

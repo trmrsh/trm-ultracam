@@ -27,9 +27,9 @@ from trm.ultracam.UErrors import UltracamError
 class MCCD(object):
     """
     Represents multiple CCD frame. The idea is that one has an instrument
-    which produces multiple CCDs of data that are intrinsically linked, 
-    e.g. in a multi-arm camera where one always gets an image in each of 
-    several CCDs. This is to represent ULTRACAM data. There is some common 
+    which produces multiple CCDs of data that are intrinsically linked,
+    e.g. in a multi-arm camera where one always gets an image in each of
+    several CCDs. This is to represent ULTRACAM data. There is some common
     header information, plus the data, represented by a list of CCD objects.
 
     Indexed access returns the component CCD objects.
