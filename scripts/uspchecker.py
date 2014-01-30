@@ -31,11 +31,12 @@ for rpath, rnames, fnames in os.walk('.'):
                        (time[0].reason == 'timestamp too early'):
                         badFrames.append(nf+1)
 
-            if len(badFrames):
-                print run,'has timing bug in frames',badFrames
+            if len(badFrames) == 1:
+                print run,'has timing bug in frame',badFrames[0]
+            elif len(badFrames) > 1:
+                print run,'has timing bug in multiple frames:',badFrames
+                print '-- please e-mail Tom Marsh at Warwick about this!!'
             else:
                 print run,'is OK'
-
-
         except:
             print 'Failed to read ',run
