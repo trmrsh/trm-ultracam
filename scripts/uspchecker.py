@@ -35,8 +35,9 @@ for rpath, rnames, fnames in os.walk('.'):
                 print run,'has timing bug in frame',badFrames[0]
             elif len(badFrames) > 1:
                 print run,'has timing bug in multiple frames:',badFrames
-                print '-- please e-mail Tom Marsh at Warwick about this!!'
+                print '       please e-mail Tom Marsh at Warwick about this!!'
             else:
                 print run,'is OK'
-        except:
-            print 'Failed to read ',run
+        except Exception, err:
+            print run,'could not be read (probably a power on)'
+            print err
