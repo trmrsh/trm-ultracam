@@ -4,7 +4,10 @@ A few general utility functions
 
 import struct
 import datetime
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    print 'Failed to import numpy; some routines will fail'
 
 from trm.ultracam.Constants import MAGIC, MJD0, RUN_DATES, \
     RUN_TELS, BIAS_CHANGES, BIAS_LEVELS
@@ -13,14 +16,14 @@ from trm.ultracam.UErrors import UltracamError
 def write_string(fobj, strng):
     """
     Writes a string in binary format for my C++ code which
-    requires first writing the number of characters and then 
+    requires first writing the number of characters and then
     the characters
 
     fobj         -- file object opened for binary output
     strng        -- string to file object opened for binary output
     """
     nchar = len(strng)
-    fobj.write(struct.pack('i' + str(nchar) + 's',nchar, strng)) 
+    fobj.write(struct.pack('i' + str(nchar) + 's',nchar, strng))
 
 def read_string(fobj, endian=''):
     """
@@ -38,7 +41,7 @@ def check_ucm(fobj):
     Check a file opened for reading in binary mode to see if it is a ucm.
 
     Returns endian which is a string to be passed
-    to later routines indicating endian-ness. 
+    to later routines indicating endian-ness.
     """
 
     # read the format code
@@ -48,7 +51,7 @@ def check_ucm(fobj):
         fcode = struct.unpack('>i',fbytes)[0]
         if fcode != MAGIC:
             fobj.close()
-            raise UltracamError('check_ucm: could not recognise first 4 bytes of ' + 
+            raise UltracamError('check_ucm: could not recognise first 4 bytes of ' +
                                 fname + ' as a ucm file')
         endian = '>'
     else:
@@ -102,8 +105,8 @@ def runID(mjd):
         mstop  = str2mjd(stop)
         if mstart < mjd and mjd < mstop+1.5:
             return (run_id,RUN_TELS[run_id])
-    
-    raise UltracamError('runID: could not identify time = ' + mjd2str(mjd))    
+
+    raise UltracamError('runID: could not identify time = ' + mjd2str(mjd))
 
 def blevs(mjd, mode):
     """
@@ -111,9 +114,9 @@ def blevs(mjd, mode):
     for each side of each CCD. This has to be done as a function of time and
     readout mode. Rather than enter the time from the file which can be
     subject to error, it is best to generate the MJD from the night of the run.
-    This can be done once and reliably for a given run. Some modes have no 
+    This can be done once and reliably for a given run. Some modes have no
     calibration data and no default values. This routine will return None in
-    this case. 
+    this case.
 
     If the return is 'def' than def[nc] is a 2-element tuple containing the left
     and right default bias levels for ccd nc. def[1][0] is thus the default value

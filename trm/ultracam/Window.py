@@ -2,7 +2,10 @@
 Class to represent a sub-window of a CCD
 """
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    print 'Failed to import numpy; some routines will fail'
 
 try:
     import matplotlib.pyplot as plt
@@ -26,7 +29,7 @@ class Window(object):
      xbin, ybin   --  pixel binning factors
 
     Indexed access to the array along the lines of a numpy.ndarray
-    so that for example the following work: 
+    so that for example the following work:
 
     win = Window(data, 1, 2, 3, 4)
     print win[0][1]

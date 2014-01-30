@@ -5,16 +5,20 @@
 from __future__ import division
 
 import tempfile
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    print 'Failed to import numpy; some routines will fail'
+
 try:
     import matplotlib.cm as cm
-except:
+except ImportError:
     print 'Failed to import matplotlib.cm; some plotting will fail'
 
 try:
     import astropy.io.fits as fits
-except:
-    print 'Failed to import astropy.io.fits; FITS access will fail'
+except ImportError:
+    print 'Failed to import astrop.io.fits; FITS access will fail'
 
 from trm.ultracam.Constants import *
 from trm.ultracam.Window import Window

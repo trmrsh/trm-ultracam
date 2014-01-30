@@ -6,7 +6,11 @@ import struct
 import warnings
 import urllib2
 import xml.dom.minidom
-import numpy as np
+
+try:
+    import numpy as np
+except ImportError:
+    print 'Failed to import numpy; some routines will fail'
 
 from trm.ultracam.Constants import *
 from trm.ultracam.CCD import CCD

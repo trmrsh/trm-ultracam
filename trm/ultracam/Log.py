@@ -13,9 +13,9 @@ class Log(object):
     2) New style: run, comment (target names are in the xml files)
 
     The class just stores the data in dictionaries 'comment',
-    'target', and 'filters'; 'format' is an integer specifying 
-    the format as above. 'target' and 'filters' are blank in 
-    the case of format == 2. It is assumed in this case that 
+    'target', and 'filters'; 'format' is an integer specifying
+    the format as above. 'target' and 'filters' are blank in
+    the case of format == 2. It is assumed in this case that
     they are present in corresponding xml files. The dictionaries
     are keyed on the run id, i.e. 'run005'
     """

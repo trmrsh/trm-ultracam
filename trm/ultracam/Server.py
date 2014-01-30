@@ -8,9 +8,9 @@ import urllib2
 from trm.ultracam.UErrors import UltracamError
 
 # The ATC FileServer recognises various GET requests
-# (look for 'action=' in the code) which are accessed 
-# using urllib2. The following code is to allow urllib2 
-# to connect to a local version of the FileServer which 
+# (look for 'action=' in the code) which are accessed
+# using urllib2. The following code is to allow urllib2
+# to connect to a local version of the FileServer which
 # does not work without this code.
 
 proxy_support = urllib2.ProxyHandler({})
@@ -28,7 +28,7 @@ def get_nframe_from_server(run):
     """
 
     if URL is None:
-        raise UltracamError('get_nframe_from_server: no url for server found.' + 
+        raise UltracamError('get_nframe_from_server: no url for server found.' +
                             ' Have you set the ULTRACAM_DEFAULT_URL environment variable?')
     # get from FileServer
     full_url = URL + run + '?action=get_num_frames'

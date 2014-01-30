@@ -3,7 +3,10 @@ Classes to represent multiple CCDs
 """
 
 import struct
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    print 'Failed to import numpy; some routines will fail.'
 
 try:
     import matplotlib.pyplot as plt
