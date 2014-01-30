@@ -78,11 +78,11 @@ for rpath, rnames, fnames in os.walk('.'):
                     # been copied to the previous frame) untouched.
                     fout.write(frame1)
 
-                os.rename(run + '.dat', run + '.dat.old')
+#                os.rename(run + '.dat', run + '.dat.old')
                 os.rename(run + '.dat.new', run + '.dat')
-                print run,'corrected; old .dat file copied to',run + '.dat.old'
+#                print run,'corrected; old .dat file copied to',run + '.dat.old'
+                print run,'corrected'
             else:
                 print run,'is OK and has not been changed.'
         except Exception, err:
             print run,'could not be read and has not been changed'
-            print err
