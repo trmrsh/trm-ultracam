@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
+usage = \
 """
-If this is your first encounter with this script, please read ALL of the following.
+If this is your first encounter with this script, please read ALL of the
+following:
 
 uspfix.py is designed to fix a timing problem in ULTRASPEC files that was
 spotted in January 2014. When the problem occurs (it is intermittent in
@@ -13,7 +15,8 @@ fixing it in the future. In the meantime, this script fixes any data affected
 by it. The symptom of the bug is a line like this, as reported e.g. by the
 pipeline command "rtplot":
 
-"Ultracam::read_header WARNING: time unreliable: GPS clock not yet synced since power up"
+"Ultracam::read_header WARNING: time unreliable: GPS clock not yet synced
+since power up"
 
 This is very likely spurious, especially if subsequent times appear to be OK.
 If the problem occurs, it tends to happens early on, typically, but not
@@ -46,7 +49,7 @@ Simply run the script in the directory of interest, with no arguments, but
 remember that it will run in *all* sub-directories as well. The data must be
 write enabled because they are modified by the script. e.g. in unix:
 
-find . -name "run*.dat" | xargs chmod +w
+ find . -name "run*.dat" | xargs chmod +w
 
 to make all the run.dat files in the directory tree writeable before running
 the script.
@@ -64,7 +67,11 @@ and if you encounter any run with more than 1 bad frame as reported by the
 script.
 """
 
-import os, re, shutil, signal
+import sys, os, re, shutil, signal
+
+if len(sys.argv) > 1:
+    print usage
+    exit(1)
 
 # This to spot rogue timestamps
 BLANK = 20*'\x00'
