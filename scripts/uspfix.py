@@ -7,11 +7,11 @@ uspfix.py is designed to fix a timing problem in ULTRASPEC files that was
 spotted in January 2014. When the problem occurs (it is intermittent in
 nature) a null timestamp appears in one frame of a run (we have no example in
 which more than one frame is affected). This is extra in the sense that all
-the proper timestamps are shifted back by one frame. We suspect that a null
-timestamp enters the FIFO buffer somehow and will be investigating fixing it
-in the future. In the meantime, this script fixes any data affected by it. The
-symptom of the bug is a line like this, as reported e.g. by the pipeline
-command "rtplot":
+the proper timestamps are shifted by one frame later in sequence. We suspect
+that a null timestamp enters the FIFO buffer somehow and will be investigating
+fixing it in the future. In the meantime, this script fixes any data affected
+by it. The symptom of the bug is a line like this, as reported e.g. by the
+pipeline command "rtplot":
 
 "Ultracam::read_header WARNING: time unreliable: GPS clock not yet synced since power up"
 
@@ -31,20 +31,20 @@ are needed.
 uspfix.py runs on all the runs it finds (defined by the presence of files of
 the form run###.xml) in the present working directory, and works down the
 directory hierarchy from there. Thus if you run it in a directory containing
-the night-by-night files 2014-02-01, 2014-02-02 etc, it will fix *all* bad
-runs in the top-level directory, these directories, and in any sub-directories
-they may contain.  It skips any runs for which it cannot read the .dat file,
-those with <= 32 bytes per frame (which picks up powerons), those in which the
-bad frame is the last, since they are uncorrectable, and finally any in which
-there is more than one null timestamp. The latter exception is because we have
-never encountered such a run, and I don't therefore want to try correcting
-them. If you find one of these, please e-mail me (Tom Marsh,
-Warwick). uspfix.py makes copies of any files that it changes to
-run###.dat.old for safety.
+the night-by-night directories 2014-02-01, 2014-02-02 etc, it will fix *all*
+bad runs in the top-level directory, these directories, and in any
+sub-directories they may contain.  It skips any runs for which it cannot read
+the .dat file, those with <= 32 bytes per frame (which picks up powerons),
+those in which the bad frame is the last, since they are uncorrectable, and
+finally any in which there is more than one null timestamp. The latter
+exception is because we have never encountered such a run, and I don't
+therefore want to try correcting them. If you find one of these, please e-mail
+me (Tom Marsh, Warwick). uspfix.py makes copies of any files that it changes
+to run###.dat.old for safety.
 
 Simply run the script in the directory of interest, with no arguments, but
 remember that it will run in *all* sub-directories as well. The data must be
-write enabled because it is modified by the script. e.g. in unix:
+write enabled because they are modified by the script. e.g. in unix:
 
 find . -name "run*.dat" | xargs chmod +w
 
@@ -54,8 +54,10 @@ the script.
 The script reports all the runs that it corrects and those that it cannot read
 (e.g. powerons). If you run it twice, it should make no corrections the second
 time. The script modifies the data in place bringing with it some possibility
-of corrupting data irrtrievably. You are advised not the ctrl-C it, although
-there is a trap in place to prevent this causing problems.
+of corrupting data irretrievably. You are advised not the ctrl-C it, although
+there is a trap in place in the critical section to prevent this causing
+problems. This section only takes a fraction of the total time of the routine,
+so it will probably be OK.
 
 Please contact Tom Marsh at Warwick if you encounter problems with this script
 and if you encounter any run with more than 1 bad frame as reported by the
