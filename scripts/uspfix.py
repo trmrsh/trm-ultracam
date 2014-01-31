@@ -81,8 +81,8 @@ for rpath, rnames, fnames in os.walk('.'):
 
         # Check for .dat file
         if not os.path.exists(root + '.dat'):
-            print root,'skipped; no ,dat file'
-            break
+            print root,'skipped; no .dat file'
+            continue
 
         # Determine the filesize
         fsize = 0
