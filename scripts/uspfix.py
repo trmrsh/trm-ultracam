@@ -27,7 +27,7 @@ higher precision than the sampling time. uspfix.py works by searching for
 frames in which all the timing bytes are set to 0, then copies the timing
 bytes backwards by one frame, beginning with the first frame after the rogue
 frame. The bytes are copied, so the final frame keeps its timing bytes intact,
-and thus will not have a reliable timestamp although it may be possible to
+and thus will not have a reliable timestamp, although it may be possible to
 recover a proper mid-exposure time because sometimes only preceding timestamps
 are needed.
 
