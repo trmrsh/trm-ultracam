@@ -330,6 +330,9 @@ class Window(object):
         else:
             return Window(self._data / other, self.llx, self.lly, self.xbin, self.ybin)
 
+    def __truediv__(self,other):
+        return self.__div__(other)
+
     def __radd__(self, other):
         return Window(other + self._data, self.llx, self.lly, self.xbin, self.ybin)
 
