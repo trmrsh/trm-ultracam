@@ -409,6 +409,7 @@ class CCD(object):
             for win,owin in zip(self._data,other._data):
                 twins.append(win / owin)
         else:
+            other.good = True
             for win in self._data:
                 twins.append(win / other)
         return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
