@@ -3,7 +3,23 @@
 usage = \
 """
 If this is your first encounter with this script, please read ALL of the
-following:
+following. In brief the script corrects a timing bug in ultraspec data and can
+be run either as:
+
+ uspfix.py      (corrects .dat files in directory it is run in)
+
+or:
+
+ uspfix.py -r   (runs recursively over directory hierarchy starting from
+                 current directory)
+
+You should make the .dat file writeable. e.g. this can be done recursively
+as follows:
+
+ find . -name "run*.dat" | xargs chmod +w
+
+
+In more detail:
 
 uspfix.py is designed to fix a timing problem in ULTRASPEC files that was
 spotted in January 2014. When the problem occurs (it is intermittent in
@@ -70,8 +86,13 @@ script.
 import sys, os, re, shutil, signal
 
 if len(sys.argv) > 1:
-    print usage
-    exit(1)
+    if sys.argv[1] == '-r':
+        recursive = True
+    else:
+        print usage
+        exit(1)
+else:
+    recursive = False
 
 # This to spot rogue timestamps
 BLANK = 20*'\x00'
@@ -79,96 +100,101 @@ BLANK = 20*'\x00'
 # To match the xml files
 rmat = re.compile('^run\d\d\d\.xml$')
 
-# Work through the directory tree starting from the pwd
-for rpath, rnames, fnames in os.walk('.'):
-    runs  = [fname[:-4] for fname in fnames if rmat.match(fname)]
-    runs.sort()
+# Compile a list of runs
+if recursive:
+    runs = []
+    for rpath, rnames, fnames in os.walk('.'):
+        runs  = [os.path.join(rpath,fname[:-4]) for fname in fnames \
+                 if rmat.match(fname)]
+else:
+    runs = [fname[:-4] for fname in os.listdir('.') \
+            if rmat.match(fname)]
+runs.sort()
 
-    # Go through all the runs found
-    for run in runs:
-        root = os.path.join(rpath,run)
+# Now do the work
+for run in runs:
 
-        # Check for .dat file
-        if not os.path.exists(root + '.dat'):
-            print root,'skipped; no .dat file'
-            continue
+    # Check for .dat file
+    if not os.path.exists(run + '.dat'):
+        print run,'skipped; no .dat file'
+        continue
 
-        # Determine the filesize
-        fsize = 0
-        with open(root + '.xml') as fxml:
-            for line in fxml:
-                ptr = line.find('framesize')
-                if ptr >= 0:
-                    fq = ptr + line[ptr:].find('"') + 1
-                    sq = fq + line[fq:].find('"')
-                    fsize = int(line[fq:sq])
+    # Determine the filesize
+    fsize = 0
+    with open(run + '.xml') as fxml:
+        for line in fxml:
+            ptr = line.find('framesize')
+            if ptr >= 0:
+                fq = ptr + line[ptr:].find('"') + 1
+                sq = fq + line[fq:].find('"')
+                fsize = int(line[fq:sq])
 
-        # PowerOns are 32 bytes
-        if fsize <= 32:
-            print root,'skipped; probably a poweron'
-            continue
+    # PowerOns are 32 bytes
+    if fsize <= 32:
+        print run,'skipped; probably a poweron'
+        continue
 
-        # Search for bad timestamps, storing the first
-        badFrame = 0
-        nbad = 0
-        with open(root + '.dat','rb') as fin:
-            ptr = 12
-            nf  = 0
+    # Search for bad timestamps, storing the first
+    badFrame = 0
+    nbad = 0
+    with open(run + '.dat','rb') as fin:
+        ptr = 12
+        nf  = 0
+        while True:
+            fin.seek(ptr)
+            timing = fin.read(20)
+            if len(timing) != 20:
+                break
+            nf += 1
+            if timing == BLANK:
+                if badFrame == 0: badFrame = nf
+                nbad += 1
+            ptr += fsize
+
+    # Skip if more than one badframe is found because
+    # I don't know how to deal with these properly.
+    if nbad > 1:
+        print run,'skipped as it had',nbad,'(>1) bad frames'
+        print 'The times of this run cannot be trusted!!'
+        print 'Please e-mail Tom Marsh at Warwick if you encounter this'
+        print 'in a run that has *some* good times.'
+        continue
+
+    if badFrame == nf:
+        print run,'skipped as the bad frame was the final one'
+        continue
+
+    if badFrame:
+        # First of all copy the file for safety.
+        shutil.copyfile(run + '.dat', run + '.dat.old')
+
+        # Block ctrl-C interrupts ...
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+        # Now modify the original. We open it to be able to both read from
+        # and write to it in binary mode:
+        with open(run + '.dat','r+b') as fio:
+            # start from the corrupted frame
+            n = badFrame
             while True:
-                fin.seek(ptr)
-                timing = fin.read(20)
+                # Seek the timing bytes we want (which come immediately
+                # after the frame we are about to modify)
+                fio.seek(12+fsize*n)
+
+                # Read them, if possible
+                timing = fio.read(20)
                 if len(timing) != 20:
                     break
-                nf += 1
-                if timing == BLANK:
-                    if badFrame == 0: badFrame = nf
-                    nbad += 1
-                ptr += fsize
 
-        # Skip if more than one badframe is found because
-        # I don't know how to deal with these properly.
-        if nbad > 1:
-            print root,'skipped as it had',nbad,'(>1) bad frames'
-            print 'The times of this run cannot be trusted!!'
-            print 'Please e-mail Tom Marsh at Warwick if you encounter this'
-            print 'in a run that has *some* good times.'
-            continue
+                # Write them into preceding location
+                fio.seek(12+fsize*(n-1))
+                fio.write(timing)
 
-        if badFrame == nf:
-            print root,'skipped as the bad frame was the final one'
-            continue
+                # Advance to next frame
+                n += 1
 
-        if badFrame:
-            # First of all copy the file for safety.
-            shutil.copyfile(root + '.dat', root + '.dat.old')
+        # Report progress
+        print run,'corrected; corrupted file copied to',run + '.dat.old'
 
-            # Block ctrl-C interrupts ...
-            signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-            # Now modify the original. We open it to be able to both read from
-            # and write to it in binary mode:
-            with open(root + '.dat','r+b') as fio:
-                # start from the corrupted frame
-                n = badFrame
-                while True:
-                    # Seek the timing bytes we want (which come immediately
-                    # after the frame we are about to modify)
-                    fio.seek(12+fsize*n)
-
-                    # Read them, if possible
-                    timing = fio.read(20)
-                    if len(timing) != 20:
-                        break
-
-                    # Write them into preceding location
-                    fio.seek(12+fsize*(n-1))
-                    fio.write(timing)
-
-                    # Advance to next frame
-                    n += 1
-
-            # Report progress
-            print root,'corrected; corrupted file copied to',root + '.dat.old'
-
-            # Unblock ctrl-C interrupts ...
-            signal.signal(signal.SIGINT, signal.SIG_DFL)
+        # Unblock ctrl-C interrupts ...
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
