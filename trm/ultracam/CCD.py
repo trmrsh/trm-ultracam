@@ -366,52 +366,61 @@ class CCD(object):
         Adds 'other' to the CCD (+)
         """
         twins = []
+        OK = self.good
         if isinstance(other, CCD):
+            OK = OK and other.good
             for win,owin in zip(self._data,other._data):
                 twins.append(win + owin)
         else:
             for win in self._data:
                 twins.append(win + other)
-        return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
+        return CCD(twins, self.time, self.nxmax, self.nymax, OK, self.head)
 
     def __sub__(self, other):
         """
         Subtracts 'other' from the CCD (-)
         """
         twins = []
+        OK = self.good
         if isinstance(other, CCD):
+            OK = OK and other.good
             for win,owin in zip(self._data,other._data):
                 twins.append(win - owin)
         else:
             for win in self._data:
                 twins.append(win - other)
-        return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
+        return CCD(twins, self.time, self.nxmax, self.nymax, OK, self.head)
 
     def __mul__(self, other):
         """
         Multiplies CCD by 'other' (*)
         """
         twins = []
+        OK = self.good
         if isinstance(other, CCD):
+            OK = OK and other.good
             for win,owin in zip(self._data,other._data):
                 twins.append(win * owin)
         else:
             for win in self._data:
                 twins.append(win * other)
-        return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
+        return CCD(twins, self.time, self.nxmax, self.nymax, OK, self.head)
 
     def __div__(self, other):
         """
         Divides CCD by 'other' (/)
         """
         twins = []
+        OK = self.good
         if isinstance(other, CCD):
+            OK = OK and other.good
             for win,owin in zip(self._data,other._data):
                 twins.append(win / owin)
         else:
+            other.good = True
             for win in self._data:
                 twins.append(win / other)
-        return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
+        return CCD(twins, self.time, self.nxmax, self.nymax, OK, self.head)
 
     def __radd__(self, other):
         """

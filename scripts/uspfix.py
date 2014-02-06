@@ -104,8 +104,8 @@ rmat = re.compile('^run\d\d\d\.xml$')
 if recursive:
     runs = []
     for rpath, rnames, fnames in os.walk('.'):
-        runs  = [os.path.join(rpath,fname[:-4]) for fname in fnames \
-                 if rmat.match(fname)]
+        runs.extend( [os.path.join(rpath,fname[:-4]) for fname in fnames \
+                 if rmat.match(fname)] )
 else:
     runs = [fname[:-4] for fname in os.listdir('.') \
             if rmat.match(fname)]
