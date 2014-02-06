@@ -111,6 +111,18 @@ else:
             if rmat.match(fname)]
 runs.sort()
 
+# check that .dat files have write permission
+for run in runs:
+
+    # Check for .dat file
+    path = run + '.dat'
+    if os.path.exists(path) and not os.access(path, os.W_OK):
+        print 'You do not have write access to',path
+        print 'Please fix write permissions on the .dat files and then re-run'
+        print 'the script. The following command does this recursively:\n'
+        print 'find . -name "run*.dat" | xargs chmod +w\n'
+        exit(1)
+
 # Now do the work
 for run in runs:
 
