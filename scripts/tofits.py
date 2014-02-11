@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
 usage = \
-"""
-Reads in ULTRACAM/SPEC raw data files and writes out to FITS files. The output
-files can be one per exposure, or in the case of multi-CCD formats, one per
-CCD per exposure.
-"""
+""" 
+Reads in ULTRACAM/SPEC raw data files and writes out to FITS files. The
+output files can be one per exposure, or in the case of multi-CCD formats, one
+per CCD per exposure.  """
 
 
 # just import these for speed. After arguments are OK-ed, some more imports
@@ -17,15 +16,24 @@ parser = argparse.ArgumentParser(description=usage)
 parser.add_argument('run', help='run to plot, e.g. "run045"')
 
 # optional
-parser.add_argument('-n', dest='nccd', type=int, default=0, help='which CCD to process, 0 for the lot')
-parser.add_argument('-f', dest='first', type=int, default=1, help='first frame to read (default = 1)')
-parser.add_argument('-l', dest='last', type=int, default=0, help='last frame to read (0 to go up to last one)')
-parser.add_argument('-r', dest='back', action='store_true', help='remove median background from each window')
-parser.add_argument('-b', dest='bias', help='bias frame to subtract (ucm file)')
-parser.add_argument('-u', dest='ucam', action='store_true', help='get data via the ULTRACAM FileServer')
-parser.add_argument('-c', dest='clobber', action='store_true', help='clobber existing files')
-parser.add_argument('-i', dest='interval', type=int, default=100, help='interval for reporting progress')
-parser.add_argument('-s', dest='split', action='store_true', help='split files by CCD')
+parser.add_argument('-n', dest='nccd', type=int, default=0,
+                    help='which CCD to process, 0 for the lot')
+parser.add_argument('-f', dest='first', type=int, default=1,
+                    help='first frame to read (default = 1)')
+parser.add_argument('-l', dest='last', type=int, default=0,
+                    help='last frame to read (0 to go up to last one)')
+parser.add_argument('-r', dest='back', action='store_true',
+                    help='remove median background from each window')
+parser.add_argument('-b', dest='bias',
+                    help='bias frame to subtract (ucm file)')
+parser.add_argument('-u', dest='ucam', action='store_true',
+                    help='get data via the ULTRACAM FileServer')
+parser.add_argument('-c', dest='clobber', action='store_true',
+                    help='clobber existing files')
+parser.add_argument('-i', dest='interval', type=int, default=100,
+                    help='interval for reporting progress')
+parser.add_argument('-s', dest='split', action='store_true',
+                    help='split files by CCD')
 
 # OK, done with arguments.
 args = parser.parse_args()
@@ -47,7 +55,10 @@ if first < 0:
 # more imports
 import os
 import numpy as np
-import pyfits as fits
+try:
+    import astropy.io.fits as fits
+except:
+    import pyfits as fits
 from trm import ultracam
 
 if args.bias:
@@ -56,9 +67,7 @@ if args.bias:
 # Now do something
 fnum  = args.first
 first = True
-flt   = args.bias or args.back
-dtype = np.float32 if flt else np.uint16
-rdat  = ultracam.Rdata(run,args.first,flt=flt,server=args.ucam)
+rdat  = ultracam.Rdata(run,args.first,server=args.ucam)
 
 nccd = args.nccd
 if nccd < 0:
@@ -74,7 +83,7 @@ if nccd == -1:
 else:
     ccds = range(0,nccd+1)
 
-# Now the data reading step. 
+# Now the data reading step.
 
 for mccd in rdat:
 
@@ -85,7 +94,8 @@ for mccd in rdat:
             except ultracam.UltracamError, err:
                 print 'UltracamError:',err
                 print 'Bias format:\n',bias.format()
-                print 'Data format (should be subset of the bias):\n',mccd.format()
+                print 'Data format (should be subset of the bias):\n',\
+                    mccd.format()
                 exit(1)
         first = False
         mccd -= bias
@@ -128,31 +138,34 @@ for mccd in rdat:
             for nw, win in enumerate(ccd):
                 wheader = fits.Header()
                 wheader['NWIN']   = (nw+1,'Window number')
-                    
+
                 wheader['CTYPE1'] = ('LINEAR', 'Transformation of X scale')
                 wheader['CTYPE2'] = ('LINEAR', 'Transformation of Y scale')
                 wheader['CUNIT1'] = ('pixels', 'Units of transformed X scale')
                 wheader['CUNIT2'] = ('pixels', 'Units of transformed Y scale')
-                    
+
                 fnumber = 1. - float(win.llx - 1)/win.xbin
-                wheader['CRPIX1'] = (fnumber, 'Pixel equivalent in X of reference point')
+                wheader['CRPIX1'] = (fnumber,
+                                     'Pixel equivalent in X of reference point')
                 fnumber = 1. - float(win.lly - 1)/win.ybin
-                wheader['CRPIX2'] = (fnumber, 'Pixel equivalent in Y of reference point')
+                wheader['CRPIX2'] = (fnumber,
+                                     'Pixel equivalent in Y of reference point')
                 fnumber = 1.
                 wheader['CRVAL1'] = (1., 'X value of reference point')
                 wheader['CRVAL2'] = (1., 'Y value of reference point')
-                    
+
                 wheader['CD1_1'] = (float(win.xbin),'Binning factor in X')
                 wheader['CD1_2'] = 0.
                 wheader['CD2_1'] = 0.
                 wheader['CD2_2'] = (float(win.ybin),'Binning factor in Y')
-                    
+
                 ihdu = fits.ImageHDU(win.data, wheader)
                 hdus.append(ihdu)
             hdul = fits.HDUList(hdus)
 
             # create filename and write out data
-            fname = os.path.basename(run) + '_' + str(nc+1) + '_' + str(fnum) + '.fits'
+            fname = os.path.basename(run) + '_' + str(nc+1) + '_' + \
+                    str(fnum) + '.fits'
             hdul.writeto(fname, clobber=args.clobber)
 
     else:
@@ -166,17 +179,21 @@ for mccd in rdat:
         if rdat.nccd > 1:
             header['NCCD']   = (nc+1,'CCD number')
         header['OBJECT']  = (mccd.head.value('User.target'),'Object name')
-        header['RUNNUM']  = (os.path.basename(mccd.head.value('Run.run')),'Run number')
+        header['RUNNUM']  = (os.path.basename(mccd.head.value('Run.run')),
+                             'Run number')
         header['FILTER']  = (mccd.head.value('Run.filters'),'Filter name')
         header['OUTPUT']  = (mccd.head.value('Run.output'),'CCD output used')
         header['SPEED']   = (mccd.head.value('Run.speed'),'Readout speed')
-        header['PI']      = (mccd.head.value('User.pi'),'Principal investigator')
+        header['PI']      = (mccd.head.value('User.pi'),
+                             'Principal investigator')
         header['ID']      = (mccd.head.value('User.id'),'Programme ID')
         header['OBSRVRS'] = (mccd.head.value('User.observers'),'Observers')
         header['DTYPE']   = (mccd.head.value('User.dtype'),'Data type')
-        header['SLIDE']   = (mccd.head.value('Run.slidePos'),'Slide position, pixels')
+        header['SLIDE']   = (mccd.head.value('Run.slidePos'),
+                             'Slide position, pixels')
         if rdat.nccd == 1:
-            header['MJDUTC'] = (mccd[0].time.mjd,'MJD(UTC) at centre of exposure')
+            header['MJDUTC'] = (mccd[0].time.mjd,
+                                'MJD(UTC) at centre of exposure')
             header['EXPOSE'] = (mccd[0].time.expose,'Exposure time, secs')
             header['TIMEOK'] = (mccd[0].time.good,'Is time reliable?')
         header.add_comment('File created by tofits.py')
@@ -189,8 +206,10 @@ for mccd in rdat:
             for nw, win in enumerate(ccd):
                 wheader = fits.Header()
                 if rdat.nccd > 1:
-                    header['MJDUTC'] = (mccd[nc].time.mjd,'MJD(UTC) at centre of exposure')
-                    header['EXPOSE'] = (mccd[nc].time.expose,'Exposure time, secs')
+                    header['MJDUTC'] = (mccd[nc].time.mjd,
+                                        'MJD(UTC) at centre of exposure')
+                    header['EXPOSE'] = (mccd[nc].time.expose,
+                                        'Exposure time, secs')
                     header['TIMEOK'] = (mccd[nc].time.good,'Is time reliable?')
                 wheader['NCCD']   = nc+1
                 wheader['NWIN']   = nw+1
@@ -201,18 +220,20 @@ for mccd in rdat:
                 wheader['CUNIT2'] = ('pixels', 'Units of transformed Y scale')
 
                 fnumber = 1. - float(win.llx - 1)/win.xbin
-                wheader['CRPIX1'] = (fnumber, 'Pixel equivalent in X of reference point')
+                wheader['CRPIX1'] = (fnumber,
+                                     'Pixel equivalent in X of reference point')
                 fnumber = 1. - float(win.lly - 1)/win.ybin
-                wheader['CRPIX2'] = (fnumber, 'Pixel equivalent in Y of reference point')
+                wheader['CRPIX2'] = (fnumber,
+                                     'Pixel equivalent in Y of reference point')
                 fnumber = 1.
                 wheader['CRVAL1'] = (1., 'X value of reference point')
                 wheader['CRVAL2'] = (1., 'Y value of reference point')
-                    
+
                 wheader['CD1_1'] = (float(win.xbin),'Binning factor in X')
                 wheader['CD1_2'] = 0.
                 wheader['CD2_1'] = 0.
                 wheader['CD2_2'] = (float(win.ybin),'Binning factor in Y')
-                    
+
                 ihdu = fits.ImageHDU(win.data, wheader)
                 hdus.append(ihdu)
         hdul = fits.HDUList(hdus)
@@ -226,4 +247,3 @@ for mccd in rdat:
     fnum += 1
     if args.last > 0 and fnum > args.last:
         break
-    

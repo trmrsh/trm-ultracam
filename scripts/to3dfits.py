@@ -3,10 +3,13 @@
 usage = \
 """
 Reads in ULTRACAM raw data files and writes out to 3D FITS files together with
-an ASCII file of mid-exposure MJDs and exposure times in seconds. A run called 
-'run123' with one CCD and two windows will generate three files called 
-'run123_1.fits' and 'run123_2.fits' and 'run123.times'. If there is more than one
-CCD, then an extra '_1', '_2' will appear to identify the CCDs.
+an ASCII file of mid-exposure MJDs and exposure times in seconds. A run called
+'run123' with one CCD and two windows will generate three files called
+'run123_1.fits' and 'run123_2.fits' and 'run123.times'. If there is more than
+one CCD, then an extra '_1', '_2' will appear to identify the CCDs.
+
+The data are written as 4-byte floats and hence will be double the size of the
+raw ULTRACAM files.
 """
 
 # just import these for speed. After arguments are OK-ed, some more imports
@@ -18,15 +21,24 @@ parser = argparse.ArgumentParser(description=usage)
 parser.add_argument('run', help='run to plot, e.g. "run045"')
 
 # optional
-parser.add_argument('-n', dest='nccd', type=int, default=0, help='which CCD to process, 0 for the lot')
-parser.add_argument('-f', dest='first', type=int, default=1, help='first frame to read (default = 1)')
-parser.add_argument('-l', dest='last', type=int, default=0, help='last frame to read (0 to go up to last one)')
-parser.add_argument('-r', dest='back', action='store_true', help='remove median background from each window')
-parser.add_argument('-b', dest='bias', help='bias frame to subtract (ucm file)')
-parser.add_argument('-u', dest='ucam', action='store_true', help='get data via the ULTRACAM FileServer')
-parser.add_argument('-c', dest='clobber', action='store_true', help='clobber existing files')
-parser.add_argument('-i', dest='interval', type=int, default=100, help='interval for reporting progress')
-parser.add_argument('-s', dest='split', action='store_true', help='split files by CCD')
+parser.add_argument('-n', dest='nccd', type=int, default=0,
+                    help='which CCD to process, 0 for the lot')
+parser.add_argument('-f', dest='first', type=int, default=1,
+                    help='first frame to read (default = 1)')
+parser.add_argument('-l', dest='last', type=int, default=0,
+                    help='last frame to read (0 to go up to last one)')
+parser.add_argument('-r', dest='back', action='store_true',
+                    help='remove median background from each window')
+parser.add_argument('-b', dest='bias',
+                    help='bias frame to subtract (ucm file)')
+parser.add_argument('-u', dest='ucam', action='store_true',
+                    help='get data via the ULTRACAM FileServer')
+parser.add_argument('-c', dest='clobber', action='store_true',
+                    help='clobber existing files')
+parser.add_argument('-i', dest='interval', type=int, default=100,
+                    help='interval for reporting progress')
+parser.add_argument('-s', dest='split', action='store_true',
+                    help='split files by CCD')
 
 # OK, done with arguments.
 args = parser.parse_args()
@@ -47,7 +59,10 @@ if first < 0:
 
 # more imports
 import numpy as np
-import astropy.io.fits as fits
+try:
+    import astropy.io.fits as fits
+except:
+    import pyfits as fits
 from trm import ultracam
 
 if args.bias:
@@ -56,9 +71,7 @@ if args.bias:
 # Now do something
 fnum  = args.first
 first = True
-flt   = args.bias or args.back
-dtype = np.float32 if flt else np.uint16
-rdat  = ultracam.Rdata(run,args.first,flt=flt,server=args.ucam)
+rdat  = ultracam.Rdata(run,args.first,server=args.ucam)
 
 nccd = args.nccd
 if nccd < 0:
@@ -81,14 +94,15 @@ if args.last:
 else:
     nz = rdat.ntotal() - fnum + 1
 
-# now for each window create a FITS file. 
-nbytes = 4 if flt else 2
+# now for each window create a FITS file.
+nbytes = 4
+
 for nc in ccds:
     for nw,rwin in enumerate(rdat.win):
         # a 3D array of the right type
         # nx needs fiddling because of the pixel shift bug
         nx = rwin.nx-1 if rdat.version  == -1 else rwin.nx
-        tdim = np.zeros((1,rwin.ny,nx),dtype=dtype)
+        tdim = np.zeros((1,rwin.ny,nx),dtype=np.float32)
 
         # the primary HDU
         phdu  = fits.PrimaryHDU(data=tdim)
@@ -101,32 +115,36 @@ for nc in ccds:
             head.append()
 
         # manipulate the dimensions ...
-        head['NAXIS1']   = nx 
+        head['NAXIS1']   = nx
         head['NAXIS2']   = rwin.ny
         head['NAXIS3']   = nz
         npix = nz*rwin.ny*nx
 
+        if args.bias:
+            header['BSUB'] = (True,'Was a bias subtracted or not?')
+        else:
+            header['BSUB'] = (False,'Was a bias subtracted or not?')
         head['OBJECT']   = (rdat.target,'Object name')
         head['PI']       = (rdat.pi,'Principal investigator')
         head['ID']       = (rdat.id,'Program ID')
         head['OBSRVRS']  = (rdat.observers,'Observers')
         head['FILTER']   = (rdat.filters,'Filter')
-        head['FILTER']   = (rdat.filters,'Filter')
         head['SPEED']    = (rdat.speed,'Readout speed')
         head['DTYPE']    = (rdat.dtype,'Data type')
-        head['SLIDE']  = (rdat.slidePos,'Slide position, pixels')
+        head['SLIDE']    = (rdat.slidePos,'Slide position, pixels')
 
         # generate the file name. Include the CCD number if the instrument
         # has more than 1:
         if rdat.nccd == 1:
             fname = os.path.basename(run) + '_' + str(nw+1) + '.fits'
         else:
-            fname = os.path.basename(run) + '_' + str(nc+1) + '_' + str(nw+1) + '.fits'
+            fname = os.path.basename(run) + '_' + str(nc+1) + '_' + \
+                str(nw+1) + '.fits'
 
         # write the header
         head.tofile(fname, clobber=args.clobber)
 
-        # now extend the size of the file to accomodate the data which will be 
+        # now extend the size of the file to accomodate the data which will be
         # written later. Do this with a trick from the PyFITS manual: seek
         # past the end of the file and write a 0 in the last byte. We also
         # ensure that we write an exact number of blocks to avoid some warning
@@ -140,10 +158,10 @@ for nc in ccds:
         print 'Created container file =',fname
         print 'Will now read the data'
 
-        # at this stage we have generated a FITS container file for 
+        # at this stage we have generated a FITS container file for
         # each window ready to receive the data
 
-# Now the data reading step. 
+# Now the data reading step.
 
 for mccd in rdat:
 
@@ -159,7 +177,8 @@ for mccd in rdat:
             except ultracam.UltracamError, err:
                 print 'UltracamError:',err
                 print 'Bias format:\n',bias.format()
-                print 'Data format (should be subset of the bias):\n',mccd.format()
+                print 'Data format (should be subset of the bias):\n',\
+                    mccd.format()
                 exit(1)
         first = False
         mccd -= bias
@@ -205,14 +224,15 @@ for mccd in rdat:
     for nc in ccds:
         ccd = mccd[nc]
         # write times
-        times[nc].write('{0:15.9f} {1:11.6f} {2:1d}\n'.format(ccd.time.mjd,ccd.time.expose,ccd.time.good))
+        times[nc].write('{0:15.9f} {1:11.6f} {2:1d}\n'.format(
+            ccd.time.mjd,ccd.time.expose,ccd.time.good))
         for nw, win in enumerate(ccd):
             hduls[nhdul][0].data[fnum-args.first,::] = win.data
             nhdul += 1
 
     if fnum % args.interval == 0:
         print 'Stored data for frame',fnum
-        
+
     fnum += 1
     if args.last > 0 and fnum > args.last:
         break
