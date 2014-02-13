@@ -121,9 +121,9 @@ for nc in ccds:
         npix = nz*rwin.ny*nx
 
         if args.bias:
-            header['BSUB'] = (True,'Was a bias subtracted or not?')
+            head['BSUB'] = (True,'Was a bias subtracted or not?')
         else:
-            header['BSUB'] = (False,'Was a bias subtracted or not?')
+            head['BSUB'] = (False,'Was a bias subtracted or not?')
         head['OBJECT']   = (rdat.target,'Object name')
         head['PI']       = (rdat.pi,'Principal investigator')
         head['ID']       = (rdat.id,'Program ID')
