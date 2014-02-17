@@ -125,7 +125,7 @@ for nc in ccds:
         else:
             head['BSUB'] = (False,'Was a bias subtracted or not?')
         head['OBJECT']   = (rdat.target,'Object name')
-        head['RUNNUM']   = (rdat.run,'Run number')
+        head['RUNNUM']   = (os.path.basename(rdat.run),'Run number')
         head['PI']       = (rdat.pi,'Principal investigator')
         head['ID']       = (rdat.id,'Program ID')
         head['OBSRVRS']  = (rdat.observers,'Observers')
