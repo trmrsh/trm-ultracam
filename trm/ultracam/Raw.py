@@ -619,8 +619,11 @@ class Rdata (Rhead):
         head.add_entry('Run.expose',self.exposeTime,ITYPE_FLOAT,'exposure time')
         if self.instrument == 'ULTRASPEC':
             head.add_entry('Run.output',self.output,ITYPE_STRING,'CCD output used')
-        head.add_entry('Run.speed',self.speed,ITYPE_STRING,'Readout speed')
-        head.add_entry('Run.ccdTemp',self.ccdTemp,ITYPE_STRING,'Readout speed')
+        if self.instrument == 'ULTRASPEC':
+            head.add_entry('Run.speed',self.speed,ITYPE_STRING,'Readout speed')
+        elif self.instrument == 'ULTRASPEC':
+            head.add_entry('Run.speed',self.gainSpeed,ITYPE_STRING,'Readout speed')
+        head.add_entry('Run.ccdTemp',self.ccdTemp,ITYPE_STRING,'CCD Temperature')
         head.add_entry('Run.slidePos',self.slidePos,ITYPE_STRING,'Slide position')
 
         head.add_entry('Frame', 'Frame specific information')

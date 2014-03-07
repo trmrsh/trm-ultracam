@@ -617,7 +617,8 @@ class Rdata (Rhead):
         head.add_entry('Run.ntmin',info['ntmin'],ITYPE_INT,'number of sequential timestamps needed')
         head.add_entry('Run.filters',self.filters,ITYPE_STRING,'filter or filters')
         head.add_entry('Run.expose',self.exposeTime,ITYPE_FLOAT,'exposure time')
-        head.add_entry('Run.output',self.output,ITYPE_STRING,'CCD output used')
+        if self.instrument == 'ULTRASPEC':
+            head.add_entry('Run.output',self.output,ITYPE_STRING,'CCD output used')
         head.add_entry('Run.speed',self.speed,ITYPE_STRING,'Readout speed')
         head.add_entry('Run.ccdTemp',self.ccdTemp,ITYPE_STRING,'Readout speed')
         head.add_entry('Run.slidePos',self.slidePos,ITYPE_STRING,'Slide position')
