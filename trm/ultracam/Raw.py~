@@ -1792,7 +1792,7 @@ def utimer(tbytes, rhead, fnum):
 
     if rhead.instrument == 'ULTRACAM':
         info['vclock_frame'] = vclock_frame
-        return (time,info,blueTime,badBlue)
+        return (time,info,blueTime,badBlue,info)
 
     elif rhead.instrument == 'ULTRASPEC':
         return (time,info)
