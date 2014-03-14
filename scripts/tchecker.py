@@ -23,7 +23,7 @@ parser.add_argument('-b','--bad',action="store_true",
                     help="report only identifiably bad frames")
 parser.add_argument('--absolute', '-a', type=float, default=0.0001,
                     help='absolute rejection threshold to eliminate bad times, units of days')
-parser.add_argument('--rms', type=float, default=5.,
+parser.add_argument('--rms', type=float, default=8.,
                     help='RMS rejection threshold to eliminate bad times')
 args = parser.parse_args()
 
