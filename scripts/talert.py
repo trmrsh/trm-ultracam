@@ -45,7 +45,7 @@ lastNew    = time.time()
 print \
 """
 Time alert script started. Will poll once every {0:d}
-seconds and will warn of no change after {1:d} minutes.
+seconds and will warn of no change after {1:d} seconds.
 It reads every frame of the most recent run looking for
 times that do not occur at close to the median interval
 after the previous one.
@@ -65,6 +65,11 @@ while True:
 
             # Check whether the final run has changed
             currentRun = runs[-1]
+
+            # skip poweron/offs
+            rhead = ultracam.Rhead(currentRun, server=True)
+            if rhead.isPonoff(): continue
+
             newrun     = currentRun != lastRun
             lastRun    = currentRun
 
@@ -111,11 +116,12 @@ while True:
                     if len(devs[bad]):
                         for nb, ng in enumerate(bad):
                             if ng:
-                                print 'WARNING: run ' + str(currentRun) + ', frame',frame+nb+2,\
-                                    'occurred',adiffs[frame+1+nb],\
+                                print 'WARNING: run ' + str(currentRun) + ', frame',\
+                                    frame+nb+2,'occurred',adiffs[frame+nb],\
                                     'secs after previous cf median =',mdiff
                     else:
-                        print 'Run ' + str(currentRun) + ', frames',frame+1,'to',nmax,'have OK times.'
+                        print 'Run ' + str(currentRun) + ', frames',frame+1,'to',\
+                            nmax,'have OK times.'
 
                 frame = nmax
 
