@@ -117,7 +117,7 @@ class MCCD(object):
             elif itype == ITYPE_UCHAR:
                 value = struct.unpack(start_format + 'c', uf.read(1))[0]
             elif itype == ITYPE_USINT:
-                value = struct.unpack(start_format + 'H', uf.read(2))
+                value = struct.unpack(start_format + 'H', uf.read(2))[0]
             elif itype == ITYPE_IVECTOR:
                 nvec  = struct.unpack(start_format + 'i', uf.read(4))[0]
                 value = struct.unpack(start_format + str(nvec) + 'i', uf.read(4*nvec))
