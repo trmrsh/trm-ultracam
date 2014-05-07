@@ -60,13 +60,16 @@ while rej:
     std   = d.std()
     d     = np.abs(d)
     if d.max() > args.absolute:
-        print 'Rejected time for frame',n[ok][d.argmax()]
         ok[ind[ok][d.argmax()]] = False
         rej = True
     elif d.max() > args.rms*std:
-        print 'Rejected time for frame',n[ok][d.argmax()]
         ok[ind[ok][d.argmax()]] = False
         rej = True
+
+if len(gps[~ok]):
+    gps[~ok] = func(x, n[~ok], gps[~ok])
+    for ni, gpsi in zip(n[~ok], gps[~ok]):
+        print 'Frame',ni,'rejected. Time deviated by',86400*gpsi,'seconds cf',86400.*x[1],'cadence.'
 
 if args.linear:
     gps[ok] = func(x, n[ok], gps[ok])
