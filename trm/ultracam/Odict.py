@@ -22,13 +22,25 @@ class Odict(dict):
             self._keys = dct.keys()
             dict.__init__(self, dct)
 
+    def __repr__(self):
+        rep    = 'Odict({'
+        first = True
+        for k,v in self.iteritems():
+            if first:
+                rep += "'" + k + "': " + repr(v)
+                first = False
+            else:
+                rep += ", '" + k + "': " + repr(v)
+        rep += '})'
+        return rep
+
     def __delitem__(self, key):
         dict.__delitem__(self, key)
         self._keys.remove(key)
 
     def __setitem__(self, key, item):
         dict.__setitem__(self, key, item)
-        # 'try' needed to avoid error with pickling with protocol = 2 
+        # 'try' needed to avoid error with pickling with protocol = 2
         try:
             if key not in self._keys: self._keys.append(key)
         except AttributeError:
@@ -44,7 +56,7 @@ class Odict(dict):
             else:
                 st += ('%s%-' + str(Odict.nlength) + 's ') % (inset,key)
             st += str(val) + '\n'
-            
+
         Odict.ninset -= Odict.nincr
         return st
 
@@ -101,7 +113,7 @@ class Odict(dict):
         at the start of the list.
         """
         dict.__setitem__(self, key, item)
-        # 'try' needed to avoid error with pickling with protocol = 2 
+        # 'try' needed to avoid error with pickling with protocol = 2
         try:
             if key not in self._keys: self._keys.insert(index, key)
         except AttributeError:
