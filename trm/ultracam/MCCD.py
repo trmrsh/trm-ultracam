@@ -65,7 +65,7 @@ class MCCD(object):
     def __repr__(self):
         rep = 'MCCD( data=' + repr(self._data) + ', head=' + \
             repr(self.head) + ')'
-        retunr rep
+        return rep
 
     @classmethod
     def rucm(cls, fname, flt=True):
@@ -122,7 +122,7 @@ class MCCD(object):
             elif itype == ITYPE_UCHAR:
                 value = struct.unpack(start_format + 'c', uf.read(1))[0]
             elif itype == ITYPE_USINT:
-                value = struct.unpack(start_format + 'H', uf.read(2))
+                value = struct.unpack(start_format + 'H', uf.read(2))[0]
             elif itype == ITYPE_IVECTOR:
                 nvec  = struct.unpack(start_format + 'i', uf.read(4))[0]
                 value = struct.unpack(start_format + str(nvec) + 'i', uf.read(4*nvec))
@@ -134,10 +134,10 @@ class MCCD(object):
 
             # store header information, fast method
             Odict.__setitem__(head, name, (value, itype, comment))
-        
+
         # now for the data
         data  = []
-        
+
         # read number of CCDs
         nccd = struct.unpack(start_format + 'i', uf.read(4))[0]
 
@@ -222,11 +222,11 @@ class MCCD(object):
         """
         Equality operator tests same number of CCDs and that each CCD matches.
         """
-        
+
         if len(self) != len(other): return False
 
         for sccd, occd in zip(self._data,other._data):
-            if sccd != occd: 
+            if sccd != occd:
                 return False
         return True
 
@@ -246,12 +246,12 @@ class MCCD(object):
         or 16-bit unsigned integers according to the internal types.
 
         fname  -- file to write to. '.ucm' will be appended if necessary.
-        """    
+        """
 
         if not fname.strip().endswith('.ucm'):
             fname = fname.strip() + '.ucm'
         uf = open(fname, 'wb')
-    
+
         # write the format code
         uf.write(struct.pack('i',MAGIC))
 
@@ -260,10 +260,10 @@ class MCCD(object):
         uf.write(struct.pack('i',lmap))
 
         for key,val in self.head.iteritems():
-
             write_string(uf, key)
 
             value, itype, comment = val
+
             uf.write(struct.pack('i',itype))
             write_string(uf, comment)
 
