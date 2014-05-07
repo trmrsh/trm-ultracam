@@ -49,7 +49,7 @@ class MCCD(object):
           data  -- list of CCD objects
 
           head -- the header, either None or a Uhead object.
-          
+
         Sets the equivalent attribute 'head'
         """
         for ccd in data:
@@ -61,6 +61,11 @@ class MCCD(object):
 
         self._data = data
         self.head  = head
+
+    def __repr__(self):
+        rep = 'MCCD( data=' + repr(self._data) + ', head=' + \
+            repr(self.head) + ')'
+        retunr rep
 
     @classmethod
     def rucm(cls, fname, flt=True):
