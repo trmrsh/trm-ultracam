@@ -17,6 +17,12 @@ class Time(object):
         self.good   = good
         self.reason = reason
 
+    def __repr__(self):
+        rep = 'Time(mjd=' + repr(self.mjd) + ', expose=' + \
+            repr(self.expose) + ', good=' + repr(self.good) + \
+            ', reason=' + repr(self.reason) + ')'
+        return rep
+
     def __str__(self):
         ret = 'MJD = ' + str(self.mjd) + ', exposure = ' + str(self.expose) + \
             ', status = ' + str(self.good)
@@ -24,14 +30,7 @@ class Time(object):
             ret += ', reason: ' + self.reason
         return ret
 
-    def __repr__(self):
-        ret = '[' + str(self.mjd) + ' ' + str(self.expose) + \
-            ' ' + str(self.good)
-        if not self.good:
-            ret += ' ' + self.reason + ']'
-        else:
-            ret += ']'
-        return ret
+
 
 if __name__ == '__main__':
     time = Time(55000.2, 20., True, '')

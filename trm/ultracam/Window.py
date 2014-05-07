@@ -60,6 +60,13 @@ class Window(object):
         self.xbin = xbin
         self.ybin = ybin
 
+    def __repr__(self):
+        rep = 'Window(data=' + repr(self._data) + ', llx=' + \
+            repr(self.llx) + ', lly=' + repr(self.lly) + \
+            ', xbin=' + repr(self.xbin) + ', ybin=' + \
+            repr(self.ybin) + ')'
+        return rep
+
     @property
     def data(self):
         """

@@ -66,6 +66,14 @@ class CCD(object):
         self.good  = good
         self.head  = head
 
+    def __repr__(self):
+        """Warts-and-all contents of a CCD"""
+        rep = 'CCD(wins=' + repr(self._data) + ', time=' + \
+            repr(self.time) + ', nxmax=' + repr(self.nxmax) + \
+            ', nymax=' + repr(self.nymax) + ', good=' + \
+            repr(self.good) + ', head=' + repr(self.head) + ')'
+        return rep
+
     def __len__(self):
         """
         Returns the number of windows in the CCD
@@ -214,7 +222,7 @@ class CCD(object):
 
     def median(self):
         """
-        Returns median over all Windows of a CCD. 
+        Returns median over all Windows of a CCD.
         """
 
         # generate combined list of all pixels in CCD called 'arr'
