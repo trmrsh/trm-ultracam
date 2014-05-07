@@ -17,7 +17,7 @@ setup(name='trm.ultracam',
                'scripts/badruns.py', 'scripts/checkrun.py', 'scripts/ualert.py',
                'scripts/tofits.py', 'scripts/u2ds9.py', 'scripts/to3dfits.py',
                'scripts/uspchecker.py', 'scripts/uspfix.py', 'scripts/ptimes.py',
-               'scripts/tchecker.py', 'scripts/talert.py'],
+               'scripts/tchecker.py', 'scripts/talert.py', 'scripts/tnofcorr.py'],
 
       author='Tom Marsh',
       description="Python module for accessing ULTRACAM files",
