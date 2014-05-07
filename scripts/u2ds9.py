@@ -146,7 +146,7 @@ if __name__ == '__main__':
 
         # write out to an iraf mosaic fits file
         fobj = ultracam.ccd2fits(ccd, ccdname)
-         
+
         # the intensity scale
         ds.set('scale zscale')
 
@@ -168,7 +168,7 @@ if __name__ == '__main__':
 
         # initially set to the centre of the CCD
         ds.set('pan to %d %d physical' % (ccd.nxmax/2,ccd.nymax/2))
-            
+
         # zoomed out
         zh = ccd[0].xbin*(0.9*width)/ccd.nymax/len(nccds)
         zv = ccd[0].ybin*(0.9*height)/ccd.nymax
