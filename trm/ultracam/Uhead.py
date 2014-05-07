@@ -44,6 +44,10 @@ class Uhead(Odict):
         """
         Odict.__init__(self)
 
+    def __repr__(self):
+        rep = 'Uhead(' + Odict.__repr__(self)[6:]
+        return rep
+
     def __setitem__(self, key, value):
         raise UltracamError('Uhead.__setitem__ disabled to prevent invalid items being defined. Use add_entry')
 
