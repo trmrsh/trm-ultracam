@@ -27,6 +27,7 @@ parser.add_argument('--absolute', '-a', type=float, default=0.001,
 parser.add_argument('--rms', '-r', type=float, default=4., help='RMS rejection threshold to eliminate bad times')
 parser.add_argument('--linear', '-l', action='store_true', help='remove linear trend in times or not')
 parser.add_argument('--server', '-s', action="store_true",help="get runs from server")
+parser.add_argument('--derived', '-d', action="store_true",help="plot derived times rather than GPS stamps")
 
 # OK, done with arguments.
 args = parser.parse_args()
@@ -36,7 +37,10 @@ gps = []
 tdat  = ultracam.Rtime(args.run,server=args.server)
 for nf, time in enumerate(tdat):
     n.append(nf+1)
-    gps.append(time[1]['gps'])
+    if args.derived:
+        gps.append(time[0].mjd)
+    else:
+        gps.append(time[1]['gps'])
 
 n   = np.array(n)
 gps = np.array(gps)
