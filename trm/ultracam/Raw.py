@@ -358,7 +358,7 @@ class Rhead (object):
                 raise UltracamError('Rhead.__init__: clashing version numbers: ' + str(self.version) + ' vs ' + str(vcheck))
 
         if self.headerwords == 16:
-            VERSIONS = [100222, 111205, 120716, 120813, 130307, 130317, 130417]
+            VERSIONS = [100222, 111205, 120716, 120813, 130307, 130317, 140331]
             if self.version not in VERSIONS:
                 raise UltracamError('Rhead.__init__: could not recognise version = ' + str(self.version))
 
@@ -1143,7 +1143,7 @@ def utimer(tbytes, rhead, fnum):
     elif rhead.version == 100222 or rhead.version == 110921 or \
             rhead.version == 111205 or rhead.version == 120716 or \
             rhead.version == 120813 or rhead.version == 130303 or \
-            rhead.version == 130317 or rhead.version == 130417:
+            rhead.version == 130317 or rhead.version == 140331:
         format = 2
     else:
         raise UltracamError('Rdata._timing: version = ' + str(rhead.version) + ' unrecognised.')
