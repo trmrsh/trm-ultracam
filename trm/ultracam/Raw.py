@@ -1694,7 +1694,7 @@ def utimer(tbytes, rhead, fnum):
                 # Only one time
                 mjdCentre  = utimer.tstamp[0]
                 mjdCentre -= (rhead.exposeTime/2.+rhead.exposeTime)/DSEC
-                exposure   = serverdata.exposeTime
+                exposure   = rhead.exposeTime
 
                 if goodTime:
                     reason = 'too few stored timestamps'
