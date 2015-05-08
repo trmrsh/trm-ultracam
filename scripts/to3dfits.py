@@ -97,6 +97,20 @@ else:
 # now for each window create a FITS file.
 nbytes = 4
 
+def add_head(header, fkey, rdat, attr, comment):
+    """
+    Checked addition of parameter into a FITS header.
+
+    header  : the FITS header
+    fkey    : FITS keyword
+    rdat    : the Rdata object
+    attr    : the attribute to add (if present)
+    comment : comment. 
+    """
+    if hasattr(rdat, attr):
+        value = getattr(rdat, attr)
+        header[fkey] = (value,comment)
+
 for nc in ccds:
     for nw,rwin in enumerate(rdat.win):
         # a 3D array of the right type
@@ -124,15 +138,32 @@ for nc in ccds:
             head['BSUB'] = (True,'Was a bias subtracted or not?')
         else:
             head['BSUB'] = (False,'Was a bias subtracted or not?')
-        head['OBJECT']   = (rdat.target,'Object name')
+
+        add_head(head, 'OBJECT', rdat, 'target', 'Object name')
         head['RUNNUM']   = (os.path.basename(rdat.run),'Run number')
-        head['PI']       = (rdat.pi,'Principal investigator')
-        head['ID']       = (rdat.id,'Program ID')
-        head['OBSRVRS']  = (rdat.observers,'Observers')
-        head['FILTER']   = (rdat.filters,'Filter')
-        head['SPEED']    = (rdat.speed,'Readout speed')
-        head['DTYPE']    = (rdat.dtype,'Data type')
-        head['SLIDE']    = (rdat.slidePos,'Slide position, pixels')
+        add_head(head, 'FILTER', rdat, 'filter', 'Filter')
+        add_head(head, 'PI', rdat, 'pi', 'Principal investigator')
+        add_head(head, 'ID', rdat, 'id', 'Programme ID')
+        add_head(head, 'OBSRVRS', rdat, 'observers', 'Observers')
+        add_head(head, 'OUTPUT', rdat, 'output', 'CCD output used')
+        add_head(head, 'SPEED', rdat, 'speed', 'Readout speed')
+        add_head(head, 'DTYPE', rdat, 'dtype', 'Data type')
+        add_head(head, 'SLIDE', rdat, 'slidepos', 'Slide position (pixels)')
+        add_head(head, 'FOCUS', rdat, 'focus', 'Telescope focus')
+        add_head(head, 'CCDTEMP', rdat, 'ccdtemp', 'CCD temperature (K)')
+        add_head(head, 'FINGTEMP', rdat, 'fingertemp',
+                 'Cold finger temperature (K)')
+        add_head(head, 'FINGPCEN', rdat, 'fingerpcent',
+                 'Cold finger percentage')
+        add_head(head, 'RA', rdat, 'RA', 'Right Ascension (J2000)')
+        add_head(head, 'DEC', rdat, 'Dec', 'Declination (J2000)')
+        add_head(head, 'PA', rdat, 'PA', 'Position angle (degrees)')
+        add_head(head, 'ENGPA', rdat, 'engpa',
+                 'Engineering position angle (degrees)')
+        add_head(head, 'TRACK', rdat, 'track',
+                 'Telescope judged to be tracking by usdriver')
+        add_head(head, 'TTFLAG', rdat, 'ttflag',
+                 'Telescope judged to be tracking by TCS')
 
         # generate the file name. Include the CCD number if the instrument
         # has more than 1:
