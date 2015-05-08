@@ -85,6 +85,22 @@ else:
 
 # Now the data reading step.
 
+def add_head(header, fkey, mccd, hkey, comment=None):
+    """
+    Checked addition of parameter into a FITS header.
+
+    header  : the FITS header
+    fkey    : FITS keyword
+    mccd    : the MCCD object
+    hkey    : the header key within the MCCD
+    comment : comment. If None, the value from the MCCD will be used
+    """
+    if hkey in mccd.head:
+        if comment is None:
+            header[fkey] = (mccd.head.value(hkey),mccd.head.comment(hkey))
+        else:
+            header[fkey] = (mccd.head.value(hkey),comment)
+
 for mccd in rdat:
 
     if args.bias:
@@ -117,17 +133,29 @@ for mccd in rdat:
             else:
                 header['BSUB'] = (False,'Was a bias subtracted or not?')
             header['NCCD']    = (nc+1,'CCD number')
-            header['OBJECT']  = (mccd.head.value('User.target'),'Object name')
-            header['RUNNUM']  = (os.path.basename(mccd.head.value('Run.run')),'Run number')
-            header['FILTER']  = (mccd.head.value('Run.filters'),'Filter name')
-            header['OUTPUT']  = (mccd.head.value('Run.output'),'CCD output used')
-            header['SPEED']   = (mccd.head.value('Run.speed'),'Readout speed')
-            header['PI']      = (mccd.head.value('User.pi'),'Principal investigator')
-            header['ID']      = (mccd.head.value('User.id'),'Programme ID')
-            header['OBSRVRS'] = (mccd.head.value('User.observers'),'Observers')
-            header['DTYPE']   = (mccd.head.value('User.dtype'),'Data type')
-            header['SLIDE']   = (mccd.head.value('Run.slidePos'),'Slide position, pixels')
-            header['MJDUTC']  = (mccd[nc].time.mjd,'MJD(UTC) at centre of exposure')
+            add_head(header, 'OBJECT', mccd, 'User.target')
+            add_head(header, 'RUNNUM', mccd, 'Run.run')
+            add_head(header, 'FILTER', mccd, 'Run.filters')
+            add_head(header, 'PI', mccd, 'User.pi')
+            add_head(header, 'ID', mccd, 'Programme ID')
+            add_head(header, 'OBSRVRS', mccd, 'User.observers')
+            add_head(header, 'OUTPUT', mccd, 'Run.output')
+            add_head(header, 'SPEED', mccd, 'Run.speed')
+            add_head(header, 'DTYPE', mccd, 'User.dtype')
+            add_head(header, 'SLIDE', mccd, 'Run.slidepos')
+            add_head(header, 'FOCUS', mccd, 'Run.focus')
+            add_head(header, 'CCDTEMP', mccd, 'Run.ccdtemp')
+            add_head(header, 'FINGTEMP', mccd, 'Run.fingtemp')
+            add_head(header, 'FINGPCEN', mccd, 'Run.fingpcen')
+            add_head(header, 'RA', mccd, 'Run.RA')
+            add_head(header, 'DEC', mccd, 'Run.Dec')
+            add_head(header, 'PA', mccd, 'Run.PA')
+            add_head(header, 'ENGPA', mccd, 'Run.EngPA')
+            add_head(header, 'TRACK', mccd, 'Run.track')
+            add_head(header, 'TTFLAG', mccd, 'Run.ttflag')
+
+            header['MJDUTC']  = (mccd[nc].time.mjd,
+                                 'MJD(UTC) at centre of exposure')
             header['EXPOSE']  = (mccd[nc].time.expose,'Exposure time, secs')
             header['TIMEOK']  = (mccd[nc].time.good,'Is time reliable?')
             header.add_comment('File created by tofits.py')
@@ -178,19 +206,28 @@ for mccd in rdat:
             header['BSUB'] = (False,'Was a bias subtracted or not?')
         if rdat.nccd > 1:
             header['NCCD']   = (nc+1,'CCD number')
-        header['OBJECT']  = (mccd.head.value('User.target'),'Object name')
-        header['RUNNUM']  = (os.path.basename(mccd.head.value('Run.run')),
-                             'Run number')
-        header['FILTER']  = (mccd.head.value('Run.filters'),'Filter name')
-        header['OUTPUT']  = (mccd.head.value('Run.output'),'CCD output used')
-        header['SPEED']   = (mccd.head.value('Run.speed'),'Readout speed')
-        header['PI']      = (mccd.head.value('User.pi'),
-                             'Principal investigator')
-        header['ID']      = (mccd.head.value('User.id'),'Programme ID')
-        header['OBSRVRS'] = (mccd.head.value('User.observers'),'Observers')
-        header['DTYPE']   = (mccd.head.value('User.dtype'),'Data type')
-        header['SLIDE']   = (mccd.head.value('Run.slidePos'),
-                             'Slide position, pixels')
+
+        add_head(header, 'OBJECT', mccd, 'User.target')
+        add_head(header, 'RUNNUM', mccd, 'Run.run')
+        add_head(header, 'FILTER', mccd, 'Run.filters')
+        add_head(header, 'OUTPUT', mccd, 'Run.output')
+        add_head(header, 'SPEED', mccd, 'Run.speed')
+        add_head(header, 'PI', mccd, 'User.pi')
+        add_head(header, 'ID', mccd, 'Programme ID')
+        add_head(header, 'OBSRVRS', mccd, 'User.observers')
+        add_head(header, 'DTYPE', mccd, 'User.dtype')
+        add_head(header, 'SLIDE', mccd, 'Run.slidepos')
+        add_head(header, 'FOCUS', mccd, 'Run.focus')
+        add_head(header, 'CCDTEMP', mccd, 'Run.ccdtemp')
+        add_head(header, 'FINGTEMP', mccd, 'Run.fingtemp')
+        add_head(header, 'FINGPCEN', mccd, 'Run.fingpcen')
+        add_head(header, 'RA', mccd, 'Run.RA')
+        add_head(header, 'DEC', mccd, 'Run.Dec')
+        add_head(header, 'PA', mccd, 'Run.PA')
+        add_head(header, 'ENGPA', mccd, 'Run.EngPA')
+        add_head(header, 'TRACK', mccd, 'Run.track')
+        add_head(header, 'TTFLAG', mccd, 'Run.ttflag')
+
         if rdat.nccd == 1:
             header['MJDUTC'] = (mccd[0].time.mjd,
                                 'MJD(UTC) at centre of exposure')
