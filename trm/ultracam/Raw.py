@@ -39,8 +39,7 @@ class Rwin(object):
         return str(self.llx) + ',' + str(self.lly) + ',' + str(self.nx) + ',' + str(self.ny)
 
 class Rhead (object):
-    """
-    Represents essential header info of Ultracam/Ultraspec data read from a
+    """Represents essential header info of Ultracam/Ultraspec data read from a
     run###.xml file.
 
     :Parameters:
@@ -60,13 +59,15 @@ class Rhead (object):
 
      *framesize* : total number of bytes per frame.
 
-     *headerwords* : number of words (2-bytes/word) in timing info at start of a frame.
+     *headerwords* : number of words (2-bytes/word) in timing info at start of
+                     a frame.
 
      *instrument* : instrument name.
 
      *nccd* : number of CCDs
 
-     *mode* : a standardised summary of the readout mode derived from the application name.
+     *mode* : a standardised summary of the readout mode derived from the
+              application name.
 
      *user* : dictionary of user information. Set to None if there was none found.
 
@@ -205,28 +206,35 @@ class Rhead (object):
                 self.mode    = 'USPEC-4'
         elif app == 'ccd201_driftscan_cfg':
             self.mode    = 'UDRIFT'
-        elif app == 'ap1_poweron' or app == 'ap1_250_poweron' or app == 'ap2_250_poweroff' \
-                or app == 'appl1_pon_cfg' or app == 'appl2_pof_cfg' or app == 'ccd201_pon_cfg':
+        elif app == 'ap1_poweron' or app == 'ap1_250_poweron' or \
+             app == 'ap2_250_poweroff' or app == 'appl1_pon_cfg' or \
+             app == 'appl2_pof_cfg' or app == 'ccd201_pon_cfg':
             self.mode = 'PONOFF'
             return
         else:
-            raise UltracamError('Rhead.__init__: file = ' + self.run + ' failed to identify application = ' + app)
+            raise UltracamError('Rhead.__init__: file = ' + self.run + \
+                                ' failed to identify application = ' + app)
 
         # binning factors
-        self.xbin = int(param['X_BIN_FAC']) if 'X_BIN_FAC' in param else int(param['X_BIN'])
-        self.ybin = int(param['Y_BIN_FAC']) if 'Y_BIN_FAC' in param else int(param['Y_BIN'])
+        self.xbin = int(param['X_BIN_FAC']) if 'X_BIN_FAC' in param \
+                    else int(param['X_BIN'])
+        self.ybin = int(param['Y_BIN_FAC']) if 'Y_BIN_FAC' in param \
+                    else int(param['Y_BIN'])
 
-        # Windows. For each one store: x & y coords of lower-left pixel, binned dimensions
+        # Windows. For each one store: x & y coords of lower-left pixel,
+        # binned dimensions
         self.win = []
         fsize = 2*self.headerwords
         if self.instrument == 'ULTRACAM':
             try:
                 self.exposeTime = float(param['EXPOSE_TIME'])
             except ValueError, err:
-                raise UltracamError('Rhead.__init__: file = ' + self.run + ' failed to interpret EXPOSE_TIME')
+                raise UltracamError('Rhead.__init__: file = ' + self.run + \
+                                    ' failed to interpret EXPOSE_TIME')
 
             self.numexp     = int(param['NO_EXPOSURES'])
-            self.gainSpeed  = hex(int(param['GAIN_SPEED']))[2:] if 'GAIN_SPEED' in param else None
+            self.gainSpeed  = hex(int(param['GAIN_SPEED']))[2:] \
+                              if 'GAIN_SPEED' in param else None
 
             if 'V_FT_CLK' in param:
                 self.v_ft_clk  = struct.unpack('B',struct.pack('I',int(param['V_FT_CLK']))[2])[0]
@@ -243,14 +251,17 @@ class Rhead (object):
                 fsize += 12*self.win[-1].nx*self.win[-1].ny
 
             elif self.mode == 'FFOVER' or self.mode == 'FFOVNC':
-                # In overscan mode the extra pixels are clocked out after the data has been
-                # read which effectively means they should appear in the centre of the chip.
-                # However, this would ruin the location of the physical pixels relative to all
-                # other formats (unless they always included a centre gap). Thus the extra sections
-                # are placed off to the right-hand and top sides where they do not affect the pixel
-                # registration. This code requires some corresponding jiggery-pokery in Rdata because
-                # the actual data comes in in just two windows. The 6 windows come in 3 pairs of equal
-                # sizes, hence the single fsize increment line per pair.
+                # In overscan mode the extra pixels are clocked out after the
+                # data has been read which effectively means they should
+                # appear in the centre of the chip.  However, this would ruin
+                # the location of the physical pixels relative to all other
+                # formats (unless they always included a centre gap). Thus the
+                # extra sections are placed off to the right-hand and top
+                # sides where they do not affect the pixel registration. This
+                # code requires some corresponding jiggery-pokery in Rdata
+                # because the actual data comes in in just two windows. The 6
+                # windows come in 3 pairs of equal sizes, hence the single
+                # fsize increment line per pair.
 
                 # first set the physical data windows
                 self.win.append(Rwin(  1, 1, 512//self.xbin, 1024//self.ybin))
@@ -308,10 +319,14 @@ class Rhead (object):
             self.exposeTime = float(param['DWELL'])
             self.numexp   = int(param['NUM_EXPS'])
             self.speed    = ('S' if param['SPEED'] == '0' else \
-                                 ('M' if param['SPEED'] == '1' else 'F')) if 'SPEED' in param else None
-            self.en_clr   = (True if param['EN_CLR'] == '1' else False) if 'EN_CLR' in param else None
-            self.hv_gain  = int(param['HV_GAIN']) if 'HV_GAIN' in param else None
-            self.output   = ('N' if param['OUTPUT'] == '0' else 'A') if 'OUTPUT' in param else None
+                                 ('M' if param['SPEED'] == '1' else 'F')) \
+                if 'SPEED' in param else None
+            self.en_clr   = (True if param['EN_CLR'] == '1' else False) \
+                            if 'EN_CLR' in param else None
+            self.hv_gain  = int(param['HV_GAIN']) if 'HV_GAIN' \
+                            in param else None
+            self.output   = ('N' if param['OUTPUT'] == '0' else 'A') \
+                            if 'OUTPUT' in param else None
 
             xstart = int(param['X1_START'])
             ystart = int(param['Y1_START'])
@@ -320,9 +335,11 @@ class Rhead (object):
             self.win.append(Rwin(xstart,ystart,nx,ny))
             fsize += 2*self.win[-1].nx*self.win[-1].ny
 
-            if self.mode == 'USPEC-2' or self.mode == 'USPEC-3' or self.mode == 'USPEC-4' or self.mode == 'UDRIFT':
+            if self.mode == 'USPEC-2' or self.mode == 'USPEC-3' or \
+               self.mode == 'USPEC-4' or self.mode == 'UDRIFT':
                 xstart = int(param['X2_START'])
-                ystart = ystart if self.mode == 'UDRIFT' else int(param['Y2_START'])
+                ystart = ystart if self.mode == 'UDRIFT' else \
+                         int(param['Y2_START'])
                 nx     = int(param['X2_SIZE'])
                 ny     = ny if self.mode == 'UDRIFT' else int(param['Y2_SIZE'])
                 self.win.append(Rwin(xstart,ystart,nx,ny))
@@ -345,15 +362,21 @@ class Rhead (object):
                 fsize += 2*self.win[-1].nx*self.win[-1].ny
 
         if fsize != self.framesize:
-            raise UltracamError('Rhead.__init__: file = ' + self.run + '. Framesize = '
-                                + str(self.framesize) + ' clashes with calculated value = ' +  str(fsize))
+            raise UltracamError('Rhead.__init__: file = ' + self.run + \
+                                '. Framesize = ' + str(self.framesize) + \
+                                ' clashes with calculated value = ' + \
+                                str(fsize))
 
         # nasty stuff coming up ...
-        self.version   = int(user['revision']) if user is not None and 'revision' in user else \
-            (int(param['REVISION']) if 'REVISION' in param else int(param['VERSION']) if 'VERSION' in param else -1)
+        self.version   = int(user['revision']) if user is not None and \
+                         'revision' in user else \
+                         (int(param['REVISION']) if 'REVISION' in param \
+                          else int(param['VERSION']) if 'VERSION' in param \
+                          else -1)
 
         if 'REVISION' in param or 'VERSION' in param:
-            vcheck = int(param['REVISION']) if 'REVISION' in param else int(param['VERSION'])
+            vcheck = int(param['REVISION']) if 'REVISION' in param else \
+                     int(param['VERSION'])
             if vcheck != self.version:
                 raise UltracamError('Rhead.__init__: clashing version numbers: ' + str(self.version) + ' vs ' + str(vcheck))
 
@@ -379,14 +402,25 @@ class Rhead (object):
         # convert to seconds
         self.exposeTime *= self.timeUnits
 
-        self.target    = user['target'] if user and 'target' in user else None
-        self.filters   = user['filters'] if user and 'filters' in user else None
-        self.pi        = user['PI'] if user and 'PI' in user else None
-        self.id        = user['ID'] if user and 'ID' in user else None
-        self.observers = user['Observers'] if user and 'Observers' in user else None
-        self.dtype     = user['flags'] if user and 'flags' in user else None
-        self.ccdTemp   = user['ccd_temp'] if user and 'ccd_temp' in user else None
-        self.slidePos  = user['slidePos'] if user and 'slidePos' in user else None
+        # conditional loading of headers
+        if user and 'target' in user: self.target = user['target']
+        if user and 'filters' in user: self.filters = user['filters']
+        if user and 'PI' in user: self.pi = user['PI']
+        if user and 'ID' in user: self.id = user['ID']
+        if user and 'Observers' in user: self.observers = user['Observers']
+        if user and 'flags' in user: self.dtype = user['flags']
+        if user and 'ccd_temp' in user: self.ccdtemp = user['ccd_temp']
+        if user and 'SlidePos' in user: self.slidepos = user['SlidePos']
+        if user and 'RA' in user: self.RA  = user['RA']
+        if user and 'Dec' in user: self.Dec = user['Dec']
+        if user and 'Tracking' in user: self.track = user['Tracking']
+        if user and 'TTflag' in user: self.ttflag = user['TTflag']
+        if user and 'Focus' in user: self.focus = user['Focus']
+        if user and 'PA' in user: self.PA = user['PA'] 
+        if user and 'Eng_PA' in user: self.engpa = user['Eng_PA'] 
+        if user and 'ccd_temp' in user: self.ccdtemp = user['ccd_temp'] 
+        if user and 'finger_temp' in user: self.fingertemp = user['finger_temp']
+        if user and 'finger_pcent' in user: self.fingerpcent = user['finger_pcent']
 
     def npix(self):
         """
@@ -402,6 +436,23 @@ class Rhead (object):
         Is the run a power on / off? (no data)
         """
         return self.mode == 'PONOFF'
+
+class Ahead(Uhead):
+    """
+    Sub-class of Uhead to allow checked addition by attribute
+    from an Rhead into a Uhead.
+    """
+    def __init__(self, rhead):
+        Uhead.__init__(self)
+        self.rhead = rhead
+
+    def add_attr(self, key, attr, itype, comment):
+        """
+        attr only added in if it exists in self.rhead
+        """
+        if hasattr(self.rhead, attr):
+            value = getattr(self.rhead, attr)
+            Uhead.add_entry(self, key, value, itype, comment)
 
 class Rdata (Rhead):
     """
@@ -568,7 +619,8 @@ class Rdata (Rhead):
                                     ' from FileServer. Buffer length vs expected = '
                                     + str(len(buff)) + ' vs ' + str(self.framesize) + ' bytes.')
 
-            # have data. Re-format into the timing bytes and unsigned 2 byte int data buffer
+            # have data. Re-format into the timing bytes and unsigned 2 byte
+            # int data buffer
             tbytes = buff[:2*self.headerwords]
             buff   = np.fromstring(buff[2*self.headerwords:],dtype='uint16')
         else:
@@ -598,38 +650,63 @@ class Rdata (Rhead):
         self._nf += 1
 
         # build header
-        head = Uhead()
+        head = Ahead(self)
+
         head.add_entry('User','Data entered by user at telescope')
-        head.add_entry('User.target',self.target,ITYPE_STRING,'Object name')
-        head.add_entry('User.pi',self.pi,ITYPE_STRING,'PI name')
-        head.add_entry('User.id',self.id,ITYPE_STRING,'Program ID')
-        head.add_entry('User.observers',self.observers,ITYPE_STRING,'Observers')
-        head.add_entry('User.dtype',self.dtype,ITYPE_STRING,'Data type')
+        head.add_attr('User.target', 'target', ITYPE_STRING, 'Object name')
+        head.add_attr('User.pi','pi',ITYPE_STRING,'Principal investigator')
+        head.add_attr('User.id','id',ITYPE_STRING,'Programme ID')
+        head.add_attr('User.observers','observers',ITYPE_STRING,'Observers')
+        head.add_attr('User.dtype','dtype',ITYPE_STRING,'Data type')
 
         head.add_entry('Instrument','Instrument setup information')
-        head.add_entry('Instrument.instrument',self.instrument,ITYPE_STRING,'Instrument identifier')
-        head.add_entry('Instrument.headerwords',self.headerwords,ITYPE_INT,'Number of 2-byte words in timing')
-        head.add_entry('Instrument.framesize',self.framesize,ITYPE_INT,'Total number of bytes per frame')
+        head.add_attr('Instrument.instrument','instrument',ITYPE_STRING,
+                      'Instrument identifier')
+        head.add_attr('Instrument.headerwords','headerwords',ITYPE_INT,
+                      'Number of 2-byte words in timing')
+        head.add_attr('Instrument.framesize','framesize',ITYPE_INT,
+                       'Total number of bytes per frame')
 
         head.add_entry('Run', 'Run specific information')
-        head.add_entry('Run.run',self._run,ITYPE_STRING,'run the frame came from')
-        head.add_entry('Run.mode',self.mode,ITYPE_STRING,'readout mode used')
-        head.add_entry('Run.ntmin',info['ntmin'],ITYPE_INT,'number of sequential timestamps needed')
-        head.add_entry('Run.filters',self.filters,ITYPE_STRING,'filter or filters')
-        head.add_entry('Run.expose',self.exposeTime,ITYPE_FLOAT,'exposure time')
+        head.add_attr('Run.run','_run',ITYPE_STRING,'run the frame came from')
+        head.add_attr('Run.mode','mode',ITYPE_STRING,'readout mode used')
+        head.add_entry('Run.ntmin',info['ntmin'],ITYPE_INT,
+                       'number of sequential timestamps needed')
+        head.add_attr('Run.filters','filters',ITYPE_STRING,
+                      'Filter name or names')
+        head.add_attr('Run.expose','exposeTime',ITYPE_FLOAT,'exposure time')
         if self.instrument == 'ULTRASPEC':
-            head.add_entry('Run.output',self.output,ITYPE_STRING,'CCD output used')
-        if self.instrument == 'ULTRASPEC':
-            head.add_entry('Run.speed',self.speed,ITYPE_STRING,'Readout speed')
-        elif self.instrument == 'ULTRASPEC':
-            head.add_entry('Run.speed',self.gainSpeed,ITYPE_STRING,'Readout speed')
-        head.add_entry('Run.ccdTemp',self.ccdTemp,ITYPE_STRING,'CCD Temperature')
-        head.add_entry('Run.slidePos',self.slidePos,ITYPE_STRING,'Slide position')
+            head.add_attr('Run.output','output',ITYPE_STRING,'CCD output used')
+            head.add_attr('Run.speed','speed',ITYPE_STRING,'Readout speed')
+        elif self.instrument == 'ULTRACAM':
+            head.add_attr('Run.speed','gainSpeed',ITYPE_STRING,'Readout speed')
+
+        head.add_attr('Run.focus','focus',ITYPE_FLOAT,
+                      'Telescope focus')
+        head.add_attr('Run.ccdtemp','ccdtemp',ITYPE_FLOAT,
+                      'CCD temperature (K)')
+        head.add_attr('Run.fingtemp','fingertemp',ITYPE_FLOAT,
+                      'Cold finger temperature (K)')
+        head.add_attr('Run.fingpcen','fingerpcent',ITYPE_FLOAT,
+                      'Cold finger percentage')
+        head.add_attr('Run.slidepos','slidepos',ITYPE_FLOAT,
+                      'Slide position (pixels)')
+        head.add_attr('Run.RA','RA',ITYPE_STRING,'Right Ascension (J2000)')
+        head.add_attr('Run.Dec','Dec',ITYPE_STRING,'Declination (J2000)')
+        head.add_attr('Run.PA','PA',ITYPE_FLOAT,'Position angle (degrees)')
+        head.add_attr('Run.EngPA','engpa',ITYPE_FLOAT,
+                      'Engineering position angle (degrees)')
+        head.add_attr('Run.track','track',ITYPE_STRING,
+                      'Telescope judged to be tracking by usdriver')
+        head.add_attr('Run.ttflag','ttflag',ITYPE_STRING,
+                      'Telescope judged to be tracking by TCS')
 
         head.add_entry('Frame', 'Frame specific information')
-        head.add_entry('Frame.frame',self._nf,ITYPE_INT,'frame number within run')
-        head.add_entry('Frame.midnight',info['midnightCorr'],ITYPE_BOOL,'midnight bug correction applied')
-        head.add_entry('Frame.ferror',info['frameError'],ITYPE_BOOL,'problem with frame numbers found')
+        head.add_attr('Frame.frame','_nf',ITYPE_INT,'frame number within run')
+        head.add_entry('Frame.midnight',info['midnightCorr'],ITYPE_BOOL,
+                       'midnight bug correction applied')
+        head.add_entry('Frame.ferror',info['frameError'],ITYPE_BOOL,
+                       'problem with frame numbers found')
 
         # interpret data
         xbin, ybin = self.xbin, self.ybin

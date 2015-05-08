@@ -131,8 +131,8 @@ class Uhead(Odict):
             for index, kold in enumerate(self.keys()):
                 if kold.startswith(dir): lind = index
 
-        # the next implicitly check the value: if they can't be converted to the right type,
-        # something is wrong.
+        # the next implicitly check the value: if they can't be converted to
+        # the right type, something is wrong.
         if itype == ITYPE_DOUBLE or itype == ITYPE_FLOAT:
             value = float(value)
         elif itype == ITYPE_INT or itype == ITYPE_UINT or \
