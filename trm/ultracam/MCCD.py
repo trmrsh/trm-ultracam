@@ -256,49 +256,53 @@ class MCCD(object):
         uf.write(struct.pack('i',MAGIC))
 
         # write the header, starting with the number of entries
-        lmap = len(self.head)
-        uf.write(struct.pack('i',lmap))
+        if self.head is None:
+            uf.write(struct.pack('i',0))
+        else:
+            lmap = len(self.head)
+            uf.write(struct.pack('i',lmap))
 
-        for key,val in self.head.iteritems():
-            write_string(uf, key)
+            for key,val in self.head.iteritems():
+                write_string(uf, key)
 
-            value, itype, comment = val
+                value, itype, comment = val
 
-            uf.write(struct.pack('i',itype))
-            write_string(uf, comment)
+                uf.write(struct.pack('i',itype))
+                write_string(uf, comment)
 
-            if itype == ITYPE_DOUBLE:
-                uf.write(struct.pack('d', value))
-            elif itype == ITYPE_INT:
-                uf.write(struct.pack('i', value))
-            elif itype == ITYPE_UINT:
-                uf.write(struct.pack('I', value))
-            elif itype == ITYPE_FLOAT:
-                uf.write(struct.pack('f', value))
-            elif itype == ITYPE_STRING:
-                write_string(uf, value)
-            elif itype == ITYPE_BOOL:
-                uf.write(struct.pack('B', value))
-            elif itype == ITYPE_DIR:
-                pass
-            elif itype == ITYPE_TIME:
-                uf.write(struct.pack('i', value[0]))
-                uf.write(struct.pack('d', value[1]))
-            elif itype == ITYPE_DVECTOR:
-                uf.write(struct.pack('i', len(value)))
-                uf.write(struct.pack(str(len(value))+'d', *value))
-            elif itype == ITYPE_UCHAR:
-                uf.write(struct.pack('B', value))
-            elif itype == ITYPE_USINT:
-                uf.write(struct.pack('H', value))
-            elif itype == ITYPE_IVECTOR:
-                uf.write(struct.pack('i', len(value)))
-                uf.write(struct.pack(str(len(value))+'i', *value))
-            elif itype == ITYPE_FVECTOR:
-                uf.write(struct.pack('i', len(value)))
-                uf.write(struct.pack(str(len(value))+'f', *value))
-            else:
-                raise UltracamError('Hitem: type =' + str(itype) + 'not recognised')
+                if itype == ITYPE_DOUBLE:
+                    uf.write(struct.pack('d', value))
+                elif itype == ITYPE_INT:
+                    uf.write(struct.pack('i', value))
+                elif itype == ITYPE_UINT:
+                    uf.write(struct.pack('I', value))
+                elif itype == ITYPE_FLOAT:
+                    uf.write(struct.pack('f', value))
+                elif itype == ITYPE_STRING:
+                    write_string(uf, value)
+                elif itype == ITYPE_BOOL:
+                    uf.write(struct.pack('B', value))
+                elif itype == ITYPE_DIR:
+                    pass
+                elif itype == ITYPE_TIME:
+                    uf.write(struct.pack('i', value[0]))
+                    uf.write(struct.pack('d', value[1]))
+                elif itype == ITYPE_DVECTOR:
+                    uf.write(struct.pack('i', len(value)))
+                    uf.write(struct.pack(str(len(value))+'d', *value))
+                elif itype == ITYPE_UCHAR:
+                    uf.write(struct.pack('B', value))
+                elif itype == ITYPE_USINT:
+                    uf.write(struct.pack('H', value))
+                elif itype == ITYPE_IVECTOR:
+                    uf.write(struct.pack('i', len(value)))
+                    uf.write(struct.pack(str(len(value))+'i', *value))
+                elif itype == ITYPE_FVECTOR:
+                    uf.write(struct.pack('i', len(value)))
+                    uf.write(struct.pack(str(len(value))+'f', *value))
+                else:
+                    raise UltracamError('Hitem: type =' + str(itype) +
+                                        'not recognised')
 
         # number of CCDs
         nccd = len(self)
