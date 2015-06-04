@@ -148,8 +148,7 @@ class Uhead(Odict):
             if len(value) != 2:
                 raise UltracamError('Uhead.add_entry: key = ' + key +
                                 ': require a 2-element tuple or list (int,float) for ITYPE_TIME)')
-            value[0] = int(value[0])
-            value[1] = float(value[1])
+            value = (int(value[0]),float(value[1]))
         elif itype == ITYPE_DVECTOR:
             if not isinstance(value, np.ndarray) or len(value.shape) != 1:
                 raise UltracamError('Uhead.add_entry: key = ' + key +
