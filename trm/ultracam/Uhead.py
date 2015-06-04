@@ -84,7 +84,7 @@ class Uhead(Odict):
                    ITYPE_TIME : the corresponding value should be a two-element
                                 tuple or list with first an integer for the
                                 number of days and then a float for the
-                                fraction of a day.
+                                number of hours passed.
 
 
           comment : comment string with details of the variable.
