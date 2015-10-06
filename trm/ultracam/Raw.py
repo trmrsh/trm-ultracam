@@ -6,9 +6,9 @@ from __future__ import print_function
 
 import struct
 import warnings
-import urllib2
 import xml.dom.minidom
 from six.moves import zip
+from six.moves import urllib
 
 try:
     import numpy as np
@@ -127,7 +127,7 @@ class Rhead (object):
                                     ' Have you set the ULTRACAM_DEFAULT_URL environment variable?')
             # get from server
             full_url = URL + run + '?action=get_xml'
-            sxml = urllib2.urlopen(full_url).read()
+            sxml = urllib.request.urlopen(full_url).read()
             udom = xml.dom.minidom.parseString(sxml)
         else:
             # local disk file
@@ -549,7 +549,7 @@ class Rdata (Rhead):
                 yield self.__call__(flt=self._flt)
         except UendError:
             pass
-        except urllib2.HTTPError:
+        except urllib.error.HTTPError:
             pass
 
     def set(self, nframe=1):
@@ -615,7 +615,7 @@ class Rdata (Rhead):
         if self.server:
             # read timing and data in one go from the server
             full_url = URL + self.run + '?action=get_frame&frame=' + str(self._nf-1)
-            buff     = urllib2.urlopen(full_url).read()
+            buff     = urllib.request.urlopen(full_url).read()
             if len(buff) != self.framesize:
                 self._nf = 1
                 raise UltracamError('Rdata.__call__: failed to read frame ' + str(self._nf) +
@@ -1012,7 +1012,7 @@ class Rdata (Rhead):
             # frame because there are no options for timing data alone, although
             # at least no data re-formatting is required.
             full_url = URL + self.run + '?action=get_frame&frame=' + str(self._nf-1)
-            buff     = urllib2.urlopen(full_url).read()
+            buff     = urllib.request.urlopen(full_url).read()
             if len(buff) != self.framesize:
                 self._nf = 1
                 raise UltracamError('Rdata.time: failed to read frame ' + str(self._nf) +
@@ -1083,7 +1083,7 @@ class Rtime (Rhead):
                 yield self.__call__()
         except UendError:
             pass
-        except urllib2.HTTPError:
+        except urllib.error.HTTPError:
             pass
 
     def set(self, nframe=1):
@@ -1131,7 +1131,7 @@ class Rtime (Rhead):
             # have to read both timing and data in one go from the server
             # and just ignore the data
             full_url = URL + self.run + '?action=get_frame&frame=' + str(self._nf-1)
-            buff     = urllib2.urlopen(full_url).read()
+            buff     = urllib.request.urlopen(full_url).read()
             if len(buff) != self.framesize:
                 self._nf = 1
                 raise UltracamError('Rtime.__call__: failed to read frame ' + str(self._nf) +
