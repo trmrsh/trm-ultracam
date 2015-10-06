@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 #!/usr/bin/env python
 
 usage = \
@@ -35,31 +37,31 @@ args = parser.parse_args()
 # Check arguments
 run   = args.run
 if not args.ucam and not os.path.exists(run + '.xml'):
-    print 'ERROR: could not find',run+'.xml'
+    print('ERROR: could not find',run+'.xml')
     exit(1)
 if not args.ucam and not os.path.exists(run + '.dat'):
-    print 'ERROR: could not find',run+'.dat'
+    print('ERROR: could not find',run+'.dat')
     exit(1)
 
 first = args.first
 if first < 0:
-    print 'ERROR: first frame must be >= 0'
+    print('ERROR: first frame must be >= 0')
     exit(1)
 
 nccd = args.nccd
 if nccd < 0:
-    print 'ERROR: nccd must be >= 0'
+    print('ERROR: nccd must be >= 0')
     exit(1)
 nccd -= 1
 
 plo = args.plo
 if plo < 0. or plo > 100.:
-    print 'ERROR: plo must lie from 0 to 100'
+    print('ERROR: plo must lie from 0 to 100')
     exit(1)
 
 phi = args.phi
 if phi < 0. or phi > 100.:
-    print 'ERROR: phi must lie from 0 to 100'
+    print('ERROR: phi must lie from 0 to 100')
     exit(1)
 
 # more imports
@@ -97,10 +99,10 @@ if rdat.instrument == 'ULTRACAM':
             if first and bias != mccd:
                 try:
                     bias = bias.cropTo(mccd)
-                except ultracam.UltracamError, err:
-                    print 'UltracamError:',err
-                    print 'Bias format:\n',bias.format()
-                    print 'Data format (should be subset of the bias):\n',mccd.format()
+                except ultracam.UltracamError as err:
+                    print('UltracamError:',err)
+                    print('Bias format:\n',bias.format())
+                    print('Data format (should be subset of the bias):\n',mccd.format())
                     exit(1)
             first = False
             mccd -= bias
@@ -109,7 +111,7 @@ if rdat.instrument == 'ULTRACAM':
             mccd.rback(nccd)
 
         prange = mccd.plot(plo,phi,nccd,close=False,x1=args.x1,x2=args.x2,y1=args.y1,y2=args.y2)
-        print 'Plotted',mccd.head.value('Run.run'),'frame',mccd.head.value('Frame.frame'),'plot range(s):',prange
+        print('Plotted',mccd.head.value('Run.run'),'frame',mccd.head.value('Frame.frame'),'plot range(s):',prange)
     
         fnum += 1
         if args.last > 0 and fnum > args.last:
@@ -131,10 +133,10 @@ elif rdat.instrument == 'ULTRASPEC':
             if first and bias != ccd:
                 try:
                     bias = bias.cropTo(ccd)
-                except ultracam.UltracamError, err:
-                    print 'UltracamError:',err
-                    print 'Bias format:\n',bias.format()
-                    print 'Data format (should be subset of the bias):\n',ccd.format()
+                except ultracam.UltracamError as err:
+                    print('UltracamError:',err)
+                    print('Bias format:\n',bias.format())
+                    print('Data format (should be subset of the bias):\n',ccd.format())
                     exit(1)
             first = False
             ccd -= bias
@@ -145,7 +147,7 @@ elif rdat.instrument == 'ULTRASPEC':
         vmin, vmax = ccd.centile((plo,phi))
 
         ccd.plot(vmin,vmax)
-        print 'Plotted',ccd.head.value('Run.run'),'frame',ccd.head.value('Frame.frame'),'plot range:',vmin,'to',vmax
+        print('Plotted',ccd.head.value('Run.run'),'frame',ccd.head.value('Frame.frame'),'plot range:',vmin,'to',vmax)
     
         fnum += 1
         if args.last > 0 and fnum > args.last:
