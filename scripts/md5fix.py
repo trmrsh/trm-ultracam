@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 #!/usr/bin/env python
 
 usage = \
@@ -20,7 +22,7 @@ much.
 import sys, os, re, hashlib, shutil
 
 if len(sys.argv) > 1:
-    print usage
+    print(usage)
     exit(1)
 
 def md5sum(filename, blocksize=65536):
@@ -44,31 +46,31 @@ if __name__ == '__main__':
             mdf  = [os.path.join(rpath,fname) for fname in fnames if md.match(fname)]
             mdof = [os.path.join(rpath,fname) for fname in fnames if mdo.match(fname)]
             if len(mdf) == 0:
-                print 'Found .dat.old files in',rpath
-                print 'but could not MD%SUM_YYYY_MM_DD file.'
+                print('Found .dat.old files in',rpath)
+                print('but could not MD%SUM_YYYY_MM_DD file.')
             elif len(mdf) > 1:
-                print 'Found .dat.old files in',rpath
-                print 'but there are multiple MD%SUM_YYYY_MM_DD files =',mdf
+                print('Found .dat.old files in',rpath)
+                print('but there are multiple MD%SUM_YYYY_MM_DD files =',mdf)
             elif len(mdof):
-                print 'Found .dat.old files in',rpath
-                print 'but there is already an MD%SUM_YYYY_MM_DD.old file =',mdof
+                print('Found .dat.old files in',rpath)
+                print('but there is already an MD%SUM_YYYY_MM_DD.old file =',mdof)
             else:
                 mdf = mdf[0]
 
                 # copy the old md5sum file
                 shutil.copyfile(mdf, mdf + '.old')
-                print '\nCopied',mdf,'to',mdf+'.old'
+                print('\nCopied',mdf,'to',mdf+'.old')
 
                 # make writeable
                 os.chmod(mdf,0o644)
-                print 'Now correcting md5sums\n'
+                print('Now correcting md5sums\n')
                 with open(mdf, 'w') as fout:
                     with open(mdf + '.old', 'r') as fin:
                         for line in fin:
                             cksum, fname = line.split()
                             if fname in runs:
                                 # re-run the md5sum on any files with .dat.old equivalents
-                                print 'Computing md5sum for',fname
+                                print('Computing md5sum for',fname)
                                 cksum = md5sum(os.path.join(rpath, fname))
                             fout.write(cksum + '  ' + fname + '\n')
 
