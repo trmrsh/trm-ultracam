@@ -1,6 +1,8 @@
 """
 ATC server access code extra. See Raw.py for more.
 """
+from __future__ import absolute_import
+from __future__ import print_function
 
 import os
 import urllib2
@@ -66,5 +68,5 @@ def get_runs_from_server(dir=None):
     return runs
 
 if __name__ == '__main__':
-    print get_runs_from_server()
-    print 'test passed'
+    print(get_runs_from_server())
+    print('test passed')
