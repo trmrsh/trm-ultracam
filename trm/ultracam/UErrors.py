@@ -3,6 +3,7 @@
 """
 Exception classes
 """
+from __future__ import print_function
 
 class UltracamError(Exception):
     """For throwing exceptions from the ultracam module"""
@@ -41,5 +42,5 @@ if __name__ == '__main__':
     UendError('a test')
     PowerOnOffError('a test')
 
-    print 'test passed'
+    print('test passed')
 
