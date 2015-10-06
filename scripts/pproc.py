@@ -15,7 +15,11 @@ types to at least some extent.
 import argparse, os, re, sys, traceback
 
 # thirdparty
-import pyfits, numpy as np
+try:
+    import astropy.io.fits as fits
+except:
+    import pyfits as fits
+import numpy as np
 
 # mine
 from trm import ultracam

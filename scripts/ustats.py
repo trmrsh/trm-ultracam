@@ -26,7 +26,12 @@ as having the YYYY-MM-DD format. In all cases it starts from frame 1.
 import argparse, os, re, sys, traceback
 
 # thirdparty
-import pyfits, numpy as np
+try:
+    import astropy.io.fits as pyfits
+except ImportError:
+    import pyfits
+    
+import numpy as np
 
 # mine
 from trm import ultracam

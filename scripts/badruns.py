@@ -12,7 +12,11 @@ Runs through all stats files, tries to identify possible problem ones. Optionall
 import argparse, os, re, sys, traceback
 
 # thirdparty
-import pyfits, numpy as np
+try:
+    import astropy.io.fits as pyfits
+except ImportError:
+    import pyfits
+import numpy as np
 
 # mine
 from trm import ultracam

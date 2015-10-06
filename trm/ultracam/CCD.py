@@ -24,7 +24,7 @@ except ImportError:
 try:
     import astropy.io.fits as fits
 except ImportError:
-    print('Failed to import astrop.io.fits; FITS access will fail')
+    print('Failed to import astropy.io.fits; FITS access will fail')
 
 from trm.ultracam.Constants import *
 from trm.ultracam.Window import Window
