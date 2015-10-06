@@ -1,7 +1,9 @@
+#!/usr/bin/env python
 from __future__ import absolute_import
 from __future__ import print_function
+
 from six.moves import range
-#!/usr/bin/env python
+from six.moves import urllib
 
 usage = \
 """
@@ -15,7 +17,7 @@ talert.py
 """
 
 # builtins
-import argparse, time, urllib2
+import argparse, time
 import numpy as np
 
 # mine
@@ -132,7 +134,7 @@ while True:
                 print(uttime + ': >>>>>>> WARNING: Nothing has changed for ' + \
                     str(int(tstamp-lastNew)) + ' seconds! <<<<<<<<')
 
-    except urllib2.URLError as err:
+    except urllib.error.URLError as err:
         print(uttime + ': ' + str(err) + '; have you started the ATC FileServer?')
     except ultracam.UltracamError as err:
         print(uttime + ': ' + str(err))

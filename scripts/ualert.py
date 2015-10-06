@@ -1,6 +1,8 @@
+#!/usr/bin/env python
 from __future__ import absolute_import
 from __future__ import print_function
-#!/usr/bin/env python
+from six.moves import urllib
+
 
 usage = \
 """
@@ -11,7 +13,7 @@ elapsed since the frame changed or if there are problems with the data.
 """
 
 # builtins
-import argparse, time, urllib2
+import argparse, time
 
 # mine
 from trm import ultracam
@@ -99,7 +101,7 @@ while True:
                 print(uttime + ': >>>>>>> WARNING: Nothing has changed for ' + \
                     str(int((tstamp-lastNew)/ 60.)) + ' minutes! <<<<<<<<')
 
-    except urllib2.URLError as err:
+    except urllib.error.URLError as err:
         print(uttime + ': ' + str(err) + '; have you started the ATC FileServer?')
     except ultracam.UltracamError as err:
         print(uttime + ': ' + str(err))
