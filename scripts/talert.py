@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import range
 #!/usr/bin/env python
 
 usage = \
@@ -42,14 +45,13 @@ lastRun    = None
 lastNframe = None
 lastNew    = time.time()
 
-print \
-"""
+print("""
 Time alert script started. Will poll once every {0:d}
 seconds and will warn of no change after {1:d} seconds.
 It reads every frame of the most recent run looking for
 times that do not occur at close to the median interval
 after the previous one.
-""".format(args.wait,args.tmax)
+""".format(args.wait,args.tmax))
 
 while True:
 
@@ -83,8 +85,8 @@ while True:
 
             # Issue alert if nothing seems to be happening
             if tstamp - lastNew >= args.tmax:
-                print uttime + ': >>>>>>> WARNING: Nothing has changed for ' + \
-                    str(int(tstamp-lastNew)) + ' seconds! <<<<<<<<'
+                print(uttime + ': >>>>>>> WARNING: Nothing has changed for ' + \
+                    str(int(tstamp-lastNew)) + ' seconds! <<<<<<<<')
 
             # update the Rdata object if the run has changed
             if newrun:
@@ -100,7 +102,7 @@ while True:
 
            # Read the times of the frame up to the current frame
             if nmax > frame:
-                for nf in xrange(frame+1,nmax+1):
+                for nf in range(frame+1,nmax+1):
                     mjd = tdat(nf)[1]['gps']
                     if nf > 1:
                         diffs.append(86400.*(mjd-mjdold))
@@ -116,24 +118,24 @@ while True:
                     if len(devs[bad]):
                         for nb, ng in enumerate(bad):
                             if ng:
-                                print 'WARNING: run ' + str(currentRun) + ', frame',\
+                                print('WARNING: run ' + str(currentRun) + ', frame',\
                                     frame+nb+2,'occurred',adiffs[frame+nb],\
-                                    'secs after previous cf median =',mdiff
+                                    'secs after previous cf median =',mdiff)
                     else:
-                        print 'Run ' + str(currentRun) + ', frames',frame+1,'to',\
-                            nmax,'have OK times.'
+                        print('Run ' + str(currentRun) + ', frames',frame+1,'to',\
+                            nmax,'have OK times.')
 
                 frame = nmax
 
         else:
             if tstamp - lastNew > args.tmax:
-                print uttime + ': >>>>>>> WARNING: Nothing has changed for ' + \
-                    str(int(tstamp-lastNew)) + ' seconds! <<<<<<<<'
+                print(uttime + ': >>>>>>> WARNING: Nothing has changed for ' + \
+                    str(int(tstamp-lastNew)) + ' seconds! <<<<<<<<')
 
-    except urllib2.URLError, err:
-        print uttime + ': ' + str(err) + '; have you started the ATC FileServer?'
-    except ultracam.UltracamError, err:
-        print uttime + ': ' + str(err)
+    except urllib2.URLError as err:
+        print(uttime + ': ' + str(err) + '; have you started the ATC FileServer?')
+    except ultracam.UltracamError as err:
+        print(uttime + ': ' + str(err))
 
     # now wait before polling the server again
     time.sleep(args.wait)
