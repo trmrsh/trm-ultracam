@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import range
 #!/usr/bin/env python
 
 usage = \
@@ -46,15 +49,15 @@ args = parser.parse_args()
 # Check arguments
 run   = args.run
 if not args.ucam and not os.path.exists(run + '.xml'):
-    print 'ERROR: could not find',run+'.xml'
+    print('ERROR: could not find',run+'.xml')
     exit(1)
 if not args.ucam and not os.path.exists(run + '.dat'):
-    print 'ERROR: could not find',run+'.dat'
+    print('ERROR: could not find',run+'.dat')
     exit(1)
 
 first = args.first
 if first < 0:
-    print 'ERROR: first frame must be >= 0'
+    print('ERROR: first frame must be >= 0')
     exit(1)
 
 # more imports
@@ -75,17 +78,17 @@ rdat  = ultracam.Rdata(run,args.first,server=args.ucam)
 
 nccd = args.nccd
 if nccd < 0:
-    print 'ERROR: nccd must be >= 0'
+    print('ERROR: nccd must be >= 0')
     exit(1)
 elif nccd > rdat.nccd:
-    print 'ERROR: the data contains only',rdat.nccd,'CCDs.'
+    print('ERROR: the data contains only',rdat.nccd,'CCDs.')
     exit(1)
 nccd -= 1
 
 if nccd == -1:
-    ccds = range(rdat.nccd)
+    ccds = list(range(rdat.nccd))
 else:
-    ccds = range(0,nccd+1)
+    ccds = list(range(0,nccd+1))
 
 # For the 3D option we need to prepare the files in advance
 # first compute number of slices
@@ -187,8 +190,8 @@ for nc in ccds:
             fobj.seek(abytes - 1)
             fobj.write('\0')
 
-        print 'Created container file =',fname
-        print 'Will now read the data'
+        print('Created container file =',fname)
+        print('Will now read the data')
 
         # at this stage we have generated a FITS container file for
         # each window ready to receive the data
@@ -206,11 +209,11 @@ for mccd in rdat:
         if first and bias != mccd:
             try:
                 bias = bias.cropTo(mccd)
-            except ultracam.UltracamError, err:
-                print 'UltracamError:',err
-                print 'Bias format:\n',bias.format()
-                print 'Data format (should be subset of the bias):\n',\
-                    mccd.format()
+            except ultracam.UltracamError as err:
+                print('UltracamError:',err)
+                print('Bias format:\n',bias.format())
+                print('Data format (should be subset of the bias):\n',\
+                    mccd.format())
                 exit(1)
         first = False
         mccd -= bias
@@ -263,7 +266,7 @@ for mccd in rdat:
             nhdul += 1
 
     if fnum % args.interval == 0:
-        print 'Stored data for frame',fnum
+        print('Stored data for frame',fnum)
 
     fnum += 1
     if args.last > 0 and fnum > args.last:
