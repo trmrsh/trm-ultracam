@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+from __future__ import print_function
+import six
 #!/usr/bin/env python
 
 usage = \
@@ -32,7 +35,7 @@ def stats(hdu, dtype):
         data.field('p95r').mean()-data.field('p5r').mean()
     mean = (lm+rm)/2.
     diff = rm-lm
-    print '[%5d %7.1f %7.1f %7.1f]' % (mean, diff, asymm, spread),
+    print('[%5d %7.1f %7.1f %7.1f]' % (mean, diff, asymm, spread), end=' ')
 
     if dtype['JUNK'] and spread > 1: dtype['JUNK'] = False
     if dtype['BIAS'] and (spread < 2 or spread > 100 or asymm > 10): dtype['BIAS'] = False
@@ -47,18 +50,18 @@ def rfits(fname, mtype=None, mcomm=None):
     dtype = {'JUNK' : True, 'BIAS' : True, 'SCIENCE' : True, 'TECHNICAL' : True, 
              'SKY' : True, 'ACQUISITION' : True}
 
-    print fname,
+    print(fname, end=' ')
     stats(hdul[1], dtype)
     stats(hdul[2], dtype)
     stats(hdul[3], dtype)
 
-    if mtype is not None: print mtype,
+    if mtype is not None: print(mtype, end=' ')
 
     autoid = ''
-    for key, value in dtype.iteritems():
+    for key, value in six.iteritems(dtype):
         if value: autoid += '[' + key + ']' 
-    print autoid,
-    if mcomm is not None: print mcomm,
+    print(autoid, end=' ')
+    if mcomm is not None: print(mcomm, end=' ')
 #    print
     hdul.close()
 
@@ -94,7 +97,7 @@ if __name__ == '__main__':
                 stats = [os.path.join(rpath, fname) for fname in fnames if rmat.match(fname)]
 
                 if len(stats):
-                    print '\n\nFound',len(stats),'statistics files in directory = ',rpath,'\n'
+                    print('\n\nFound',len(stats),'statistics files in directory = ',rpath,'\n')
 
                     for stat in stats:
                         rfits(stat)
