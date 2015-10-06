@@ -84,7 +84,7 @@ nccd -= 1
 if nccd == -1:
     ccds = list(range(rdat.nccd))
 else:
-    ccds = list(range(0,nccd+1))
+    ccds = [nccd]
 
 # Now the data reading step.
 
@@ -208,7 +208,7 @@ for mccd in rdat:
         else:
             header['BSUB'] = (False,'Was a bias subtracted or not?')
         if rdat.nccd > 1:
-            header['NCCD']   = (nc+1,'CCD number')
+            header['NCCD']   = (nccd+1,'CCD number')
 
         add_head(header, 'OBJECT', mccd, 'User.target')
         add_head(header, 'RUNNUM', mccd, 'Run.run')
