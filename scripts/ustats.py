@@ -1,3 +1,7 @@
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import range
+from six.moves import zip
 #!/usr/bin/env python
 
 usage = \
@@ -47,8 +51,8 @@ rmat = re.compile('^run\d\d\d\.xml$')
 raw  = 'raw_data'
 meta = 'meta_data'
 if not os.path.isdir(raw) or not os.path.isdir(meta):
-    print 'One or both of',raw,'and',meta,'does not exist or is not a directory.'
-    print 'Are you running this script from the right directory?'
+    print('One or both of',raw,'and',meta,'does not exist or is not a directory.')
+    print('Are you running this script from the right directory?')
     exit(1)
 
 for rpath, rnames, fnames in os.walk(raw):
@@ -58,26 +62,26 @@ for rpath, rnames, fnames in os.walk(raw):
         # check for equivalent directory in derived_data
         dpath = meta + rpath[len(raw):]
         if not os.path.exists(dpath):
-            print 'Directory',rpath,'has no corresponding',dpath,'and will be skipped.'
+            print('Directory',rpath,'has no corresponding',dpath,'and will be skipped.')
             break
         
         fnames.sort()
         runs  = [os.path.join(rpath, fname[:-4]) for fname in fnames if rmat.match(fname)]
         stats = [os.path.join(dpath, fname[:-4] + '_stats.fits') for fname in fnames if rmat.match(fname)]
 
-        print '\n\nFound',len(runs),'runs in directory = ',rpath,'\n'
+        print('\n\nFound',len(runs),'runs in directory = ',rpath,'\n')
 
         for run, stat in zip(runs, stats):
 
             if not os.path.exists(run + '.dat'):
-                print run + '.dat does not exist.'
+                print(run + '.dat does not exist.')
                 continue
 
             if not args.overwrite and os.path.exists(stat):
-                print stat,'exists and will not be overwritten.'
+                print(stat,'exists and will not be overwritten.')
                 continue
 
-            print 'Processing',run
+            print('Processing',run)
 
             # initialise outer lists (LH, RH = left-hand, right-hand)
             minls   = [] # LH minimum values, each of which is a list over each CCD
@@ -118,7 +122,7 @@ for rpath, rnames, fnames in os.walk(raw):
                 # we go through every frame, but if nskip > 1, we only read the data
                 # 1 in every nskip files. We read all times to ensure that we get good 
                 # times in drift and other modes that require them.
-                for nf in xrange(1,nframe):
+                for nf in range(1,nframe):
                     if (nf-1) % nskip == 0:
                         mccd = rdat(nf)
                     else:
@@ -238,13 +242,13 @@ for rpath, rnames, fnames in os.walk(raw):
 
                 dataProblem = False
 
-            except ultracam.PowerOnOffError, err:
+            except ultracam.PowerOnOffError as err:
                 # silently pass these ones
                 pass
-            except Exception, err:
+            except Exception as err:
                 # Can get here after reading some frames if last is
                 # partial.
-                print 'Encountered problem on',run
+                print('Encountered problem on',run)
                 traceback.print_exc(file=sys.stdout)
                 dataProblem = True
 
@@ -356,4 +360,4 @@ for rpath, rnames, fnames in os.walk(raw):
                 hdulist = pyfits.HDUList(hdul)
                 hdulist.writeto(stat, clobber=True)
             else:
-                print '*** No data found in run',run
+                print('*** No data found in run',run)
