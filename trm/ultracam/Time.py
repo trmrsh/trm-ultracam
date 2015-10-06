@@ -1,6 +1,7 @@
 """
 Simple class for representing times
 """
+from __future__ import print_function
 
 class Time(object):
     """
@@ -35,4 +36,4 @@ class Time(object):
 if __name__ == '__main__':
     time = Time(55000.2, 20., True, '')
     str(time)
-    print 'test passed'
+    print('test passed')
