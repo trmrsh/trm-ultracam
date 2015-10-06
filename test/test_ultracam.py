@@ -3,6 +3,7 @@ Tests for trm.ultracam.
 
 Run with 'python test_ultracam.py'
 """
+from __future__ import absolute_import
 
 import unittest
 import numpy as np
