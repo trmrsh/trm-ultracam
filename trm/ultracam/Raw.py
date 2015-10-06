@@ -1,16 +1,19 @@
 """
 Section for handling the raw ULTRACAM data and xml files
 """
+from __future__ import absolute_import
+from __future__ import print_function
 
 import struct
 import warnings
 import urllib2
 import xml.dom.minidom
+from six.moves import zip
 
 try:
     import numpy as np
 except ImportError:
-    print 'Failed to import numpy; some routines will fail'
+    print('Failed to import numpy; some routines will fail')
 
 from trm.ultracam.Constants import *
 from trm.ultracam.CCD import CCD
@@ -168,7 +171,7 @@ class Rhead (object):
                         user[nd.tagName] = nd.childNodes[0].data
             else:
                 user = None
-        except Exception, err:
+        except Exception as err:
             user = None
 
         # Translate applications into meaningful mode names
@@ -228,7 +231,7 @@ class Rhead (object):
         if self.instrument == 'ULTRACAM':
             try:
                 self.exposeTime = float(param['EXPOSE_TIME'])
-            except ValueError, err:
+            except ValueError as err:
                 raise UltracamError('Rhead.__init__: file = ' + self.run + \
                                     ' failed to interpret EXPOSE_TIME')
 
