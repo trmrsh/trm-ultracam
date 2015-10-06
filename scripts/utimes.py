@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 #!/usr/bin/env python
 
 usage = \
@@ -27,7 +29,7 @@ args = parser.parse_args()
 
 run = args.run
 if not os.path.isfile(run + '.xml') or not os.path.isfile(run + '.dat'):
-    print 'One or both of',run+'.xml','and',run+'.dat','does not exist.'
+    print('One or both of',run+'.xml','and',run+'.dat','does not exist.')
     exit(1)
 
 tdat = ultracam.Rtime(run)
@@ -35,11 +37,11 @@ tdat = ultracam.Rtime(run)
 first = True
 for nf, time in enumerate(tdat):
     if not args.suppress or (first and not time[0].good):
-        print 'Frame %d, mid-time = %s, GPS = %s, exposure = %7.4f, status = %s' % \
+        print('Frame %d, mid-time = %s, GPS = %s, exposure = %7.4f, status = %s' % \
             (nf+1,ultracam.mjd2str(time[0].mjd,True),ultracam.mjd2str(time[1]['gps'],True),\
-                 time[0].expose, 'T' if time[0].good else 'F'),
+                 time[0].expose, 'T' if time[0].good else 'F'), end=' ')
         if not time[0].good:
-            print ', reason =',time[0].reason
+            print(', reason =',time[0].reason)
         else:
-            print
+            print()
         first = False
