@@ -434,6 +434,10 @@ class CCD(object):
                 twins.append(win / other)
         return CCD(twins, self.time, self.nxmax, self.nymax, OK, self.head)
 
+    # python3 calls truediv
+    def __truediv__(self,other):
+        return self.__div__(other)
+        
     def __radd__(self, other):
         """
         Defines other + CCD
@@ -470,6 +474,9 @@ class CCD(object):
             twins.append(other / win)
         return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
 
+    def __rtruediv__(self, other):
+        return self.__rdiv__(other)
+        
     def __str__(self):
         """
         Generates readable summary of a CCD

@@ -354,6 +354,9 @@ class Window(object):
     def __rdiv__(self, other):
         return Window(other / self._data + other, self.llx, self.lly, self.xbin, self.ybin)
 
+    def __rtruediv__(self,other):
+        return self.__rdiv__(other)
+        
     def format(self):
         """
         Returns a string defining the format of the Window

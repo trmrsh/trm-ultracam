@@ -415,7 +415,7 @@ class Rhead (object):
         if user and 'Observers' in user: self.observers = user['Observers']
         if user and 'flags' in user: self.dtype = user['flags']
         if user and 'ccd_temp' in user: self.ccdtemp = user['ccd_temp']
-        if user and 'SlidePos' in user: self.slidepos = user['SlidePos']
+        if user and 'SlidePos' in user: self.slidepos = user['SlidePos'].split()[0]
         if user and 'RA' in user: self.RA  = user['RA']
         if user and 'Dec' in user: self.Dec = user['Dec']
         if user and 'Tracking' in user: self.track = user['Tracking']

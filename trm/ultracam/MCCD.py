@@ -570,6 +570,9 @@ class MCCD(object):
         for ccd in self._data:
             tccds.append(other / ccd)
         return MCCD(tccds, self.head)
+        
+    def __rtruediv__(self,other):
+        return self.__rdiv__(other)
 
     def plot(self, vlo=2., vhi=98., nc=-1, method='p', mpl=False, cmap=CMDEF, \
                  close=True, x1=None, x2=None, y1=None, y2=None, sepmin=1.):
