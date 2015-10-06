@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 #!/usr/bin/env python
 
 usage = \
@@ -89,7 +91,7 @@ if len(sys.argv) > 1:
     if sys.argv[1] == '-r':
         recursive = True
     else:
-        print usage
+        print(usage)
         exit(1)
 else:
     recursive = False
@@ -117,10 +119,10 @@ for run in runs:
     # Check for .dat file
     path = run + '.dat'
     if os.path.exists(path) and not os.access(path, os.W_OK):
-        print 'You do not have write access to',path
-        print 'Please fix write permissions on the .dat files and then re-run'
-        print 'the script. The following command does this recursively:\n'
-        print 'find . -name "run*.dat" | xargs chmod +w\n'
+        print('You do not have write access to',path)
+        print('Please fix write permissions on the .dat files and then re-run')
+        print('the script. The following command does this recursively:\n')
+        print('find . -name "run*.dat" | xargs chmod +w\n')
         exit(1)
 
 # Now do the work
@@ -128,7 +130,7 @@ for run in runs:
 
     # Check for .dat file
     if not os.path.exists(run + '.dat'):
-        print run,'skipped; no .dat file'
+        print(run,'skipped; no .dat file')
         continue
 
     # Determine the filesize
@@ -143,7 +145,7 @@ for run in runs:
 
     # PowerOns are 32 bytes
     if fsize <= 32:
-        print run,'skipped; probably a poweron'
+        print(run,'skipped; probably a poweron')
         continue
 
     # Search for bad timestamps, storing the first
@@ -166,14 +168,14 @@ for run in runs:
     # Skip if more than one badframe is found because
     # I don't know how to deal with these properly.
     if nbad > 1:
-        print run,'skipped as it had',nbad,'(>1) bad frames'
-        print 'The times of this run cannot be trusted!!'
-        print 'Please e-mail Tom Marsh at Warwick if you encounter this'
-        print 'in a run that has *some* good times.'
+        print(run,'skipped as it had',nbad,'(>1) bad frames')
+        print('The times of this run cannot be trusted!!')
+        print('Please e-mail Tom Marsh at Warwick if you encounter this')
+        print('in a run that has *some* good times.')
         continue
 
     if badFrame == nf:
-        print run,'skipped as the bad frame was the final one'
+        print(run,'skipped as the bad frame was the final one')
         continue
 
     if badFrame:
@@ -206,7 +208,7 @@ for run in runs:
                 n += 1
 
         # Report progress
-        print run,'corrected; corrupted file copied to',run + '.dat.old'
+        print(run,'corrected; corrupted file copied to',run + '.dat.old')
 
         # Unblock ctrl-C interrupts ...
         signal.signal(signal.SIGINT, signal.SIG_DFL)
