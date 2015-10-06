@@ -1,13 +1,15 @@
 """
 A few general utility functions
 """
+from __future__ import absolute_import
+from __future__ import print_function
 
 import struct
 import datetime
 try:
     import numpy as np
 except ImportError:
-    print 'Failed to import numpy; some routines will fail'
+    print('Failed to import numpy; some routines will fail')
 
 from trm.ultracam.Constants import MAGIC, MJD0, RUN_DATES, \
     RUN_TELS, BIAS_CHANGES, BIAS_LEVELS
@@ -131,4 +133,4 @@ if __name__ == '__main__':
     mjd2str(56402)
     runID(56402)
 
-    print 'test passed'
+    print('test passed')
