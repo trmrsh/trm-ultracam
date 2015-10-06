@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+from __future__ import print_function
+import six
 #!/usr/bin/env python
 
 usage = \
@@ -19,7 +22,7 @@ def td(strng='', extra=None):
         extra = ''
     else:
         extra = ' class='+extra
-    if isinstance(strng, basestring):
+    if isinstance(strng, six.string_types):
         if strng == '':
             return '<td'+extra+'>&nbsp;</td>'
         else:
@@ -355,7 +358,7 @@ if __name__ == '__main__':
                         probs += '; histogram'
 
                     if probs != '':
-                        print stat[:-11]+probs
+                        print(stat[:-11]+probs)
                         if args.html:
                             fht.write('<tr>' + td(stat[2:-18]) + td(stat[13:-11]))
                             fht.write(td(badr) + td(badg) + td(badb) + td(terror))
