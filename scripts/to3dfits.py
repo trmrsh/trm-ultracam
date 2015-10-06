@@ -187,8 +187,8 @@ for nc in ccds:
         with open(fname,'rb+') as fobj:
             tbytes = len(head.tostring()) + nbytes*npix
             abytes = 2880 * (tbytes / 2880) + (2880 if tbytes % 2880 else 0)
-            fobj.seek(abytes - 1)
-            fobj.write('\0')
+            fobj.seek(int(abytes) - 1)
+            fobj.write(b'\0')
 
         print('Created container file =',fname)
         print('Will now read the data')
