@@ -36,7 +36,7 @@ def read_string(fobj, endian=''):
     """
     nchar  = struct.unpack(endian + 'i', fobj.read(4))[0]
     strng  = struct.unpack(endian + str(nchar) + 's', fobj.read(nchar))[0]
-    return strng
+    return strng.decode('utf-8')
 
 def check_ucm(fobj):
     """

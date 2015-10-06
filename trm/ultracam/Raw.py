@@ -9,6 +9,8 @@ import warnings
 import xml.dom.minidom
 from six.moves import zip
 from six.moves import urllib
+import six
+
 
 try:
     import numpy as np
@@ -240,7 +242,7 @@ class Rhead (object):
                               if 'GAIN_SPEED' in param else None
 
             if 'V_FT_CLK' in param:
-                self.v_ft_clk  = struct.unpack('B',struct.pack('I',int(param['V_FT_CLK']))[2])[0]
+                self.v_ft_clk  = six.indexbytes(struct.pack('I',int(param['V_FT_CLK'])),2)
             elif app == 'appl7_window3pair_cfg':
                 self.v_ft_clk  = 140;
             else:
@@ -529,7 +531,17 @@ class Rdata (Rhead):
         if server:
             self._fobj   = None
         else:
-            self._fobj   = open(run + '.dat', 'rb')
+            if six.PY3:
+                """
+                This exists because in Python 3, `open()` returns an
+                `io.BufferedReader` by default.  This is bad, because
+                `io.BufferedReader` doesn't support random access, which we may need in
+                some cases.  In the Python 3 case (implemented in the py3compat module)
+                we must call open with buffering=0 to get a raw random-access file
+                """
+                self._fobj   = open(run + '.dat', 'rb', buffering=0)
+            else:
+                self._fobj   = open(run + '.dat', 'rb')
 
         self._nf     = nframe
         self._run    = run
@@ -635,7 +647,7 @@ class Rdata (Rhead):
                 raise UendError('Rdata.__call__: failed to read timing bytes')
 
             # read data
-            buff = np.fromfile(self._fobj,'<u2',self.framesize/2-self.headerwords)
+            buff = np.fromfile(self._fobj,'<u2',int(self.framesize/2-self.headerwords))
             if len(buff) != self.framesize/2-self.headerwords:
                 self._fobj.seek(0)
                 self._nf = 1
@@ -1309,7 +1321,7 @@ def utimer(tbytes, rhead, fnum):
     if rhead.instrument == 'ULTRACAM':
         # One of the bits in the first byte is set if the blue frame is junk.
         # Unfortunately which bit was set changed hence the check of the format
-        fbyte   = struct.unpack('<B',tbytes[0])[0]
+        fbyte = six.indexbytes(tbytes,0)
         badBlue = rhead.nblue > 1 and \
             ((format == 1 and bool(fbyte & 1<<3)) or (format == 2 and bool(fbyte & 1<<4)))
 
