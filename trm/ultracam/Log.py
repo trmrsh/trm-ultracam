@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 #
 # Gets loaded by trm.ultracam
 #
