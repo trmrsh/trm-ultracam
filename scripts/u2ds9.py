@@ -1,7 +1,7 @@
+#!/usr/bin/env python
 from __future__ import absolute_import
 from __future__ import print_function
 from six.moves import range
-#!/usr/bin/env python
 
 usage = \
 """
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     # more imports
     import time, copy, tempfile
     import numpy as np
-    import pyfits as fits
+    from astropy.io import fits
     from trm import ultracam
 
     # Load bias
