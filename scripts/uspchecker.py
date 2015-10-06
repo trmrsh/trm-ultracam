@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 #!/usr/bin/env python
 
 usage = \
@@ -32,12 +34,12 @@ for rpath, rnames, fnames in os.walk('.'):
                         badFrames.append(nf+1)
 
             if len(badFrames) == 1:
-                print run,'has timing bug in frame',badFrames[0]
+                print(run,'has timing bug in frame',badFrames[0])
             elif len(badFrames) > 1:
-                print run,'has timing bug in multiple frames:',badFrames
-                print '       please e-mail Tom Marsh at Warwick about this!!'
+                print(run,'has timing bug in multiple frames:',badFrames)
+                print('       please e-mail Tom Marsh at Warwick about this!!')
             else:
-                print run,'is OK'
-        except Exception, err:
-            print run,'could not be read (probably a power on)'
-            print err
+                print(run,'is OK')
+        except Exception as err:
+            print(run,'could not be read (probably a power on)')
+            print(err)
