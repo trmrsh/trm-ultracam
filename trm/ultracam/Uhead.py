@@ -136,7 +136,6 @@ class Uhead(Odict):
 
         # the next implicitly check the value: if they can't be converted to
         # the right type, something is wrong.
-        print(key, value, itype)
         if itype == ITYPE_DOUBLE or itype == ITYPE_FLOAT:
             value = float(value)
         elif itype == ITYPE_INT or itype == ITYPE_UINT or \
