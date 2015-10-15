@@ -689,7 +689,7 @@ class Rdata (Rhead):
                       'Cold finger temperature (K)')
         head.add_attr('Run.fingpcen','fingerpcent',ITYPE_FLOAT,
                       'Cold finger percentage')
-        head.add_attr('Run.slidepos','slidepos',ITYPE_FLOAT,
+        head.add_attr('Run.slidepos','slidepos',ITYPE_STRING,
                       'Slide position (pixels)')
         head.add_attr('Run.RA','RA',ITYPE_STRING,'Right Ascension (J2000)')
         head.add_attr('Run.Dec','Dec',ITYPE_STRING,'Declination (J2000)')
