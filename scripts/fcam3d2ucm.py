@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
 #
 # Reads 3D FastCam data, dumps to a series of ucm files.
 #
@@ -33,7 +35,7 @@ fname  = args.fcam
 ndigit = args.ndigit
 
 if not fname.endswith('.fits'):
-    print 'ERROR: File must end with .fits'
+    print('ERROR: File must end with .fits')
     exit(1)
 
 # Open file
@@ -42,12 +44,12 @@ head = hdul[0].header
 
 naxis = head['NAXIS']
 if naxis != 3:
-    print 'ERROR: Was expecting a 3D FITS file'
+    print('ERROR: Was expecting a 3D FITS file')
     exit(1)
 
 source = head['SOURCE']
 if source != 'FastCam':
-    print 'ERROR: Source =',source,'but was expecting "FastCam"'
+    print('ERROR: Source =',source,'but was expecting "FastCam"')
     exit(1)
 
 data = hdul[0].data
@@ -112,7 +114,7 @@ for n, image in enumerate(data):
     mccd.wucm(oname)
 
     if (n+1) % 10 == 0:
-        print 'Dumped',oname,'to disk.'
+        print('Dumped',oname,'to disk.')
 
     # Shift time to next exposure
     hours += exptime/3600.

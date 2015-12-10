@@ -3,10 +3,16 @@ Tests for trm.ultracam.
 
 Run with 'python test_ultracam.py'
 """
+from __future__ import absolute_import
 
 import unittest
 import numpy as np
-import ppgplot as pg
+with_pg = True
+try:
+    import ppgplot as pg
+except:
+    print('No ppgplot - not testing plotting')
+    with_pg = False
 from   trm import ultracam
 
 class TestWindow(unittest.TestCase):
@@ -126,6 +132,8 @@ class TestCCD(unittest.TestCase):
 
     def test_plot(self):
         def ok():
+            if not with_pg:
+                return True
             pg.pgopen('/null')
             self.ccd.plot(5,95)
             pg.pgclos()

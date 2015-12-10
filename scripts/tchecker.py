@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
+
 
 usage = \
 """
@@ -55,7 +58,7 @@ runs.sort()
 for run in runs:
     try:
         tdat  = ultracam.Rtime(run,server=server)
-        if args.verbose: print 'Starting on run',run
+        if args.verbose: print('Starting on run',run)
         n   = []
         gps = []
         for nf, time in enumerate(tdat):
@@ -78,11 +81,11 @@ for run in runs:
                 std   = d.std()
                 d     = np.abs(d)
                 if d.max() > args.absolute:
-                    if args.verbose: print 'Rejected time for frame',n[ok][d.argmax()]
+                    if args.verbose: print('Rejected time for frame',n[ok][d.argmax()])
                     ok[ind[ok][d.argmax()]] = False
                     rej = True
                 elif d.max() > args.rms*std:
-                    if args.verbose: print 'Rejected time for frame',n[ok][d.argmax()]
+                    if args.verbose: print('Rejected time for frame',n[ok][d.argmax()])
                     ok[ind[ok][d.argmax()]] = False
                     rej = True
 
@@ -103,16 +106,16 @@ for run in runs:
             if bstart < bend:
                 nbad = len(ok[bstart:bend][~ok[bstart:bend]])
                 if nbad:
-                    print run,'has',nbad,'bad times'
+                    print(run,'has',nbad,'bad times')
                 elif not args.bad:
-                    print run,'has',nbad,'bad times'
+                    print(run,'has',nbad,'bad times')
             elif not args.bad:
-                print run,'has 0 bad times'
+                print(run,'has 0 bad times')
 
         elif not args.bad:
-            print run,'has',len(gps),'times total (< 3)'
+            print(run,'has',len(gps),'times total (< 3)')
 
-    except Exception, err:
+    except Exception as err:
         if args.verbose:
-            print run,'could not be read (probably a power on)'
-            print err
+            print(run,'could not be read (probably a power on)')
+            print(err)

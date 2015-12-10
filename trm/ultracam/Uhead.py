@@ -1,10 +1,13 @@
 """
 Header class for ucm files
 """
+from __future__ import absolute_import
+from __future__ import print_function
 
 from trm.ultracam.Odict import Odict
 from trm.ultracam.Constants import *
 from trm.ultracam.UErrors import UltracamError
+import six
 
 class Uhead(Odict):
     """
@@ -103,10 +106,10 @@ class Uhead(Odict):
         else:
             raise UltracamError('Uhead.add_entry: takes either 2 or 4 arguments')
 
-        if not isinstance(key, basestring):
+        if not isinstance(key, six.string_types):
             raise UltracamError('Uhead.add_entry: argument "key" must be a string.')
 
-        if not isinstance(comment, basestring):
+        if not isinstance(comment, six.string_types):
             raise UltracamError('Uhead.add_entry: key = ' + key + ': "comment" must be a string.')
 
         # now look at the key: must have no blanks
@@ -119,7 +122,7 @@ class Uhead(Odict):
         ldot = key.rfind('.')
         if ldot > -1:
             dir = key[:ldot]
-            for kold in self.keys()[::-1]:
+            for kold in list(self.keys())[::-1]:
                 if dir == kold and self[kold][1] == ITYPE_DIR:
                     break
             else:
@@ -188,7 +191,7 @@ class Uhead(Odict):
 
     def __str__(self):
         ret = ''
-        for key, val in self.iteritems():
+        for key, val in six.iteritems(self):
             ndot  = key.count('.')
             final = key[key.rfind('.')+1:]
             if val[1] == ITYPE_DIR:
@@ -204,4 +207,4 @@ if __name__ == '__main__':
     uhead = Uhead()
     uhead.add_entry('User','User information')
     uhead.add_entry('User.Filters','ugi', ITYPE_STRING, 'The filters')
-    print 'test passed'
+    print('test passed')

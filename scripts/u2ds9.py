@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import range
 
 usage = \
 """
@@ -47,13 +50,13 @@ if __name__ == '__main__':
         ucm = False
         nframe = args.frame
         if nframe < 0:
-            print 'ERROR: first frame must be >= 0'
+            print('ERROR: first frame must be >= 0')
             exit(1)
 
     elif os.path.exists(run + '.xml') and os.path.exists(run + '.dat'):
         nframe = args.frame
         if nframe < 0:
-            print 'ERROR: first frame must be >= 0'
+            print('ERROR: first frame must be >= 0')
             exit(1)
         ucm = False
 
@@ -65,20 +68,20 @@ if __name__ == '__main__':
         run += '.ucm'
 
     else:
-        print 'ERROR: could not find one or both of',run+'.xml','and',run+'.dat','or',run+'.ucm'
+        print('ERROR: could not find one or both of',run+'.xml','and',run+'.dat','or',run+'.ucm')
         exit(1)
 
     if args.nccd:
         nccd = args.nccd
         if nccd < 1:
-            print 'ERROR: nccd must be > 0'
+            print('ERROR: nccd must be > 0')
             exit(1)
         nccd -= 1
 
     # more imports
     import time, copy, tempfile
     import numpy as np
-    import pyfits as fits
+    from astropy.io import fits
     from trm import ultracam
 
     # Load bias
@@ -106,7 +109,7 @@ if __name__ == '__main__':
         if args.nccd:
             nccds = [nccd,]
         else:
-            nccds = range(len(mccd))
+            nccds = list(range(len(mccd)))
     else:
         nccds = [0,]
 

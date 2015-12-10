@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
+
 
 usage = \
 """
@@ -31,19 +34,19 @@ args = parser.parse_args()
 
 # Check arguments
 if not os.path.exists(args.iflat + '.ucm'):
-    print 'ERROR: could not find',args.iflat+'.ucm'
+    print('ERROR: could not find',args.iflat+'.ucm')
     exit(1)
 
 # Load the flat
 iflat = ultracam.MCCD.rucm(args.iflat)
 
 if len(iflat) != 1:
-    print 'Expected only 1 CCD for ULTRASPEC'
+    print('Expected only 1 CCD for ULTRASPEC')
     exit(1)
 
 ccd = iflat[0]
 if len(ccd) != 1:
-    print 'Expected only 1 Window for full frame flat'
+    print('Expected only 1 Window for full frame flat')
     exit(1)
 
 win   = ccd[0]
@@ -52,7 +55,7 @@ ny,nx = arr.shape
 
 if win.llx != 1 or win.lly != 1 or win.xbin != 1 or win.ybin != 1 or \
         nx != 1056 or ny != 1072:
-    print 'Only full frame, unbinned TNO data accepted.'
+    print('Only full frame, unbinned TNO data accepted.')
     exit(1)
 
 # good data region X: 18 to 1039, Y: 3 to 1026.
@@ -78,5 +81,5 @@ arr /= smoothed
 
 iflat.wucm(args.oflat)
 
-print 'Corrected file written to',args.oflat
+print('Corrected file written to',args.oflat)
 

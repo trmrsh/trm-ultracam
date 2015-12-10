@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import zip
+
 
 usage = \
 """
@@ -45,7 +49,7 @@ for nf, time in enumerate(tdat):
 n   = np.array(n)
 gps = np.array(gps)
 
-print 'Loaded',len(n),'timestamps.'
+print('Loaded',len(n),'timestamps.')
 
 def func(x, n, gps):
     t0  = x[0]
@@ -73,7 +77,7 @@ while rej:
 if len(gps[~ok]):
     gps[~ok] = func(x, n[~ok], gps[~ok])
     for ni, gpsi in zip(n[~ok], gps[~ok]):
-        print 'Frame',ni,'rejected. Time deviated by',86400*gpsi,'seconds cf',86400.*x[1],'cadence.'
+        print('Frame',ni,'rejected. Time deviated by',86400*gpsi,'seconds cf',86400.*x[1],'cadence.')
 
 if args.linear:
     gps[ok] = func(x, n[ok], gps[ok])

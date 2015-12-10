@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
 
 usage = \
 """
@@ -51,7 +53,7 @@ for rpath, rnames, fnames in os.walk('.'):
         fnames.sort()
         runs  = [os.path.join(rpath, fname[:-4]) for fname in fnames if rmat.match(fname)]
 
-        print '\n\nFound',len(runs),'runs in directory = ',rpath,'\n'
+        print('\n\nFound',len(runs),'runs in directory = ',rpath,'\n')
 
         for run in runs:
 
@@ -59,13 +61,13 @@ for rpath, rnames, fnames in os.walk('.'):
                 if int(run[-3:]) != args.number:
                     continue
             
-            print 'Processing',run
+            print('Processing',run)
             if not os.path.exists(run + '.dat'):
-                print '....... dat file does not exist.'
+                print('....... dat file does not exist.')
                 continue
 
             if run in SPECIALS:
-                print 'Special case; will skip it'
+                print('Special case; will skip it')
                 continue
 
             try:
@@ -99,19 +101,19 @@ for rpath, rnames, fnames in os.walk('.'):
                         if abs(expos) < 10000. and (abs(dgp) > args.diff or abs(dmj) > args.diff or abs(dex) > args.diff):
 #                            raise Exception('%-4d GPS=%12.6f %8.2f, MJD=%12.6f %8.2f, Exp=%6.3f %8.2f, GPS,MJD=%s, %s' % \
 #                                                (nline,gp,dgp,mj,dmj,expos,dex,dstr(gp),dstr(mj)))
-                            print 'format,which,mode,instrument,defTstamp,vclock_frame =',\
-                                frmt,whichRun,rtime.mode,rtime.instrument,defTstamp,vclock_frame,res[nline]
-                            print '%-4d GPS=%12.6f %8.2f, MJD=%12.6f %8.2f, Exp=%6.3f %8.2f, GPS,MJD=%s, %s' % \
+                            print('format,which,mode,instrument,defTstamp,vclock_frame =',\
+                                frmt,whichRun,rtime.mode,rtime.instrument,defTstamp,vclock_frame,res[nline])
+                            print('%-4d GPS=%12.6f %8.2f, MJD=%12.6f %8.2f, Exp=%6.3f %8.2f, GPS,MJD=%s, %s' % \
                                 (nline+1,gps[nline],dgp,mjd[nline],dmj,expose[nline],dex,
-                                 ultracam.mjd2str(gp,True),ultracam.mjd2str(mj,True))
+                                 ultracam.mjd2str(gp,True),ultracam.mjd2str(mj,True)))
                             exit(1)
                         nline += 1
                         if args.max and nline == args.max:
                             break
 
-            except ultracam.PowerOnOffError, err:
-                print '....... power on/off; ignoring'
+            except ultracam.PowerOnOffError as err:
+                print('....... power on/off; ignoring')
 
-            except Exception, err:
-                print 'Encountered problem on',run
+            except Exception as err:
+                print('Encountered problem on',run)
                 traceback.print_exc(file=sys.stdout)

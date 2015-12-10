@@ -3,24 +3,28 @@
 #
 
 from __future__ import division
+from __future__ import absolute_import
+from __future__ import print_function
 
 import tempfile
+import six
+from six.moves import zip
 try:
     import numpy as np
 except ImportError:
-    print 'Failed to import numpy; some routines will fail'
+    print('Failed to import numpy; some routines will fail')
 
 try:
     import matplotlib.cm as cm
     CMDEF = cm.binary
 except ImportError:
-    print 'Failed to import matplotlib.cm; some plotting will fail'
+    print('Failed to import matplotlib.cm; some plotting will fail')
     CMDEF = None
 
 try:
     import astropy.io.fits as fits
 except ImportError:
-    print 'Failed to import astrop.io.fits; FITS access will fail'
+    print('Failed to import astropy.io.fits; FITS access will fail')
 
 from trm.ultracam.Constants import *
 from trm.ultracam.Window import Window
@@ -248,7 +252,7 @@ class CCD(object):
         """
 
         # check against a string which can look array-like
-        if isinstance(pcent, basestring):
+        if isinstance(pcent, six.string_types):
             raise UltracamError('CCD.centile: argument "pcent" cannot be a string')
 
         # generate combined list of all pixels in CCD called 'arr'
@@ -430,6 +434,10 @@ class CCD(object):
                 twins.append(win / other)
         return CCD(twins, self.time, self.nxmax, self.nymax, OK, self.head)
 
+    # python3 calls truediv
+    def __truediv__(self,other):
+        return self.__div__(other)
+        
     def __radd__(self, other):
         """
         Defines other + CCD
@@ -466,6 +474,9 @@ class CCD(object):
             twins.append(other / win)
         return CCD(twins, self.time, self.nxmax, self.nymax, self.good and other.good, self.head)
 
+    def __rtruediv__(self, other):
+        return self.__rdiv__(other)
+        
     def __str__(self):
         """
         Generates readable summary of a CCD
@@ -504,7 +515,7 @@ if __name__ == '__main__':
 
     ccd  = CCD([win1,win2], time, 1024, 1024, True, uhead)
     ccd += 100.
-    print 'test passed'
+    print('test passed')
 
 def ccd2fits(ccd, name, fname=None):
     """

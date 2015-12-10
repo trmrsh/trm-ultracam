@@ -1,25 +1,30 @@
 """
 Classes to represent multiple CCDs
 """
+from __future__ import absolute_import
+from __future__ import print_function
 
 import struct
+import six
+from six.moves import range
+from six.moves import zip
 try:
     import numpy as np
 except ImportError:
-    print 'Failed to import numpy; some routines will fail.'
+    print('Failed to import numpy; some routines will fail.')
 
 try:
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
     CMDEF = cm.binary
 except ImportError:
-    print 'Failed to import matplotlib; plotting based on it will fail'
+    print('Failed to import matplotlib; plotting based on it will fail')
     CMDEF = None
 
 try:
     import ppgplot as pg
 except ImportError:
-    print 'Failed to import ppgplot; plotting based on it will fail'
+    print('Failed to import ppgplot; plotting based on it will fail')
 
 from trm.ultracam.Constants import *
 from trm.ultracam.Uhead import Uhead
@@ -95,7 +100,7 @@ class MCCD(object):
         lmap = struct.unpack(start_format + 'i', uf.read(4))[0]
 
         head = Uhead()
-        for i in xrange(lmap):
+        for i in range(lmap):
             name    = read_string(uf, start_format)
             itype   = struct.unpack(start_format + 'i', uf.read(4))[0]
             comment = read_string(uf, start_format)
@@ -262,7 +267,7 @@ class MCCD(object):
             lmap = len(self.head)
             uf.write(struct.pack('i',lmap))
 
-            for key,val in self.head.iteritems():
+            for key,val in six.iteritems(self.head):
                 write_string(uf, key)
 
                 value, itype, comment = val
@@ -565,6 +570,9 @@ class MCCD(object):
         for ccd in self._data:
             tccds.append(other / ccd)
         return MCCD(tccds, self.head)
+        
+    def __rtruediv__(self,other):
+        return self.__rdiv__(other)
 
     def plot(self, vlo=2., vhi=98., nc=-1, method='p', mpl=False, cmap=CMDEF, \
                  close=True, x1=None, x2=None, y1=None, y2=None, sepmin=1.):
@@ -809,5 +817,5 @@ if __name__ == '__main__':
     ccd1 = CCD([win1,win2], time, 1024, 1024, True, uhead)
     ccd2 = CCD([win1+20.,win2+100.], time, 1024, 1024, True, uhead)
     mccd = MCCD([ccd1,ccd2], uhead)
-    print 'test passed'
+    print('test passed')
 

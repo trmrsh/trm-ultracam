@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import range
+from six.moves import input
 
 descr = \
 """
@@ -93,7 +97,7 @@ def pLogs(oneLiners, nr, width, ndelta=None):
         nr_start = max(0, nr - ndelta)
         nr_end   = min(len(runs), nr_start + 2*ndelta + 1)
 
-    for nrr in xrange(nr_start, nr_end):
+    for nrr in range(nr_start, nr_end):
         ol = oneLiners[nrr]
         if nrr == nr:
             pLogs.textWrap.initial_indent = \
@@ -107,9 +111,9 @@ def pLogs(oneLiners, nr, width, ndelta=None):
                                    ol['filters'] if ol['filters'] else 'UNKNOWN')
         pLogs.textWrap.subsequent_indent = 40*' '
         if ol['comment'] == '':
-            print pLogs.textWrap.initial_indent
+            print(pLogs.textWrap.initial_indent)
         else:
-            print pLogs.textWrap.fill(ol['comment'])
+            print(pLogs.textWrap.fill(ol['comment']))
         
 if __name__ == '__main__':
 
@@ -147,7 +151,7 @@ if __name__ == '__main__':
 
     # short-circuit if -hh present
     if '-hh' in sys.argv:
-        print hhelp
+        print(hhelp)
         exit(0)
 
     # OK, done with arguments.
@@ -158,14 +162,14 @@ if __name__ == '__main__':
     nre     = re.compile(r'(\d\d\d\d)[-_](\d\d)[-_](\d\d)')
     m       = nre.search(night)
     if not m:
-        print 'ERROR:',night,'does not have expected YYYY MM DD pattern.'
+        print('ERROR:',night,'does not have expected YYYY MM DD pattern.')
         exit(1)
     
     year, month, day = m.group(1), m.group(2), m.group(3)
     nstore = year + '.' + month + '.' + day
 
     if args.trim.find('x') == -1:
-        print 'Failed to find an "x" in the -t option argument'
+        print('Failed to find an "x" in the -t option argument')
         exit(1)
     else:
         try:
@@ -173,8 +177,8 @@ if __name__ == '__main__':
             nrow = int(nrow)
             ncol = int(ncol)
         except:
-            print 'Could not understand -t argument =',args.trim
-            print 'Should be of form "1x2", "2x0" etc.'
+            print('Could not understand -t argument =',args.trim)
+            print('Should be of form "1x2", "2x0" etc.')
             exit(1)
 
     # load log file. Note this must be of the form YYYY-MM-DD.dat or
@@ -190,28 +194,28 @@ if __name__ == '__main__':
         if os.path.isfile(olog):
             log = ultracam.Log(olog)
         else:
-            print 'Could not locate log files of the form',nlog,'or',olog
-            print 'One of these must be in the run directory for comments'
-            print 'and, in old runs, target names and filters as well.'
+            print('Could not locate log files of the form',nlog,'or',olog)
+            print('One of these must be in the run directory for comments')
+            print('and, in old runs, target names and filters as well.')
             exit(1)
 
     if not os.path.isdir(night):
-        print 'ERROR:',night,'is not a directory.'
+        print('ERROR:',night,'is not a directory.')
         exit(1)
 
     first = args.first
     if first <= 0:
-        print 'ERROR: first frame must be > 0'
+        print('ERROR: first frame must be > 0')
         exit(1)
 
     plo = args.plo
     if plo < 0. or plo > 100.:
-        print 'ERROR: plo must lie from 0 to 100'
+        print('ERROR: plo must lie from 0 to 100')
         exit(1)
 
     phi = args.phi
     if phi < 0. or phi > 100.:
-        print 'ERROR: phi must lie from 0 to 100'
+        print('ERROR: phi must lie from 0 to 100')
         exit(1)
 
     # generate run list. Approach adopted depends upon whether
@@ -226,10 +230,10 @@ if __name__ == '__main__':
                     os.path.isfile(os.path.join(night, fname[:-4] + '.dat'))]
 
     if len(runs) == 0:
-        print 'ERROR: found no runs in directory =',night
+        print('ERROR: found no runs in directory =',night)
         exit(1)
     else:
-        print 'Found',len(runs),'runs in directory =',night
+        print('Found',len(runs),'runs in directory =',night)
     runs.sort()
 
     # load up targets, filters and comments from the logs
@@ -271,7 +275,7 @@ if __name__ == '__main__':
                                       'comment' : log.comment[run] if run in log.comment else '',
                                       'ok' : True})
  
-        except ultracam.UltracamError, err:
+        except ultracam.UltracamError as err:
             if log.format == 1:
                 oneLiners.append({'run' : run, 
                                   'target'  : log.target[run], 
@@ -312,28 +316,28 @@ if __name__ == '__main__':
             email = args.email
         elif user == 'observer':
             initials = dict([(USERS[entry][0],USERS[entry][1]) for entry in USERS])
-            keys = initials.keys()
+            keys = list(initials.keys())
             keys.sort()
-            print '\nSince you are runing this from the generic account "observer"'
-            print 'you need to specify who you are. Here is the list of recognised'
-            print 'initials / gmail combinations:\n'
+            print('\nSince you are runing this from the generic account "observer"')
+            print('you need to specify who you are. Here is the list of recognised')
+            print('initials / gmail combinations:\n')
             for i, key in enumerate(keys):
-                print str(i+1) + ') ' + key + ' / ' + initials[key]
-            print
+                print(str(i+1) + ') ' + key + ' / ' + initials[key])
+            print()
             while 1:
                 try:
-                    index = int(raw_input('Select integer entry number: '))-1
+                    index = int(input('Select integer entry number: '))-1
                     break
                 except ValueError:
-                    print 'Could not understand input; try again.'
+                    print('Could not understand input; try again.')
 
             user  = keys[index]
             email = initials[user]
-            print 'Selected initials =',user,'and gmail address =',email
+            print('Selected initials =',user,'and gmail address =',email)
         elif user in USERS:
             email = USERS[user][1]
         else:
-            email = raw_input('gmail address: ')
+            email = input('gmail address: ')
 
         if args.password:
             password = args.password
@@ -352,10 +356,10 @@ if __name__ == '__main__':
         for entry in sheets.entry:
             if entry.title.text == spread:
                 skey = entry.id.text.split('/')[-1]
-                print 'Found spreadsheet =',spread
+                print('Found spreadsheet =',spread)
                 break
         else:
-            print 'Failed to find spreadsheet =',spread
+            print('Failed to find spreadsheet =',spread)
             exit(1)
 
         nsheet = year + '-' + month + '-' + day
@@ -363,8 +367,8 @@ if __name__ == '__main__':
         for entry in wsheets.entry:
             if entry.title.text == nsheet:
                 pkey = entry.id.text.split('/')[-1]
-                print 'Found work sheet =',nsheet
-                print '>> You might want to check that ' + nsheet + ' has not already been completed <<'
+                print('Found work sheet =',nsheet)
+                print('>> You might want to check that ' + nsheet + ' has not already been completed <<')
                 break
         else:
             # have not found the sheet, so create it and set column names
@@ -373,7 +377,7 @@ if __name__ == '__main__':
             pkey   = wsheet.id.text.split('/')[-1]
             for i, cname in enumerate(cnames):
                 gd_client.UpdateCell(1, i+1, cname, skey, pkey)
-            print 'Created a new work sheet called',nsheet
+            print('Created a new work sheet called',nsheet)
 
         # That's it! We now have two keys, skey and pkey, which can be
         # used to talk to the correct work sheet of the spreadsheet.
@@ -394,7 +398,7 @@ if __name__ == '__main__':
     mjd_bias = ultracam.str2mjd(nstore)
 
     # stick a blank line in
-    print
+    print()
 
     # holds defaults
     lastComment   = None
@@ -422,7 +426,7 @@ if __name__ == '__main__':
 
         if oneLiners[nr]['ok']:
             # the usual case
-            reply = raw_input('<cr> to display ' + fname + ', q(uit): ')
+            reply = input('<cr> to display ' + fname + ', q(uit): ')
             if reply == 'q': break
 
             rdat   = ultracam.Rdata(fname, server=args.server)
@@ -432,22 +436,22 @@ if __name__ == '__main__':
             # default bias levels
             if args.back:
                 def_bias = None
-                print 'Will not apply default bias levels.'
+                print('Will not apply default bias levels.')
             else:
                 def_bias = ultracam.blevs(mjd_bias, rdat.gainSpeed)
                 if def_bias is None:
-                    print 'Failed to determine the default bias levels for night =',\
-                        night,'readout speed =',rdat.gainSpeed
-                    print 'Please report to trm'
-                    reply = raw_input('<cr> to continue without bias correction, q(uit)')
+                    print('Failed to determine the default bias levels for night =',\
+                        night,'readout speed =',rdat.gainSpeed)
+                    print('Please report to trm')
+                    reply = input('<cr> to continue without bias correction, q(uit)')
                     if reply == 'q': break
                 else:
-                    print 'Will apply default bias levels.'
+                    print('Will apply default bias levels.')
 
             # Display the exposures
             pgopen('/xs')
             saveBlue = None
-            for nf in xrange(1,nframe+1):
+            for nf in range(1,nframe+1):
 
                 # next bit of code is to try to minimise the number of bytes read for speed
                 # read only the full data when needed, and only the times of the frames
@@ -500,7 +504,7 @@ if __name__ == '__main__':
                         if args.noquery:
                             plot = True
                         else:
-                            reply = raw_input('plot final frame? [n]: ')
+                            reply = input('plot final frame? [n]: ')
                             plot  = reply == 'y' or reply == 'Y'
                     else:
                         plot = False
@@ -516,11 +520,11 @@ if __name__ == '__main__':
 
                         # determine plot ranges
                         prange = mccd.plot(plo,phi,close=False)
-                        print fname,', frame ' + str(nf) + ' / ' + str(nframe) + \
+                        print(fname,', frame ' + str(nf) + ' / ' + str(nframe) + \
                             ', time = ' + ultracam.mjd2str(mccd[0].time.mjd) + ', exp = ' + \
-                            str(mccd[0].time.expose) + ', ranges:',prange
+                            str(mccd[0].time.expose) + ', ranges:',prange)
                     else:
-                        print 'Final frame not displayed.'
+                        print('Final frame not displayed.')
 
                 else:
                     if nf + mccd.head.value('Run.ntmin') >= nnext: 
@@ -530,49 +534,49 @@ if __name__ == '__main__':
             pgclos()
 
             # blank line
-            print
+            print()
 
             # print out contextual info with the target name, filters from logs
             # also covering a few preceding and following runs.
             pLogs(oneLiners, nr, args.width, 2)
 
             # blank line
-            print 
+            print() 
 
             # The data type.
             reply = 'Z'
             while reply not in DTYPES: 
-                reply = raw_input('a(qui), b(ias), d(ark), f(lat), s(cie), (flu)x,' + \
+                reply = input('a(qui), b(ias), d(ark), f(lat), s(cie), (flu)x,' + \
                                       ' j(unk), p(ubl), t(ech), u(nsure), h(elp),' + \
                                       ' l(ogs), S(tep), N(ext), q(uit): ')
                 ml     = lre.match(reply)
                 ms     = sre.match(reply)
                 if ml:
                     pLogs(oneLiners, nr, args.width, int(ml.group(1)))
-                    print
+                    print()
                 elif reply == 'l':
                     pLogs(oneLiners, nr, args.width)
-                    print
+                    print()
                 elif ms:
                     nr = max(0, min(nr + int(ms.group(1)), len(runs)-1))
                     break
                 elif reply == 'h':
-                    print '\nOptions (case sensitive):\n'
-                    print '  a --- aquisition, possibly moving, rotating'
-                    print '  b --- bias frame. No extraneous light or readout funnies.'
-                    print '  d --- dark frame for calibrating dark count rates.'
-                    print '  f --- twilight sky flat.'
-                    print '  j --- junk. Data of absolutely no conceivable use.'
-                    print '  p --- publicity shots.'
-                    print '  s --- science data. Largely fixed position.'
-                    print '  t --- technical. Internals flats, noise tests, etc.'
-                    print '  u --- unsure, i.e. decide later.'
-                    print '  x --- flux standard.'
-                    print '  h --- print this help.'
-                    print '  l --- print full logs. ("l 3" to get +/- 3 only etc.)'
-                    print '  S --- step the run: e.g. "S -2" to step back 2 runs, "S 0" to repeat.'
-                    print '  N --- move to next run, skipping the current one.'
-                    print '  q --- quit the script\n'
+                    print('\nOptions (case sensitive):\n')
+                    print('  a --- aquisition, possibly moving, rotating')
+                    print('  b --- bias frame. No extraneous light or readout funnies.')
+                    print('  d --- dark frame for calibrating dark count rates.')
+                    print('  f --- twilight sky flat.')
+                    print('  j --- junk. Data of absolutely no conceivable use.')
+                    print('  p --- publicity shots.')
+                    print('  s --- science data. Largely fixed position.')
+                    print('  t --- technical. Internals flats, noise tests, etc.')
+                    print('  u --- unsure, i.e. decide later.')
+                    print('  x --- flux standard.')
+                    print('  h --- print this help.')
+                    print('  l --- print full logs. ("l 3" to get +/- 3 only etc.)')
+                    print('  S --- step the run: e.g. "S -2" to step back 2 runs, "S 0" to repeat.')
+                    print('  N --- move to next run, skipping the current one.')
+                    print('  q --- quit the script\n')
         
             # handle some special cases
             if reply == 'q': 
@@ -590,13 +594,13 @@ if __name__ == '__main__':
             reply = 'h'
             while reply == 'h' or reply == 'H': 
                 if target:
-                    reply = raw_input('Target: h(elp), q(uit) [' + target + ']: ')
+                    reply = input('Target: h(elp), q(uit) [' + target + ']: ')
                 else:
-                    reply = raw_input('Target: h(elp), q(uit): ')
+                    reply = input('Target: h(elp), q(uit): ')
 
                 if reply == 'h' or reply == 'H':
-                    print '\nPlease specify the target. <cr> to get the default taken'
-                    print 'from the logs. "q" will quit the script.\n'
+                    print('\nPlease specify the target. <cr> to get the default taken')
+                    print('from the logs. "q" will quit the script.\n')
 
                 if reply == 'q' or reply == 'Q':
                     break
@@ -609,13 +613,13 @@ if __name__ == '__main__':
             reply = 'h'
             while reply == 'h' or reply == 'H':
                 if filters:
-                    reply = raw_input('Filters: h(elp), q(uit) [' + filters + ']: ')
+                    reply = input('Filters: h(elp), q(uit) [' + filters + ']: ')
                 else:
-                    reply = raw_input('Filters: h(elp), q(uit): ')
+                    reply = input('Filters: h(elp), q(uit): ')
 
                 if reply == 'h' or reply == 'H':
-                    print '\nPlease specify the filters. <cr> for the default from'
-                    print 'the logs\n'
+                    print('\nPlease specify the filters. <cr> for the default from')
+                    print('the logs\n')
 
             if reply == 'q' or reply == 'Q':
                 break
@@ -627,15 +631,15 @@ if __name__ == '__main__':
             comment = 'h'
             while comment == 'h' or (dtype == 'junk' and comment == ''):
                 if lastComment is None:
-                    comment = raw_input('Comment: h(elp), q(uit): ')
+                    comment = input('Comment: h(elp), q(uit): ')
                 else:
-                    comment = raw_input('Comment: h(elp), q(uit) [' + lastComment + ']: ')
+                    comment = input('Comment: h(elp), q(uit) [' + lastComment + ']: ')
                 if comment == 'h':
-                    print '\nPlease type a one-liner comment. It can be blank except in the'
-                    print 'case of junk files where you must say _something_ about what is'
-                    print 'wrong with the data. The default is your previous comment, if any.'
-                    print "If you don't want the default, but want to say nothing then"
-                    print "either type a space or '' followed by <cr>\n"
+                    print('\nPlease type a one-liner comment. It can be blank except in the')
+                    print('case of junk files where you must say _something_ about what is')
+                    print('wrong with the data. The default is your previous comment, if any.')
+                    print("If you don't want the default, but want to say nothing then")
+                    print("either type a space or '' followed by <cr>\n")
                 elif comment == '':
                     if lastComment is not None: comment = lastComment
                 elif comment == "''":
@@ -654,7 +658,7 @@ if __name__ == '__main__':
             target  = oneLiners[nr]['target'] if oneLiners[nr]['target'] else ' '
             filters = oneLiners[nr]['filters'] if oneLiners[nr]['filters'] else ' '
             comment = oneLiners[nr]['comment']
-            print fname,'auto ID-ed as junk.'
+            print(fname,'auto ID-ed as junk.')
 
         # Now save the data
         # Time stamp
@@ -669,16 +673,16 @@ if __name__ == '__main__':
         if args.local:
             # write data to a disk file
             fstore.write('\t'.join([elem[1] for elem in row]) + '\n')
-            print 'Written data for',nstore+'/'+run,'to',args.local
+            print('Written data for',nstore+'/'+run,'to',args.local)
         else:
             # upload to google spreadsheet
             entry = gd_client.InsertRow(dict(row), skey, pkey) 
             if isinstance(entry, gdata.spreadsheet.SpreadsheetsList):
-                print 'Uploaded data for',nstore+'/'+run,'to',spread,'/',nsheet
+                print('Uploaded data for',nstore+'/'+run,'to',spread,'/',nsheet)
             else:
-                print 'Died while uploading to spreadsheet.'
+                print('Died while uploading to spreadsheet.')
                 exit(1)
-        print
+        print()
         
         # step one run on
         nr += 1

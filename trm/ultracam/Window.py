@@ -1,24 +1,26 @@
 """
 Class to represent a sub-window of a CCD
 """
+from __future__ import absolute_import
+from __future__ import print_function
 
 try:
     import numpy as np
 except ImportError:
-    print 'Failed to import numpy; some routines will fail'
+    print('Failed to import numpy; some routines will fail')
 
 try:
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
     CMDEF = cm.binary
 except ImportError:
-    print 'Failed to import matplotlib; plotting based on it will fail'
+    print('Failed to import matplotlib; plotting based on it will fail')
     CMDEF = None
 
 try:
     import ppgplot as pg
 except ImportError:
-    print 'Failed to import ppgplot; plotting based on it will fail'
+    print('Failed to import ppgplot; plotting based on it will fail')
 
 from trm.ultracam.UErrors import UltracamError
 
@@ -352,6 +354,9 @@ class Window(object):
     def __rdiv__(self, other):
         return Window(other / self._data + other, self.llx, self.lly, self.xbin, self.ybin)
 
+    def __rtruediv__(self,other):
+        return self.__rdiv__(other)
+        
     def format(self):
         """
         Returns a string defining the format of the Window
@@ -364,4 +369,4 @@ if __name__ == '__main__':
     win = Window(np.zeros((10,10)),10,15,2,2)
     win.min()
     win.max()
-    print 'test passed'
+    print('test passed')

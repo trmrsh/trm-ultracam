@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import urllib
+
 
 usage = \
 """
@@ -9,7 +13,7 @@ elapsed since the frame changed or if there are problems with the data.
 """
 
 # builtins
-import argparse, time, urllib2
+import argparse, time
 
 # mine
 from trm import ultracam
@@ -30,17 +34,16 @@ lastRun    = None
 lastNframe = None
 lastNew    = time.time()
 
-print '\nAlerter script started. Will poll once every',args.wait,\
-    'seconds and will warn of no change after',args.tmax,'minutes.'
-print \
-"""
+print('\nAlerter script started. Will poll once every',args.wait,\
+    'seconds and will warn of no change after',args.tmax,'minutes.')
+print("""
 It reads the final frame of the most recent run and makes some fairly crude
 checks for problems (too many pixels of the same value, too high, too low, too
 large a difference between right and left CCDs). Please let trm know if you
 think it is being either too sensitive or not sensitive enough, and how it is
 going wrong. For options to the script, invoke it with -h.
 
-"""
+""")
 while True:
     
     # get a couple of times just once
@@ -68,8 +71,8 @@ while True:
 
             # Issue alert if nothing seems to be happening
             if tstamp - lastNew >= 60*args.tmax:
-                print uttime + ': >>>>>>> WARNING: Nothing has changed for ' + \
-                    str(int((tstamp-lastNew)/ 60.)) + ' minutes! <<<<<<<<'
+                print(uttime + ': >>>>>>> WARNING: Nothing has changed for ' + \
+                    str(int((tstamp-lastNew)/ 60.)) + ' minutes! <<<<<<<<')
 
             # update the Rdata object if the run has changed
             if newrun:
@@ -82,26 +85,26 @@ while True:
                 # check it
                 r,g,b = mccd.checkData()
                 if r[0] or g[0] or b[0]:
-                    print uttime,'>>>>>>> WARNING:',
-                    if r[0]: print ' red: ' + r[1] + '.',
-                    if g[0]: print ' green: ' + g[1] + '.',
-                    if b[0]: print ' blue: ' + b[1] + '.',
-                    print ' <<<<<<<<'
+                    print(uttime,'>>>>>>> WARNING:', end=' ')
+                    if r[0]: print(' red: ' + r[1] + '.', end=' ')
+                    if g[0]: print(' green: ' + g[1] + '.', end=' ')
+                    if b[0]: print(' blue: ' + b[1] + '.', end=' ')
+                    print(' <<<<<<<<')
                 else:
-                    print uttime + ': all nominal. Currently on',currentRun,'which has',nframe,'frames.'
+                    print(uttime + ': all nominal. Currently on',currentRun,'which has',nframe,'frames.')
 
             elif tstamp - lastNew < 60*args.tmax:
-                print uttime + ': all nominal. Currently on',currentRun,'which has',nframe,'frames.'
+                print(uttime + ': all nominal. Currently on',currentRun,'which has',nframe,'frames.')
 
         else:
             if tstamp - lastNew > 60*args.tmax:
-                print uttime + ': >>>>>>> WARNING: Nothing has changed for ' + \
-                    str(int((tstamp-lastNew)/ 60.)) + ' minutes! <<<<<<<<'
+                print(uttime + ': >>>>>>> WARNING: Nothing has changed for ' + \
+                    str(int((tstamp-lastNew)/ 60.)) + ' minutes! <<<<<<<<')
 
-    except urllib2.URLError, err:
-        print uttime + ': ' + str(err) + '; have you started the ATC FileServer?'
-    except ultracam.UltracamError, err:
-        print uttime + ': ' + str(err)
+    except urllib.error.URLError as err:
+        print(uttime + ': ' + str(err) + '; have you started the ATC FileServer?')
+    except ultracam.UltracamError as err:
+        print(uttime + ': ' + str(err))
 
     # now wait before polling the server again
     time.sleep(args.wait)

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 #
 # File of constants to do with timing and past runs.
 #

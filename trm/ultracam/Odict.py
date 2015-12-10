@@ -3,6 +3,11 @@
 """
 Ordered dictionary class for trm.ultracam
 """
+from __future__ import absolute_import
+from __future__ import print_function
+import six
+from six.moves import map
+from six.moves import zip
 
 class Odict(dict):
     """
@@ -19,13 +24,13 @@ class Odict(dict):
             self._keys = []
             dict.__init__(self, {})
         else:
-            self._keys = dct.keys()
+            self._keys = list(dct.keys())
             dict.__init__(self, dct)
 
     def __repr__(self):
         rep    = 'Odict({'
         first = True
-        for k,v in self.iteritems():
+        for k,v in six.iteritems(self):
             if first:
                 rep += "'" + k + "': " + repr(v)
                 first = False
@@ -50,7 +55,7 @@ class Odict(dict):
         st    = ''
         inset = ' '*Odict.ninset
         Odict.ninset += Odict.nincr
-        for key, val in self.iteritems():
+        for key, val in six.iteritems(self):
             if isinstance(val, Odict):
                 st += ('%s%-' + str(Odict.nlength) + 's\n') % (inset,key)
             else:
@@ -70,7 +75,7 @@ class Odict(dict):
         return newInstance
 
     def items(self):
-        return zip(self._keys, self.values())
+        return list(zip(self._keys, list(self.values())))
 
     def keys(self):
         return self._keys
@@ -91,11 +96,11 @@ class Odict(dict):
         return dict.setdefault(self, key, failobj)
 
     def update(self, dct):
-        for key,val in dct.items():
+        for key,val in list(dct.items()):
             self.__setitem__(key,val)
 
     def values(self):
-        return map(self.get, self._keys)
+        return list(map(self.get, self._keys))
 
     def __iter__(self):
         for key in self._keys:
@@ -123,4 +128,4 @@ if __name__ == '__main__':
     od = Odict()
     od['B'] = 1.2
     od['A'] = 2.2
-    print 'test passed'
+    print('test passed')

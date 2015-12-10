@@ -1,21 +1,24 @@
 """
 ATC server access code extra. See Raw.py for more.
 """
+from __future__ import absolute_import
+from __future__ import print_function
 
 import os
-import urllib2
+from six.moves import urllib
 
 from trm.ultracam.UErrors import UltracamError
 
 # The ATC FileServer recognises various GET requests
 # (look for 'action=' in the code) which are accessed
-# using urllib2. The following code is to allow urllib2
+# using urllib. The following code is to allow urllib
 # to connect to a local version of the FileServer which
 # does not work without this code.
 
-proxy_support = urllib2.ProxyHandler({})
-opener = urllib2.build_opener(proxy_support)
-urllib2.install_opener(opener)
+# prevent auto-detection of proxy settings
+proxy_support = urllib.request.ProxyHandler({})
+opener = urllib.request.build_opener(proxy_support)
+urllib.request.install_opener(opener)
 
 # Get the URL of the FileServer from the environment
 # If not set, a later request to the server will raise
@@ -32,7 +35,7 @@ def get_nframe_from_server(run):
                             ' Have you set the ULTRACAM_DEFAULT_URL environment variable?')
     # get from FileServer
     full_url = URL + run + '?action=get_num_frames'
-    resp = urllib2.urlopen(full_url).read()
+    resp = urllib.request.urlopen(full_url).read()
 
     # parse the response
     loc = resp.find('nframes="')
@@ -56,7 +59,7 @@ def get_runs_from_server(dir=None):
         full_url = URL + '?action=dir'
     else:
         full_url = URL + dir + '?action=dir'
-    resp = urllib2.urlopen(full_url).read()
+    resp = urllib.request.urlopen(full_url).read()
 
     # parse response from server
     ldir = resp.split('<li>')
@@ -66,5 +69,5 @@ def get_runs_from_server(dir=None):
     return runs
 
 if __name__ == '__main__':
-    print get_runs_from_server()
-    print 'test passed'
+    print(get_runs_from_server())
+    print('test passed')

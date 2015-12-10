@@ -1,16 +1,21 @@
 """
 Section for handling the raw ULTRACAM data and xml files
 """
+from __future__ import absolute_import
+from __future__ import print_function
 
 import struct
 import warnings
-import urllib2
 import xml.dom.minidom
+from six.moves import zip
+from six.moves import urllib
+import six
+
 
 try:
     import numpy as np
 except ImportError:
-    print 'Failed to import numpy; some routines will fail'
+    print('Failed to import numpy; some routines will fail')
 
 from trm.ultracam.Constants import *
 from trm.ultracam.CCD import CCD
@@ -124,7 +129,7 @@ class Rhead (object):
                                     ' Have you set the ULTRACAM_DEFAULT_URL environment variable?')
             # get from server
             full_url = URL + run + '?action=get_xml'
-            sxml = urllib2.urlopen(full_url).read()
+            sxml = urllib.request.urlopen(full_url).read()
             udom = xml.dom.minidom.parseString(sxml)
         else:
             # local disk file
@@ -168,7 +173,7 @@ class Rhead (object):
                         user[nd.tagName] = nd.childNodes[0].data
             else:
                 user = None
-        except Exception, err:
+        except Exception as err:
             user = None
 
         # Translate applications into meaningful mode names
@@ -228,7 +233,7 @@ class Rhead (object):
         if self.instrument == 'ULTRACAM':
             try:
                 self.exposeTime = float(param['EXPOSE_TIME'])
-            except ValueError, err:
+            except ValueError as err:
                 raise UltracamError('Rhead.__init__: file = ' + self.run + \
                                     ' failed to interpret EXPOSE_TIME')
 
@@ -237,7 +242,7 @@ class Rhead (object):
                               if 'GAIN_SPEED' in param else None
 
             if 'V_FT_CLK' in param:
-                self.v_ft_clk  = struct.unpack('B',struct.pack('I',int(param['V_FT_CLK']))[2])[0]
+                self.v_ft_clk  = six.indexbytes(struct.pack('I',int(param['V_FT_CLK'])),2)
             elif app == 'appl7_window3pair_cfg':
                 self.v_ft_clk  = 140;
             else:
@@ -410,7 +415,7 @@ class Rhead (object):
         if user and 'Observers' in user: self.observers = user['Observers']
         if user and 'flags' in user: self.dtype = user['flags']
         if user and 'ccd_temp' in user: self.ccdtemp = user['ccd_temp']
-        if user and 'SlidePos' in user: self.slidepos = user['SlidePos']
+        if user and 'SlidePos' in user: self.slidepos = user['SlidePos'].split()[0]
         if user and 'RA' in user: self.RA  = user['RA']
         if user and 'Dec' in user: self.Dec = user['Dec']
         if user and 'Tracking' in user: self.track = user['Tracking']
@@ -526,7 +531,17 @@ class Rdata (Rhead):
         if server:
             self._fobj   = None
         else:
-            self._fobj   = open(run + '.dat', 'rb')
+            if six.PY3:
+                """
+                This exists because in Python 3, `open()` returns an
+                `io.BufferedReader` by default.  This is bad, because
+                `io.BufferedReader` doesn't support random access, which we may need in
+                some cases.  In the Python 3 case (implemented in the py3compat module)
+                we must call open with buffering=0 to get a raw random-access file
+                """
+                self._fobj   = open(run + '.dat', 'rb', buffering=0)
+            else:
+                self._fobj   = open(run + '.dat', 'rb')
 
         self._nf     = nframe
         self._run    = run
@@ -546,7 +561,7 @@ class Rdata (Rhead):
                 yield self.__call__(flt=self._flt)
         except UendError:
             pass
-        except urllib2.HTTPError:
+        except urllib.error.HTTPError:
             pass
 
     def set(self, nframe=1):
@@ -612,7 +627,7 @@ class Rdata (Rhead):
         if self.server:
             # read timing and data in one go from the server
             full_url = URL + self.run + '?action=get_frame&frame=' + str(self._nf-1)
-            buff     = urllib2.urlopen(full_url).read()
+            buff     = urllib.request.urlopen(full_url).read()
             if len(buff) != self.framesize:
                 self._nf = 1
                 raise UltracamError('Rdata.__call__: failed to read frame ' + str(self._nf) +
@@ -632,7 +647,7 @@ class Rdata (Rhead):
                 raise UendError('Rdata.__call__: failed to read timing bytes')
 
             # read data
-            buff = np.fromfile(self._fobj,'<u2',self.framesize/2-self.headerwords)
+            buff = np.fromfile(self._fobj,'<u2',int(self.framesize/2-self.headerwords))
             if len(buff) != self.framesize/2-self.headerwords:
                 self._fobj.seek(0)
                 self._nf = 1
@@ -1009,7 +1024,7 @@ class Rdata (Rhead):
             # frame because there are no options for timing data alone, although
             # at least no data re-formatting is required.
             full_url = URL + self.run + '?action=get_frame&frame=' + str(self._nf-1)
-            buff     = urllib2.urlopen(full_url).read()
+            buff     = urllib.request.urlopen(full_url).read()
             if len(buff) != self.framesize:
                 self._nf = 1
                 raise UltracamError('Rdata.time: failed to read frame ' + str(self._nf) +
@@ -1080,7 +1095,7 @@ class Rtime (Rhead):
                 yield self.__call__()
         except UendError:
             pass
-        except urllib2.HTTPError:
+        except urllib.error.HTTPError:
             pass
 
     def set(self, nframe=1):
@@ -1128,7 +1143,7 @@ class Rtime (Rhead):
             # have to read both timing and data in one go from the server
             # and just ignore the data
             full_url = URL + self.run + '?action=get_frame&frame=' + str(self._nf-1)
-            buff     = urllib2.urlopen(full_url).read()
+            buff     = urllib.request.urlopen(full_url).read()
             if len(buff) != self.framesize:
                 self._nf = 1
                 raise UltracamError('Rtime.__call__: failed to read frame ' + str(self._nf) +
@@ -1306,7 +1321,7 @@ def utimer(tbytes, rhead, fnum):
     if rhead.instrument == 'ULTRACAM':
         # One of the bits in the first byte is set if the blue frame is junk.
         # Unfortunately which bit was set changed hence the check of the format
-        fbyte   = struct.unpack('<B',tbytes[0])[0]
+        fbyte = six.indexbytes(tbytes,0)
         badBlue = rhead.nblue > 1 and \
             ((format == 1 and bool(fbyte & 1<<3)) or (format == 2 and bool(fbyte & 1<<4)))
 

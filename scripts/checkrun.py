@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
+
 
 usage = \
 """
@@ -24,15 +27,15 @@ args = parser.parse_args()
 # Check arguments
 run   = args.run
 if not os.path.exists(run + '.xml'):
-    print 'ERROR: could not find',run+'.xml'
+    print('ERROR: could not find',run+'.xml')
     exit(1)
 if not os.path.exists(run + '.dat'):
-    print 'ERROR: could not find',run+'.dat'
+    print('ERROR: could not find',run+'.dat')
     exit(1)
 
 first = args.first
 if first < 0:
-    print 'ERROR: first frame must be >= 0'
+    print('ERROR: first frame must be >= 0')
     exit(1)
 
 # more imports
@@ -48,6 +51,6 @@ for mccd in rdat:
     if green[0]: mess += ' g: ' + green[1] + '.'
     if blue[0]:  mess += ' b: ' + blue[1] + '.'
     if red[0] or green[0] or blue[0]:
-        print 'Frame',fnum,'has possible problems.'+mess
+        print('Frame',fnum,'has possible problems.'+mess)
     fnum += 1
 
