@@ -25,7 +25,7 @@ def write_string(fobj, strng):
     strng        -- string to file object opened for binary output
     """
     nchar = len(strng)
-    fobj.write(struct.pack('i' + str(nchar) + 's',nchar, strng))
+    fobj.write(struct.pack('i' + str(nchar) + 's',nchar, strng.encode('utf-8')))
 
 def read_string(fobj, endian=''):
     """
